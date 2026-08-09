@@ -76,11 +76,13 @@
 | **Prioridade** | P0 |
 | **Fonte** | `agents/security-engineer.md §Refresh Token Strategy` |
 
-**Descrição:** A cada uso do refresh token, o sistema deve emitir um novo token e invalidar o anterior (rotação). Se um token já marcado como utilizado (`isUsed = true`) for apresentado novamente, o sistema deve invalidar **todas** as sessões do usuário e registrar evento de auditoria `iam.suspicious_token_reuse`, indicando possível roubo de token.
+**Descrição:** O mecanismo de refresh token deve implementar rotação obrigatória: a cada uso válido, o token consumido é marcado como `isUsed = true` e um novo token opaco é emitido. O sistema deve detectar apresentações de tokens já consumidos como indicador de comprometimento (token reuse detection). O comportamento observável de resposta a essa detecção (invalidação de todas as sessões e registro de auditoria) está especificado em **RF-F0-001 CA-10** como requisito funcional.
 
-**Métrica:** Zero reutilização de refresh token sem resposta de invalidação global; 100% dos eventos de reuso detectado registrados em `audit_log` com tipo `iam.suspicious_token_reuse`.
+> **Nota de classificação:** A estratégia de rotação e a detecção de reutilização são atributos de segurança (RNF). As ações de resposta do sistema (o que fazer quando detectada a reutilização) são comportamento funcional especificado em RF-F0-001.
 
-**Verificação:** Teste de integração com cenário de reuso (enviar o mesmo refresh token duas vezes consecutivas e verificar 401 + invalidação de todas as sessões).
+**Métrica:** 100% dos refresh tokens com campo `is_used` atualizado após uso; zero tokens consumidos (`is_used = true`) aceitos em nova requisição; sistema retorna HTTP 401 para qualquer token já consumido.
+
+**Verificação:** Teste de integração: usar refresh token → verificar novo token emitido + token anterior marcado `is_used = true`; tentar reutilizar o token consumido → verificar HTTP 401; cenário de reuso detectado verificado em RF-F0-001 CA-10.
 
 **RF relacionados:** RF-F0-001
 
@@ -93,13 +95,15 @@
 | **ID** | RNF-SEC-04 |
 | **Categoria** | Segurança |
 | **Prioridade** | P0 |
-| **Fonte** | US-F0-001 RN-F0.1-06, RN-F0.1-07, RN-F0.1-09; `fluxos_por_perfil.md` §1 F0.1; RF-F0-001; CONF-004 (precedência HU > agents) |
+| **Fonte** | US-F0-001 RN-F0.1-06, RN-F0.1-09; `fluxos_por_perfil.md` §1 F0.1; RF-F0-001; CONF-004 (precedência HU > agents) |
 
-**Descrição:** O sistema deve limitar tentativas de autenticação para mitigar ataques de força bruta. Na rota `POST /auth/login`, o limite é de **5 tentativas por minuto** por par `IP + identificador` (Bucket4j). Após **10 falhas consecutivas** para o mesmo identificador, a conta é bloqueada por **15 minutos** (resposta externa anti-enumeração idêntica à de credencial inválida). O endpoint de recuperação de senha (`POST /auth/recuperar-senha`) mantém limite de **3 tentativas por hora** por IP. Quando o rate limit é excedido, o sistema retorna HTTP 429 com corpo RFC 7807.
+**Descrição:** O sistema deve limitar tentativas de autenticação para mitigar ataques de força bruta, implementado via Bucket4j. Limites: `POST /auth/login` — **5 tentativas por minuto** por par `IP + identificador`; `POST /auth/recuperar-senha` — **3 tentativas por hora** por IP. Quando o limite é excedido, o sistema retorna HTTP 429 com corpo RFC 7807 e header `Retry-After`. O bloqueio temporário de conta após falhas consecutivas é um comportamento funcional especificado em **RF-F0-001 CA-7** (não um atributo de qualidade mensurável neste RNF).
 
-**Métrica:** HTTP 429 retornado na 6ª tentativa de login dentro de 1 minuto para o mesmo par `IP + identificador`; header `Retry-After` presente na resposta 429; bloqueio de conta após 10 falhas consecutivas com duração de 15 minutos verificável em teste.
+> **Nota de classificação:** A limitação de taxa de requisições (rate limiting) é um mecanismo de segurança (RNF). O bloqueio de conta como transição de estado (ativo → bloqueado por 15 min após 10 falhas) é comportamento funcional com especificação em RF-F0-001.
 
-**Verificação:** Teste de integração com Bucket4j (6 tentativas em &lt; 1 min → 429); teste de bloqueio após 10 falhas; alinhado com CA-F0-001-04/05 da HU.
+**Métrica:** HTTP 429 retornado na 6ª tentativa de login dentro de 1 minuto para o mesmo par `IP + identificador`; header `Retry-After` presente; HTTP 429 na 4ª tentativa de recuperação dentro de 1 hora para o mesmo par e-mail + IP.
+
+**Verificação:** Teste de integração com Bucket4j (6 tentativas em < 1 min → 429); teste de recuperação de senha (4 tentativas/hora → 429); alinhado com RF-F0-001 CA-6 e RF-F0-002 CA-7.
 
 **RF relacionados:** RF-F0-001, RF-F0-002
 
@@ -346,15 +350,17 @@
 | Campo | Valor |
 |-------|-------|
 | **ID** | RNF-DIS-01 |
-| **Categoria** | Disponibilidade |
+| **Categoria** | Disponibilidade / Recuperação de Desastres |
 | **Prioridade** | P0 |
 | **Fonte** | `agents/devops-engineer.md §PostgreSQL Backup Strategy`; `analise_arquitetural §17.6` |
 
-**Descrição:** O banco de dados PostgreSQL deve ter backup diário automático no formato `pg_dump --format=custom`, armazenado no MinIO (bucket `backups`), com retenção mínima de 14 dias. O backup deve ser executado via cron ou GitHub Actions scheduled workflow.
+**Descrição:** O sistema deve garantir que o banco de dados PostgreSQL seja recuperável em caso de falha ou desastre. Para tanto, backups automáticos devem ser executados diariamente no formato `pg_dump --format=custom`, armazenados em armazenamento de objetos (bucket `backups` no MinIO/S3), com retenção mínima de 14 dias. O procedimento operacional de backup (scheduling, ferramentas, paths) é detalhado em `agents/devops-engineer.md §PostgreSQL Backup Strategy`.
 
-**Métrica:** Arquivo de backup gerado diariamente com timestamp; retenção de 14 arquivos mínimos no bucket `backups`; tamanho do arquivo > 0 bytes (backup não vazio).
+> **Nota de classificação:** A capacidade de recuperação de dados é um atributo de disponibilidade (RNF). Os procedimentos operacionais específicos (cron job, comandos pg_dump, configuração do MinIO) são responsabilidade da documentação de DevOps e do agente `devops-engineer`, não do documento de requisitos do sistema.
 
-**Verificação:** Job de CI semanal que executa `mc ls minio/backups` e verifica data do arquivo mais recente; alerta se backup mais recente > 26h.
+**Métrica:** Arquivo de backup gerado com intervalo ≤ 26 horas; 14 arquivos mínimos disponíveis no bucket `backups`; tamanho do arquivo de backup > 0 bytes.
+
+**Verificação:** Job de CI semanal que verifica data do arquivo mais recente no bucket; alerta Prometheus se backup mais recente > 26h; restauração mensal conforme RNF-DIS-02.
 
 **RF relacionados:** Todos (transversal de operação)
 
@@ -407,11 +413,13 @@
 | **Prioridade** | P1 |
 | **Fonte** | `agents/devops-engineer.md §Prometheus Configuration`; `analise_arquitetural §17.6` |
 
-**Descrição:** O sistema de monitoramento deve ter alertas Prometheus/Grafana configurados para: (a) taxa de erros 5xx > 1% em janela de 5 minutos; (b) latência P99 > 2 s em janela de 5 minutos; (c) fila Outbox pendente > 200 eventos por mais de 2 minutos; (d) pool de conexões HikariCP com > 5 conexões pendentes por mais de 1 minuto.
+**Descrição:** O sistema deve possuir monitoramento ativo com alertas configurados para condições operacionais críticas, de forma que a equipe de operação seja notificada proativamente antes que os usuários sejam impactados. As condições mínimas que devem gerar alerta são: (a) degradação de disponibilidade (taxa de erros HTTP 5xx); (b) degradação de desempenho (latência elevada); (c) acúmulo anormal na fila de comunicação assíncrona (Outbox); (d) esgotamento de recursos de banco de dados (pool de conexões). Os limiares específicos e a configuração dos alertas são responsabilidade de `agents/devops-engineer.md §Prometheus Configuration` e do arquivo `ops/prometheus/alerts.yml`.
 
-**Métrica:** 4 alertas configurados no Prometheus com as condições acima; notificação por email/webhook ao disparar.
+> **Nota de classificação:** A obrigação de possuir alertas operacionais é um atributo de disponibilidade/observabilidade (RNF). As configurações específicas de cada alerta (expressões PromQL, thresholds exatos, destinatários) são procedimentos operacionais mantidos em `ops/prometheus/alerts.yml`, não no documento de requisitos.
 
-**Verificação:** Revisão dos arquivos `ops/prometheus/alerts.yml`; teste manual de trigger de cada alerta em ambiente de staging.
+**Métrica:** Pelo menos 4 regras de alerta ativas e funcionais cobrindo as condições (a)–(d); alertas disparando notificação em canal configurado quando condições são atingidas.
+
+**Verificação:** Revisão dos arquivos em `ops/prometheus/`; teste manual de trigger de cada categoria de alerta em ambiente de staging.
 
 **RF relacionados:** RF-F7-007
 
@@ -830,17 +838,19 @@
 | **Prioridade** | P0 |
 | **Fonte** | Lei 13.709/2018 (LGPD); US-F1-003 (perfil + consentimento); `analise_arquitetural §17` |
 
-**Descrição:** O sistema deve: (a) coletar apenas os dados pessoais necessários para a finalidade específica de cada funcionalidade (princípio da minimização); (b) registrar o momento do aceite de termos/LGPD do usuário no campo `usuario.metadata.aceite_lgpd_em` com timestamp; (c) permitir que o usuário exporte seus dados pessoais via tela de perfil; (d) não logar CPF, GRR completo, senha ou dados bancários em logs de aplicação.
+**Descrição:** O sistema deve: (a) coletar apenas os dados pessoais necessários para a finalidade específica de cada funcionalidade (princípio da minimização); (b) registrar o momento do aceite de termos/LGPD do usuário no campo `usuario.metadata.aceite_lgpd_em` com timestamp, IP e User-Agent; (c) não logar CPF, GRR completo, senha ou dados bancários em logs de aplicação. A capacidade funcional de exportação dos dados pessoais pelo próprio usuário está especificada em **RF-F1-003-d** (funcionalidade com tela, API e fluxo dedicados).
 
-**Métrica:** Campo `aceite_lgpd_em` preenchido para 100% dos usuários que aceitaram os termos; zero ocorrências de CPF ou senha em logs de produção (validado por query no Loki); exportação de dados pessoais disponível na tela de perfil do aluno.
+> **Nota de classificação:** Os itens (a), (b) e (c) são restrições de conformidade legal (RNF). A exportação de dados pessoais pelo usuário [(c) anterior] é uma **funcionalidade observável** e foi movida para RF-F1-003-d para manter a distinção ISO/IEC 25010 entre atributos de qualidade do sistema e capacidades funcionais.
 
-**Verificação:** Revisão de código nos `UseCase` que manipulam dados pessoais; query de auditoria no Loki buscando padrões de CPF (`\d{3}\.\d{3}\.\d{3}-\d{2}`); teste de aceitação de US-F1-003 verificando exportação.
+**Métrica:** Campo `aceite_lgpd_em` preenchido para 100% dos usuários que aceitaram os termos; zero ocorrências de CPF ou senha em logs de produção (validado por query no Loki); exportação de dados pessoais disponível conforme RF-F1-003-d.
 
-**RF relacionados:** RF-F1-003, RF-F7-001
+**Verificação:** Revisão de código nos `UseCase` que manipulam dados pessoais; query de auditoria no Loki buscando padrões de CPF (`\d{3}\.\d{3}\.\d{3}-\d{2}`); teste de aceitação de US-F1-003 verificando aceite LGPD (RF-F1-002 CA-3) e exportação (RF-F1-003-d).
+
+**RF relacionados:** RF-F1-002, RF-F1-003-a, RF-F1-003-d, RF-F7-001
 
 ---
 
-### RNF-LGL-02 — Certificados gerados pelo sistema com trilha criptográfica
+### RNF-LGL-02 — Certificados com trilha criptográfica de autoria
 
 | Campo | Valor |
 |-------|-------|
@@ -849,11 +859,13 @@
 | **Prioridade** | P1 |
 | **Fonte** | `analise_arquitetural §11`; US-F0-007; US-F1-010; ADR-012 |
 
-**Descrição:** Todos os certificados de participação emitidos pelo sistema devem: (a) ser gerados automaticamente pelo sistema quando o evento conclui (nunca via upload de PDF externo); (b) ter hash SHA-256 do PDF canônico armazenado em `certificate.hash_sha256`; (c) ser assinados com chave ED25519 do servidor; (d) conter QR Code apontando para `/publico/verificar-certificado/:hash`; (e) chave pública publicada em `/.well-known/jwks.json` para verificação offline.
+**Descrição:** Todo certificado de participação emitido pelo sistema deve possuir trilha criptográfica que permita verificar sua autenticidade e autoria de forma objetiva e independente do sistema: (a) o certificado deve ser gerado exclusivamente pelo sistema a partir de eventos internos validados — nunca por upload de arquivo externo; (b) deve possuir hash SHA-256 do documento que permita detectar adulteração posterior; (c) deve ser assinado com algoritmo assimétrico (ED25519) cuja chave pública seja acessível publicamente, possibilitando verificação offline. A **pipeline funcional** de emissão de certificados (geração de PDF, embedding do QR Code, armazenamento em MinIO, publicação da chave JWKS) está especificada em **RF-TR-003**.
 
-**Métrica:** 100% dos certificados com `hash_sha256` não-nulo; 100% dos certificados com assinatura ED25519 válida verificável via chave pública em `/.well-known/jwks.json`; zero uploads de PDF externo aceitos como certificados.
+> **Nota de classificação:** Os requisitos de autoria criptográfica comprovável (itens a–c) são atributos de conformidade legal/anti-fraude (RNF). O fluxo técnico de como o sistema gera, armazena e publica os certificados é comportamento funcional especificado em RF-TR-003, evitando duplicação.
 
-**Verificação:** Teste de integração que gera certificado, extrai hash, recalcula SHA-256 do PDF e compara; teste de verificação pública em `/publico/verificar-certificado/:hash` com certificado gerado; revisão de código do `CertificateIssuanceUseCase`.
+**Métrica:** 100% dos certificados com `hash_sha256` não-nulo; 100% com assinatura ED25519 válida verificável via `/.well-known/jwks.json`; zero registros de certificados originados por upload externo.
+
+**Verificação:** Teste de integração que gera certificado, recalcula SHA-256 do PDF e compara com o campo persistido; teste de verificação pública conforme RF-F0-007; revisão de código do `CertificateIssuanceUseCase`.
 
 **RF relacionados:** RF-TR-003, RF-F0-007, RF-F1-010
 
@@ -941,4 +953,4 @@
 
 ---
 
-*Última atualização: 2026-06-23 — Etapa 12: RNF-SEC-04 alinhado a US-F0-001 (5/min; CONF-004 resolvido)*
+*Última atualização: 2026-08-09 — Revisão de classificação: RNF-SEC-03, RNF-SEC-04 (separação mecanismo NF × comportamento funcional); RNF-LGL-01 (exportação de dados movida para RF-F1-003-d); RNF-LGL-02 (pipeline funcional delegada a RF-TR-003); RNF-DIS-01 e RNF-DIS-04 (procedimentos operacionais específicos delegados a agents/devops-engineer.md)*

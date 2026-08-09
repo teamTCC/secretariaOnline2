@@ -69,7 +69,7 @@
 3. Seed MVP: ≥ 2–3 tipos reais (`ADIANTAMENTO_PERIODO`, `APROVEITAMENTO_DISCIPLINA`, `TRANCAMENTO_DISCIPLINA`).
 
 *Engine de workflow*
-4. `WorkflowEngine` pura (sem Spring): valida `from → to`, authority, guards simples; rejeita transição inválida com RFC 7807.
+4. `WorkflowEngine` pura (sem dependência de Spring/JPA — conforme RNF-MAN-05 §Clean Architecture): valida `from → to`, authority, guards simples; rejeita transição inválida com RFC 7807.
 5. Toda transição gera `RequestEvent` (`CREATED`, `TRANSITION`, `COMMENT`) — histórico imutável.
 6. Payload validado contra `form_schema` no backend (Konform/Jakarta) além do Zod no front.
 
@@ -115,7 +115,7 @@
 *Outbox dispatcher*
 4. `@Scheduled(fixedDelay=5000)`: processa até 50 eventos `PENDING` com `SELECT FOR UPDATE SKIP LOCKED`.
 5. Retry com backoff exponencial; após 5 tentativas → `DEAD` (reentrega manual via RF-F7-005).
-6. Latência alvo PENDING→SENT &lt; 30 s em fila vazia (RNF-CON-01).
+6. Latência PENDING→SENT conforme RNF-DES-05 (< 30 s em fila vazia); ver também RNF-CON-01 para garantia de atomicidade.
 7. Eventos `SENT` retidos 7 dias antes de arquivamento.
 
 *Integração*
@@ -258,7 +258,7 @@
 3. KPIs, pendências (máx. 3), últimas solicitações (5), próximos eventos (3) conforme HU do perfil.
 4. QuickTiles e CTAs derivados exclusivamente de `_links` do BFF (RN-F1.1-07 a RN-F1.1-09).
 5. Cache Redis 30 s para dados não real-time (RN-F1.1-10); invalidação em mutações relevantes.
-6. FCP dashboard &lt; 1,5 s (RNF-DES-04); mobile pull-to-refresh revalida TanStack Query.
+6. FCP conforme RNF-DES-04 (< 1,5 s); mobile pull-to-refresh revalida TanStack Query.
 7. MVP v2: cards de solicitações leem tabelas reais de `solicitacoes/` (não mock).
 
 **Dependências:** RF-TR-001, RF-TR-005, RF-TR-008, RNF-DES-04, RNF-UX-04
@@ -372,3 +372,7 @@
 | ADR-002 FGAC + HATEOAS | RF-TR-005 |
 | ADR-003 Workflow Engine DRY | RF-TR-001 |
 | Outbox (decisão arquitetural §9) | RF-TR-002, RF-TR-007 |
+
+---
+
+*Última atualização: 2026-08-09 — Revisão de classificação: RF-TR-001 CA-4 (restrição arquitetural referenciada via RNF-MAN-05); RF-TR-002 CA-6 (métrica de latência referenciada via RNF-DES-05); RF-TR-006 CA-6 (métrica FCP referenciada via RNF-DES-04)*

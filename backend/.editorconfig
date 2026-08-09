@@ -1,0 +1,20 @@
+[*.{kt,kts}]
+# Kotlin code style
+indent_size = 4
+max_line_length = 140
+ktlint_code_style = ktlint_official
+
+# Disable overly strict rules that hurt readability
+ktlint_standard_chain-method-continuation = disabled
+ktlint_standard_multiline-expression-wrapping = disabled
+ktlint_standard_function-signature = disabled
+ktlint_standard_argument-list-wrapping = disabled
+
+[*.{yml,yaml,json,xml}]
+indent_size = 2
+
+[*.sql]
+indent_size = 2
+
+[*.gradle.kts]
+indent_size = 4

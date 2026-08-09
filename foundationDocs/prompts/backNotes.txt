@@ -42,4 +42,4 @@ You should use Flyway instead of JPA for schema generation because JPA is not bu
 Yes, you can absolutely start with only JPA and transition to Flyway later without a massive amount of rework. In fact, this is a very common development workflow.
 During early development, your database design changes constantly. Using JPA’s automatic generation (ddl-auto=update or create-drop) allows you to iterate quickly without writing migration scripts for every minor code tweak
 
--> postgres database em um container docker 
+-> postgres database em um container docker compose apenas para o banco postgres 

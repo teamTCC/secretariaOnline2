@@ -1,0 +1,34 @@
+version: '3.9'
+
+# Docker Compose for LOCAL DEVELOPMENT — PostgreSQL only (per backNotes.txt)
+# The backend runs locally via Gradle bootRun (not containerized in dev)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: secretaria_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: secretaria_dev
+      POSTGRES_USER: secretaria
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secretaria -d secretaria_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - secretaria_net
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  secretaria_net:
+    driver: bridge

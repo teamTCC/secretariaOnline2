@@ -1,0 +1,39 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+
+  flyway:
+    enabled: false
+
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+logging:
+  level:
+    root: INFO
+    br.ufpr.sept.so2: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+
+# Dev defaults (override via .env or env vars for real keys)
+security:
+  jwt:
+    private-key: ${SECURITY_JWT_PRIVATE_KEY:PLACEHOLDER_REPLACE_ME}
+    public-key: ${SECURITY_JWT_PUBLIC_KEY:PLACEHOLDER_REPLACE_ME}
