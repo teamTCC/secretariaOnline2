@@ -18,8 +18,8 @@
 | F0.1-f | RN-F0.1-10 · sub-fluxo "Reuso de refresh token" (F0.1) | SEQUENCIA | gerado |
 | — | CA-06 (validação de campos vazios) | NAO_APLICAVEL | — |
 | — | CA-07 (links de navegação estáticos) | NAO_APLICAVEL | — |
-| — | CA-08 (acessibilidade — tab order, aria-live) | NAO_APLICAVEL | — |
-| — | CA-09 (responsividade mobile — layout 375px) | NAO_APLICAVEL | — |
+| — | Acessibilidade (tab order, aria-live, contraste) | NAO_APLICAVEL | Coberto por RNF-UX-01/02/03 — sem CA específico nesta HU; sem fluxo HTTP. |
+| — | Responsividade mobile (layout 375px, safe area) | NAO_APLICAVEL | Coberto por RNF-UX-03 — requisito de layout CSS; sem troca de mensagens entre camadas. |
 | — | RN-F0.1-12 (CSRF Double Submit Cookie — HTTP transport) | NAO_APLICAVEL | — |
 
 ---
@@ -38,8 +38,8 @@ Relacionado downstream: `/primeiro-acesso` após `mustChangePassword=true` é co
 |------|--------|
 | CA-06 — Validação de campos vazios | Lógica exclusivamente frontend (React Hook Form + Zod); nenhuma chamada HTTP é feita — não há troca de mensagens para diagramar. |
 | CA-07 — Links "Esqueci minha senha", "Contato", "Verificar protocolo" | Navegação React Router client-side; sem interação com backend. |
-| CA-08 — Acessibilidade (tab order, aria-live, contraste) | Requisito de implementação de UI (WCAG 2.1 AA); sem fluxo de dados entre camadas. |
-| CA-09 — Responsividade mobile (largura 375px, safe area) | Requisito de layout CSS/NativeWind; sem troca de mensagens entre sistemas. |
+| Acessibilidade (tab order, aria-live, contraste ≥ 4,5:1) | Atributo de qualidade transversal — coberto por RNF-UX-01, RNF-UX-02 e RNF-UX-03; não faz parte desta HU como CA específico. |
+| Responsividade mobile (largura 375px, safe area) | Atributo de qualidade transversal — coberto por RNF-UX-03; sem troca de mensagens entre sistemas. |
 | RN-F0.1-12 — CSRF Double Submit Cookie | Política de transporte HTTP; o mecanismo é transparente ao fluxo de negócio e já está descrito na análise arquitetural §8. |
 
 ---
@@ -78,8 +78,8 @@ sequenceDiagram
 
 **Notas:**
 - Passo 1: `identificador` aceita e-mail `@ufpr.br`, e-mail pessoal ou GRR numérico — normalizado antes do SELECT (RN-F0.1-01).
-- Passo 6: Argon2id substitui o MD5 legado; auto-call representa verificação local no UseCase, sem round-trip à DB (RN-F0.1-02).
-- Passo 10: WebApp armazena `accessToken` em memória e `refreshToken` em cookie `httpOnly + SameSite=Lax`; mobile: Keychain/Keystore (RN-F0.1-03).
+- Passo 6: Argon2id obrigatório para verificação de senha (substitui MD5 legado); operação em memória no UseCase, sem round-trip adicional à DB (conforme RNF-SEC-01).
+- Passo 10: WebApp armazena tokens conforme RNF-SEC-02 — `accessToken` em memória JS e `refreshToken` em cookie `httpOnly + SameSite=Lax`; em mobile: Keychain (iOS) / Keystore (Android).
 
 **Lacunas:** nenhuma.
 
@@ -263,9 +263,9 @@ sequenceDiagram
     WebApp->>AC: POST /auth/refresh {refreshToken (já rotacionado)}
     AC->>UC: execute(refreshToken)
     UC->>DB: SELECT refresh_token FOR UPDATE
-    DB-->>UC: RefreshTokenEntity (status=ROTATED)
+    DB-->>UC: RefreshTokenEntity (usedAt ≠ null)
     UC->>DB: REVOKE all refresh_tokens WHERE userId
-    UC->>DB: INSERT audit_log (iam.token_reuse_detected, userId)
+    UC->>DB: INSERT audit_log (iam.suspicious_token_reuse, userId)
     UC-->>AC: TokenReuseException
     AC-->>WebApp: 401 Problem Details (token_reuse_detected)
     WebApp-->>Usuario: Redirect /login (todas as sessões invalidadas)
