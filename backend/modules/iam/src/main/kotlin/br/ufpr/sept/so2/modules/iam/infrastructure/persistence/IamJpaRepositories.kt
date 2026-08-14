@@ -48,9 +48,61 @@ interface UsuarioJpaRepository : JpaRepository<UsuarioEntity, UUID> {
         @Param("id") id: UUID,
     ): Optional<UsuarioEntity>
 
+    fun countByAtivoTrue(): Long
+
+    fun countByAtivoTrueAndGrrIsNotNull(): Long
+
+    @Query(
+        """
+        SELECT COUNT(u) FROM UsuarioEntity u
+        JOIN u.usuarioRoles ur JOIN ur.role r
+        WHERE r.code = :roleCode
+        """,
+    )
+    fun countByRoleCode(
+        @Param("roleCode") roleCode: String,
+    ): Long
+
+    @Query(
+        """
+        SELECT u FROM UsuarioEntity u
+        JOIN u.usuarioRoles ur JOIN ur.role r
+        WHERE r.code = :roleCode
+        """,
+    )
+    fun findAllByRoleCode(
+        @Param("roleCode") roleCode: String,
+        pageable: org.springframework.data.domain.Pageable,
+    ): org.springframework.data.domain.Page<UsuarioEntity>
+
+    @Query(
+        """
+        SELECT u FROM UsuarioEntity u
+        WHERE u.ativo = true AND u.grr IS NOT NULL
+        AND NOT EXISTS (
+            SELECT 1 FROM UsuarioRoleEntity ur JOIN ur.role r
+            WHERE ur.usuario = u AND r.code = 'EGRESSO'
+        )
+        """,
+    )
+    fun findEligibleForGraduation(pageable: org.springframework.data.domain.Pageable): org.springframework.data.domain.Page<UsuarioEntity>
+
     fun existsByEmail(email: String): Boolean
 
     fun existsByGrr(grr: String): Boolean
+
+    @Query(
+        """
+        SELECT u FROM UsuarioEntity u
+        WHERE LOWER(u.nome) LIKE LOWER(CONCAT('%', :q, '%'))
+        OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%'))
+        OR (u.grr IS NOT NULL AND u.grr LIKE CONCAT('%', :q, '%'))
+        """,
+    )
+    fun searchByQ(
+        @Param("q") q: String,
+        pageable: org.springframework.data.domain.Pageable,
+    ): org.springframework.data.domain.Page<UsuarioEntity>
 
     @Modifying
     @Query("UPDATE UsuarioEntity u SET u.tentativasFalhas = :attempts, u.bloqueadoAte = :bloqueadoAte WHERE u.id = :id")
@@ -66,6 +118,21 @@ interface UsuarioJpaRepository : JpaRepository<UsuarioEntity, UUID> {
         @Param("id") id: UUID,
         @Param("hash") hash: String,
     )
+
+    @Query(
+        """
+        SELECT u FROM UsuarioEntity u
+        WHERE (:nome IS NULL OR LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%')))
+        AND (:email IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :email, '%')))
+        AND (:ativo IS NULL OR u.ativo = :ativo)
+        """,
+    )
+    fun searchUsuarios(
+        @Param("nome") nome: String?,
+        @Param("email") email: String?,
+        @Param("ativo") ativo: Boolean?,
+        pageable: org.springframework.data.domain.Pageable,
+    ): org.springframework.data.domain.Page<UsuarioEntity>
 }
 
 interface RoleJpaRepository : JpaRepository<RoleEntity, UUID> {
@@ -74,6 +141,8 @@ interface RoleJpaRepository : JpaRepository<RoleEntity, UUID> {
 
 interface AuthorityJpaRepository : JpaRepository<AuthorityEntity, UUID> {
     fun findByCode(code: String): Optional<AuthorityEntity>
+
+    fun findAllByCodeIn(codes: Collection<String>): List<AuthorityEntity>
 }
 
 interface RefreshTokenJpaRepository : JpaRepository<RefreshTokenEntity, UUID> {

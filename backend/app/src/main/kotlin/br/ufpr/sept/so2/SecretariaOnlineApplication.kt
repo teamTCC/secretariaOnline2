@@ -3,12 +3,14 @@ package br.ufpr.sept.so2
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan
 import org.springframework.boot.runApplication
+import org.springframework.cache.annotation.EnableCaching
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.annotation.EnableScheduling
 
 @SpringBootApplication(scanBasePackages = ["br.ufpr.sept.so2"])
 @EnableAsync
 @EnableScheduling
+@EnableCaching
 @ConfigurationPropertiesScan
 class SecretariaOnlineApplication
 

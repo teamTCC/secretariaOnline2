@@ -7,6 +7,9 @@ dependencies {
     api(project(":shared"))
     implementation(project(":modules:iam"))
     implementation(project(":modules:academico"))
+    implementation(project(":modules:notificacoes"))
+    implementation(project(":modules:arquivos"))
+    implementation(project(":modules:comunicacao"))
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 

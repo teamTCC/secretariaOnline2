@@ -1,7 +1,7 @@
 # T-F8-002 — Suporte e FAQ
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F8 — Cross-cutting/US-F8-002-SUPORTE-FAQ.md`](../../foundationDocs/sequenceDiagrams/F8%20—%20Cross-cutting/US-F8-002-SUPORTE-FAQ.md)  
-> **Status:** ⏳ Não implementado — `SupportController`, use cases e tabela `faq_items` pendentes
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F8 — Cross-cutting/US-F8-002-SUPORTE-FAQ.md`](../../foundationDocs/sequenceDiagrams/F8 — Cross-cutting/US-F8-002-SUPORTE-FAQ.md)  
+> **Status:** ✅ Implementado — SupportController (FAQ público + tickets) + migration V012
 
 ---
 
@@ -168,24 +168,35 @@ CREATE TABLE faq_items (
 
 ---
 
-## O que precisa ser implementado
+## O que está implementado
 
-| Arquivo a criar | Descrição |
-|----------------|-----------|
-| `modules/bff/api/SupportController.kt` | `GET /support/faq` + `POST /support/tickets` |
-| `modules/bff/application/GetFaqUseCase.kt` | Busca itens ativos por perfil |
-| `modules/bff/application/CreateTicketUseCase.kt` | Delega para `OpenRequestUseCase` com `RequestType=SUPORTE_TECNICO` |
-| Migração | `faq_items` + inserção do `RequestType = SUPORTE_TECNICO` |
-| Rate limit config | Bucket4j em `POST /support/tickets` — 3 req/hora por userId |
+[`iam/api/SupportController.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/api/SupportController.kt)
+
+| Endpoint | Auth | Notas |
+|----------|------|--------|
+| `GET /faq` | público | lista por `categoria` opcional |
+| `POST /support/tickets` | autenticado | ticket próprio |
+| `PATCH /support/tickets/{id}/close` | autenticado | **só o autor** ou `user.manage_students` / `system.admin` |
+| `PATCH /support/tickets/{id}/respond` | `user.manage_students` | secretaria |
+
+Tickets **não** passam pelo motor de solicitações (tabela `support_ticket`, não `RequestType=SUPORTE_TECNICO`).
+
+---
+
+## O que precisa ser implementado ( lacunas vs diagrama )
+
+- FAQ filtrado automaticamente pelo perfil do JWT (`?perfil=ALUNO` no diagrama)
+- Ticket como `RequestType` + protocolo `SUP-YYYY-NNN` + outbox `support.ticket_created`
+- Rate limit 3/h em `POST /support/tickets`
 
 ---
 
 ## Checklist de Verificação
 
-- [ ] `GET /support/faq?perfil=ALUNO` → `200` com lista ordenada por `ordem`
-- [ ] `POST /support/tickets` → `201` com `numero` gerado no formato `SUP-YYYY-NNN`
-- [ ] Transação atômica: falha no INSERT outbox → rollback total (sem ticket orphan)
-- [ ] `support.ticket_created` processado pelo OutboxDispatcher → notificação à secretaria
-- [ ] Rate limit: 4ª requisição na hora → `429` com `retryAfterMinutes`
-- [ ] Validação 422: `assunto > 200 chars` ou `mensagem > 2000 chars`
-- [ ] Sem capability fixa — qualquer `isAuthenticated()` pode acessar
+- [x] `GET /faq` → lista pública (sem JWT)
+- [x] `POST /support/tickets` → abre ticket do usuário autenticado
+- [x] `PATCH /support/tickets/{id}/close` → dono ou secretaria (403 para terceiros)
+- [x] `PATCH /support/tickets/{id}/respond` → secretaria
+- [ ] Ticket via workflow engine / protocolo `SUP-YYYY-NNN`
+- [ ] Rate limit em abertura de ticket
+

@@ -1,8 +1,13 @@
 package br.ufpr.sept.so2.modules.formativas.api
 
+import br.ufpr.sept.so2.modules.arquivos.MinioStorageService
 import br.ufpr.sept.so2.modules.formativas.infrastructure.persistence.FormativeActivityEntity
 import br.ufpr.sept.so2.modules.formativas.infrastructure.persistence.FormativeActivityJpaRepository
+import br.ufpr.sept.so2.modules.formativas.infrastructure.persistence.FormativeEntryEntity
 import br.ufpr.sept.so2.modules.formativas.infrastructure.persistence.FormativeEntryJpaRepository
+import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventEntity
+import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository
+import br.ufpr.sept.so2.modules.presenca.application.CertificateIssuerService
 import br.ufpr.sept.so2.shared.api.PageResponse
 import br.ufpr.sept.so2.shared.security.currentUser
 import io.swagger.v3.oas.annotations.Operation
@@ -14,6 +19,7 @@ import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -22,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.util.UUID
 
 data class SubmitFormativaDto(
@@ -30,6 +37,12 @@ data class SubmitFormativaDto(
     @field:NotBlank val categoria: String,
     val cargaHoraria: Double,
     val dataRealizacao: LocalDate,
+    val storageKeyComprovante: String? = null,
+)
+
+data class GenerateComprovanteUploadUrlDto(
+    @field:NotBlank val filename: String,
+    @field:NotBlank val contentType: String,
 )
 
 data class ReviewFormativaDto(
@@ -43,7 +56,21 @@ data class ReviewFormativaDto(
 class FormativasController(
     private val activityRepo: FormativeActivityJpaRepository,
     private val entryRepo: FormativeEntryJpaRepository,
+    private val outboxRepo: OutboxEventJpaRepository,
+    private val minioStorageService: MinioStorageService,
+    private val certificateIssuer: CertificateIssuerService,
 ) {
+    @PostMapping("/comprovantes/presigned-url")
+    @PreAuthorize("hasAuthority('formative.submit')")
+    @Operation(summary = "URL presignada MinIO para comprovante (orphan — vincula na submissão)")
+    fun generateComprovanteUrl(
+        @Valid @RequestBody dto: GenerateComprovanteUploadUrlDto,
+    ): ResponseEntity<Map<String, String>> {
+        val storageKey = "formativas/orphan/${UUID.randomUUID()}_${dto.filename}"
+        val uploadUrl = minioStorageService.generateUploadUrl(storageKey, dto.contentType, expiryMinutes = 30)
+        return ResponseEntity.ok(mapOf("uploadUrl" to uploadUrl, "storageKey" to storageKey))
+    }
+
     @PostMapping
     @PreAuthorize("hasAuthority('formative.submit')")
     @Operation(summary = "Submeter atividade formativa para aprovação")
@@ -59,6 +86,7 @@ class FormativasController(
                 categoria = dto.categoria,
                 cargaHoraria = dto.cargaHoraria,
                 dataRealizacao = dto.dataRealizacao,
+                storageKeyComprovante = dto.storageKeyComprovante,
             )
         val saved = activityRepo.save(entity)
         return ResponseEntity.status(HttpStatus.CREATED).body(
@@ -105,6 +133,7 @@ class FormativasController(
     @PatchMapping("/{id}/review")
     @PreAuthorize("hasAuthority('formative.review')")
     @Operation(summary = "Aprovar ou rejeitar atividade formativa (CAAF)")
+    @Transactional
     fun review(
         @PathVariable id: UUID,
         @Valid @RequestBody dto: ReviewFormativaDto,
@@ -122,6 +151,38 @@ class FormativasController(
         activity.parecerRevisor = dto.parecer
         activity.idRevisor = user.userId
         activityRepo.save(activity)
+
+        if (activity.estado == "APROVADA" && !entryRepo.existsByIdActivity(activity.id)) {
+            entryRepo.save(
+                FormativeEntryEntity(
+                    idAluno = activity.idAluno,
+                    idActivity = activity.id,
+                    horasAprovadas = activity.cargaHoraria,
+                    aprovadoEm = OffsetDateTime.now(),
+                ),
+            )
+            certificateIssuer.issueFormativeCertificate(
+                alunoId = activity.idAluno,
+                activityId = activity.id,
+                titulo = activity.titulo,
+                chCreditadas = activity.cargaHoraria,
+            )
+        }
+
+        outboxRepo.save(
+            OutboxEventEntity(
+                eventType = "formativas.revisada",
+                aggregateType = "FormativeActivity",
+                aggregateId = activity.id,
+                payload =
+                    mapOf(
+                        "activityId" to activity.id.toString(),
+                        "idAluno" to activity.idAluno.toString(),
+                        "estado" to activity.estado,
+                        "parecer" to (activity.parecerRevisor ?: ""),
+                    ),
+            ),
+        )
 
         return ResponseEntity.ok(mapOf("estado" to activity.estado))
     }

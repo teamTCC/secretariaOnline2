@@ -1,6 +1,6 @@
 # T-F1-009 — Confirmar Presença em Eventos (v4.1)
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-009-PRESENCA.md`](../../foundationDocs/sequenceDiagrams/F1%20—%20Aluno/US-F1-009-PRESENCA.md)  
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-009-PRESENCA.md`](../../foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-009-PRESENCA.md)  
 > **Status:** ✅ Implementado — modos SECRET e QR, janelas configuráveis, device binding, HATEOAS session
 
 ---
@@ -293,11 +293,25 @@ Authorization: Bearer eyJhbGci...  (event.host)
 HTTP/1.1 200 OK
 
 {
-  "mensagem": "Evento encerrado. Certificados sendo processados."
+  "mensagem": "Evento encerrado. 23 certificados emitidos.",
+  "certificadosEmitidos": 23
 }
 ```
 
-> O estado do evento muda para `CONCLUIDO`. A emissão real de certificados (render PDF + SHA-256 + ED25519) ainda não está implementada — ver [T-10.4-CERTIFICADO](../transversal/T-10.4-CERTIFICADO.md).
+O estado muda para `CONCLUIDO`. `CertificateIssuerService` emite HTML+SHA-256+ED25519 e enfileira `certificate.issued`. Ver [T-10.4-CERTIFICADO](../transversal/T-10.4-CERTIFICADO.md).
+
+---
+
+## Listagem com `audience=me`
+
+```
+GET /events?audience=me
+```
+
+Usa `findOpenForAudience` (estados `AGENDADO`/`EM_ANDAMENTO`, filtrado pelo `idCurso` do aluno em `usuario.metadata`).
+
+Janela de saída (modos DUAL): `POST /events/{id}/attendance/windows/exit`.  
+QR único para entrada/saída: `POST /events/{id}/attendance/qr/validate` (fase inferida da sessão).
 
 ---
 
@@ -306,10 +320,12 @@ HTTP/1.1 200 OK
 - [x] `POST /events` → `201` com evento no estado `AGENDADO`
 - [x] `GET /events/{id}` → HATEOAS com links baseados em capabilities e estado
 - [x] `POST /events/{id}/attendance/windows/entry` → abre janela com PIN ou QR token
+- [x] `POST /events/{id}/attendance/windows/exit` → janela de saída (modos DUAL)
+- [x] `POST /events/{id}/attendance/qr/validate` → QR de entrada/saída conforme a sessão
+- [x] `GET /events?audience=me` → eventos abertos do curso do aluno
 - [x] `GET /events/{id}/attendance/session` → estado da sessão + `_links` condicionais
 - [x] `POST /events/{id}/attendance/entry` → valida PIN/QR + janela ativa
 - [x] Device binding — impede mesmo `deviceUuid` em múltiplas confirmações
 - [x] Modo DUAL — exige `entryConfirmedAt != null` antes de confirmar saída
-- [x] `POST /events/{id}/close` → estado `CONCLUIDO`
-- [ ] Emissão automática de certificados após `close` — **não implementada**
-- [ ] Notificação via Outbox após confirmação de presença — **não implementada**
+- [x] `POST /events/{id}/close` → `CONCLUIDO` + emissão de certificados
+- [x] Outbox `presenca.confirmada` após check-in

@@ -27,6 +27,16 @@ class CursoEntity(
     var idCoordenador: UUID? = null,
     @Column(nullable = false)
     var ativo: Boolean = true,
+    @Column(name = "horas_formativas_minimas", nullable = false)
+    var horasFormativasMinimas: Int = 120,
+    @Column(name = "duracao_calendario", nullable = false, length = 20)
+    var duracaoCalendario: String = "15_SEMANAS",
+    @Column(name = "banca_membros_externos", nullable = false)
+    var bancaMembrosExternos: Int = 1,
+    @Column(name = "banca_modalidade", nullable = false, length = 20)
+    var bancaModalidade: String = "PRESENCIAL",
+    @Column(columnDefinition = "text")
+    var regimento: String? = null,
 ) : BaseEntity(id)
 
 @Entity

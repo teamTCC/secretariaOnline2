@@ -46,6 +46,6 @@ class UsuarioEntity(
     var metadata: MutableMap<String, Any> = mutableMapOf(),
     @Column(name = "deleted_at")
     var deletedAt: OffsetDateTime? = null,
-    @OneToMany(mappedBy = "usuario", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "usuario", cascade = [CascadeType.ALL], orphanRemoval = true, fetch = FetchType.LAZY)
     val usuarioRoles: MutableList<UsuarioRoleEntity> = mutableListOf(),
 ) : BaseEntity(id)

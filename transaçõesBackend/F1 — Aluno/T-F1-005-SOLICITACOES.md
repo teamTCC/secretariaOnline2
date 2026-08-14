@@ -1,6 +1,6 @@
 # T-F1-005 — Solicitações Acadêmicas (Motor de Workflow)
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-005-SOLICITACOES.md`](../../foundationDocs/sequenceDiagrams/F1%20—%20Aluno/US-F1-005-SOLICITACOES.md)  
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-005-SOLICITACOES.md`](../../foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-005-SOLICITACOES.md)  
 > **Status:** ✅ Implementado — Motor de workflow genérico, HATEOAS transitions, paginação
 
 ---
@@ -9,8 +9,11 @@
 
 | Papel | Arquivo |
 |-------|---------|
-| Controller | [`solicitacoes/api/RequestController.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/api/RequestController.kt) |
-| Use Case — Abrir | [`solicitacoes/application/OpenRequestUseCase.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/OpenRequestUseCase.kt) |
+| Controller principal | [`solicitacoes/api/RequestController.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/api/RequestController.kt) |
+| Controller de anexos (NOVO) | [`solicitacoes/api/RequestAttachmentController.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/api/RequestAttachmentController.kt) |
+| Use Case — Abrir (com anexos) | [`solicitacoes/application/OpenRequestUseCase.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/OpenRequestUseCase.kt) |
+| Use Case — Salvar Rascunho (NOVO) | [`solicitacoes/application/SaveDraftUseCase.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/SaveDraftUseCase.kt) |
+| Use Case — Submeter Rascunho (NOVO) | [`solicitacoes/application/SubmitDraftUseCase.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/SubmitDraftUseCase.kt) |
 | Use Case — Transicionar | [`solicitacoes/application/TransitionRequestUseCase.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/TransitionRequestUseCase.kt) |
 | Motor de Workflow | [`solicitacoes/domain/WorkflowEngine.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/domain/WorkflowEngine.kt) |
 | Entidade de domínio | [`solicitacoes/domain/Request.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/domain/Request.kt) |
@@ -352,16 +355,229 @@ Authorization: Bearer eyJhbGci...
 
 ---
 
+---
+
+## Fluxo com Anexos (atualizado)
+
+### 1. Obter URL de upload (presigned PUT)
+
+```
+POST /requests/attachments/presigned-url
+Authorization: Bearer eyJhbGci...
+Content-Type: application/json
+
+{
+  "nomeOriginal": "historico_escolar.pdf",
+  "contentType": "application/pdf",
+  "categoria": "HISTORICO_ESCOLAR"
+}
+```
+
+```json
+// Response 200
+{
+  "uploadUrl": "https://minio.local/solicitacoes/tmp/uuid-rand.pdf?X-Amz-Signature=...",
+  "storageKey": "solicitacoes/tmp/uuid-rand.pdf"
+}
+```
+
+O cliente recebe uma URL de upload pré-assinada válida por 15 minutos.
+
+### 2. Upload direto para MinIO
+
+O cliente faz `PUT` diretamente com o `uploadUrl` — sem passar pelo backend. Isso evita saturar a memória do servidor com arquivos grandes.
+
+```
+PUT https://minio.local/solicitacoes/tmp/uuid-rand.pdf?X-Amz-Signature=...
+Content-Type: application/pdf
+[body: bytes do arquivo]
+```
+
+### 3. Submeter solicitação com lista de anexos
+
+```json
+POST /requests
+Authorization: Bearer eyJhbGci...
+Content-Type: application/json
+
+{
+  "idRequestType": "a3bb189e-8bf9-3888-9912-3e6bad1d8f7e",
+  "idCurso": "c9bf9e57-1685-4c89-bafb-ff5af830be8a",
+  "dados": {
+    "disciplina": "Cálculo Diferencial e Integral I",
+    "cargaHoraria": 60
+  },
+  "attachments": [
+    {
+      "storageKey": "solicitacoes/tmp/uuid-rand.pdf",
+      "sha256": "e3b0c44298fc1c149afb...",
+      "nomeOriginal": "historico_escolar.pdf",
+      "contentType": "application/pdf",
+      "categoria": "HISTORICO_ESCOLAR",
+      "tamanhoBytes": 204800
+    }
+  ]
+}
+```
+
+O `OpenRequestUseCase` salva `RequestEntity` + uma `RequestAttachmentEntity` por anexo na **mesma transação**:
+
+```kotlin
+// OpenRequestUseCase.kt (trecho — com suporte a anexos)
+@Transactional
+fun execute(command: OpenRequestCommand): UUID {
+    // ... cria RequestEntity normalmente ...
+
+    command.attachments.forEach { att ->
+        attachmentRepo.save(RequestAttachmentEntity(
+            idRequest    = entity.id,
+            storageKey   = att.storageKey,
+            sha256       = att.sha256,
+            nomeOriginal = att.nomeOriginal,
+            contentType  = att.contentType,
+            categoria    = att.categoria,
+            tamanhoBytes = att.tamanhoBytes,
+        ))
+    }
+
+    outboxRepo.save(OutboxEventEntity(
+        eventType    = "solicitacoes.aberta",
+        aggregateType = "Request",
+        aggregateId  = entity.id,
+        payload = mapOf(
+            "requestId"  to entity.id,
+            "tipoCode"   to requestType.code,
+            "estadoNovo" to "ABERTA",
+            "idSolicitante" to command.idSolicitante,
+        ),
+    ))
+
+    return entity.id
+}
+```
+
+### 4. Listar e baixar anexos
+
+```
+GET /requests/{id}/attachments
+→ [ { id, nomeOriginal, contentType, categoria, tamanhoBytes, createdAt } ]
+
+GET /requests/{id}/attachments/{attachmentId}/download-url
+→ { "downloadUrl": "https://minio.local/...?X-Amz-Signature=..." }
+
+DELETE /requests/{id}/attachments/{attachmentId}
+→ 204 No Content
+```
+
+---
+
+## Rascunho (Draft)
+
+O fluxo de rascunho permite que o aluno salve uma solicitação sem submetê-la (estado `RASCUNHO`), e depois a promova para `ABERTA` quando estiver pronto.
+
+### Salvar rascunho
+
+```
+POST /requests/draft
+Authorization: Bearer eyJhbGci...
+```
+
+- Persiste `RequestEntity` com `estado = RASCUNHO`
+- **Não** incrementa `numeroAnual`
+- **Não** calcula `prazoEm`
+- **Não** enfileira evento no outbox
+
+```json
+// Response 201
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "_links": {
+    "self": "/requests/550e8400-e29b-41d4-a716-446655440000",
+    "submit": "/requests/550e8400-e29b-41d4-a716-446655440000/submit"
+  }
+}
+```
+
+### Promover rascunho para ABERTA
+
+```
+POST /requests/{id}/submit
+Authorization: Bearer eyJhbGci...
+```
+
+O `SubmitDraftUseCase`:
+1. Verifica que o estado é `RASCUNHO`
+2. Atribui `numeroAnual` (próximo da sequência do curso/ano)
+3. Calcula `prazoEm` com base em `requestType.prazoDias`
+4. Muda estado para `ABERTA`
+5. Enfileira `solicitacoes.aberta` no outbox
+
+```json
+// Response 200
+{
+  "id": "550e8400-...",
+  "estado": "ABERTA",
+  "protocolo": "2026/0043",
+  "_links": { "self": "/requests/550e8400-..." }
+}
+```
+
+---
+
+## Protocolo Público
+
+```
+GET /requests/{id}/protocol
+Authorization: Bearer eyJhbGci...
+```
+
+```json
+// Response 200
+{
+  "protocolo": "2026/0042",
+  "tipo": "APROVEITAMENTO_DISCIPLINA",
+  "estado": "EM_DELIBERACAO",
+  "_links": {
+    "public": "/publico/solicitacoes/2026/42"
+  }
+}
+```
+
+Útil para o aluno compartilhar o protocolo com a secretaria (balcão) ou verificar o status publicamente.
+
+**FGAC:** `GET /requests/{id}/protocol` e anexos (`list`/`download`/`delete`) exigem dono (`idSolicitante`) **ou** `request.view_curso` / `request.deliberate`. Delete de anexo só o solicitante, e só em `ABERTA`/`RASCUNHO`.
+
+---
+
+## Deliberação em lote (secretaria / autorização de imagem)
+
+```
+GET /requests?type=AUTORIZACAO_IMAGEM
+PATCH /requests/bulk-deliberate
+```
+
+`type` é alias de `typeCode`. Detalhes e 409 all-or-nothing: [T-F5-SECRETARIA](../F5 — Secretaria/T-F5-SECRETARIA.md) § F5.2. Catálogo admin de tipos: [T-F7-003](../F7 — Admin/T-F7-003-WORKFLOW-ENGINE.md).
+
+---
+
 ## Checklist de Verificação
 
 - [x] `GET /requests/types` → lista de tipos com `formSchema` JSON Schema
 - [x] `POST /requests` com `dados` JSONB livre → `201` com UUID
+- [x] `POST /requests` com `attachments` → `RequestAttachmentEntity` salva na mesma TX
 - [x] `numeroAnual` incrementado corretamente por curso/ano
 - [x] `prazoEm` calculado com base em `requestType.prazoDias`
 - [x] `GET /requests/{id}` → detalhes + `_links` de transições baseados em capabilities + estado
 - [x] `POST /requests/{id}/transitions` → aplica transição via WorkflowEngine
 - [x] `GET /requests/{id}/events` → trilha de auditoria cronológica
 - [x] FGAC: aluno com `request.view_own` só vê suas solicitações
-- [ ] Outbox após transição para notificar aluno — **não implementado no TransitionUseCase**
-- [ ] Draft de solicitação (`POST /requests/draft`) — **não implementado**
-- [ ] Download de anexo via presigned URL MinIO — **não implementado**
+- [x] Outbox após transição para notificar aluno — `TransitionRequestUseCase` + `RequestTransitionOutboxHandler`
+- [x] Outbox ao abrir solicitação — `OpenRequestUseCase` + `solicitacoes.aberta`
+- [x] `POST /requests/attachments/presigned-url` → URL de upload MinIO
+- [x] `GET /requests/{id}/attachments` → lista de anexos
+- [x] `GET /requests/{id}/attachments/{attachmentId}/download-url` → URL de download
+- [x] `DELETE /requests/{id}/attachments/{attachmentId}` → 204
+- [x] `POST /requests/draft` → salva com `estado=RASCUNHO`, sem outbox
+- [x] `POST /requests/{id}/submit` → promove para `ABERTA`, atribui `numeroAnual`, enfileira outbox
+- [x] `GET /requests/{id}/protocol` → `{protocolo, tipo, estado, _links.public}` (dono ou staff)
+- [x] `PATCH /requests/bulk-deliberate` → 200 ou 409 (rollback)

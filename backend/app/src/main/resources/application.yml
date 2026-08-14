@@ -54,6 +54,20 @@ spring:
     default-property-inclusion: non_null
     time-zone: UTC
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      connect-timeout: 2000ms
+
+  cache:
+    type: ${CACHE_TYPE:simple}  # override with 'redis' when Redis is available (e.g. docker-compose env)
+    redis:
+      time-to-live: 60000  # 60 seconds
+      cache-null-values: false
+    cache-names: bff-dashboard
+
 security:
   jwt:
     private-key: ${SECURITY_JWT_PRIVATE_KEY}
@@ -67,6 +81,18 @@ app:
     allowed-origins:
       - ${CORS_ALLOWED_ORIGIN_1:http://localhost:3000}
       - ${CORS_ALLOWED_ORIGIN_2:http://localhost:5173}
+  certificate:
+    private-key: ${CERT_PRIVATE_KEY:}
+    public-key: ${CERT_PUBLIC_KEY:}
+  contato:
+    nome: ${APP_CONTATO_NOME:Secretaria SEPT — UFPR}
+    endereco: ${APP_CONTATO_ENDERECO:Rua Dr. Alcides Vieira Arcoverde, 1225 — Jardim das Américas, Curitiba/PR}
+    telefone: ${APP_CONTATO_TELEFONE:(41) 3360-4900}
+    email: ${APP_CONTATO_EMAIL:secretaria.sept@ufpr.br}
+    horario: ${APP_CONTATO_HORARIO:Segunda a sexta, 8h–17h}
+  firebase:
+    service-account-json: ${APP_FIREBASE_SERVICE_ACCOUNT_JSON:}
+    project-id: ${APP_FIREBASE_PROJECT_ID:}
 
 management:
   endpoints:

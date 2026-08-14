@@ -42,6 +42,42 @@ interface EventAttendanceJpaRepository : JpaRepository<EventAttendanceEntity, UU
     fun findOverdueInProgress(
         @Param("now") now: OffsetDateTime,
     ): List<EventAttendanceEntity>
+
+    @Query(
+        """
+        SELECT e FROM EventAttendanceEntity e
+        WHERE e.estado IN ('AGENDADO', 'EM_ANDAMENTO')
+        AND (:idCurso IS NULL OR e.idCurso = :idCurso)
+        ORDER BY e.inicioEm ASC
+        """,
+    )
+    fun findOpenForAudience(
+        @Param("idCurso") idCurso: UUID?,
+        pageable: Pageable,
+    ): Page<EventAttendanceEntity>
+
+    fun countByEstado(estado: String): Long
+
+    @Query(
+        """
+        SELECT e FROM EventAttendanceEntity e
+        WHERE e.estado IN ('AGENDADO', 'EM_ANDAMENTO')
+        AND e.inicioEm >= :from
+        ORDER BY e.inicioEm ASC
+        """,
+    )
+    fun findUpcoming(
+        @Param("from") from: OffsetDateTime,
+        pageable: Pageable,
+    ): Page<EventAttendanceEntity>
+
+    @Query(
+        "SELECT e FROM EventAttendanceEntity e WHERE LOWER(e.titulo) LIKE LOWER(CONCAT('%', :q, '%'))",
+    )
+    fun searchByTitulo(
+        @Param("q") q: String,
+        pageable: Pageable,
+    ): Page<EventAttendanceEntity>
 }
 
 interface AttendanceSessionJpaRepository : JpaRepository<AttendanceSessionEntity, UUID> {
@@ -81,6 +117,11 @@ interface CertificateJpaRepository : JpaRepository<CertificateEntity, UUID> {
 
     fun findByIdEventoAndIdAluno(
         idEvento: UUID,
+        idAluno: UUID,
+    ): Optional<CertificateEntity>
+
+    fun findByIdActivityAndIdAluno(
+        idActivity: UUID,
         idAluno: UUID,
     ): Optional<CertificateEntity>
 }

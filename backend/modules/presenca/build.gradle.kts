@@ -7,7 +7,9 @@ dependencies {
     api(project(":shared"))
     implementation(project(":modules:iam"))
     implementation(project(":modules:arquivos"))
+    implementation(project(":modules:notificacoes"))
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
+    implementation("com.github.librepdf:openpdf:2.0.3")
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.google.zxing:javase:3.5.3")
 

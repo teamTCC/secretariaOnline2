@@ -20,6 +20,8 @@ dependencies {
     implementation(project(":modules:arquivos"))
     implementation(project(":modules:bff"))
 
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("io.micrometer:micrometer-registry-prometheus")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")

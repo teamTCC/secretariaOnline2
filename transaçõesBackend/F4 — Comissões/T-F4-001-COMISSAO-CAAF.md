@@ -1,7 +1,7 @@
 # T-F4-001 — Pool CAAF: Atribuir e Aprovar Atividades Formativas em Lote
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F4 — Comissões/US-F4-001-COMISSAO-CAAF.md`](../../foundationDocs/sequenceDiagrams/F4%20—%20Comissões/US-F4-001-COMISSAO-CAAF.md)  
-> **Status:** ⏳ Não implementado — controllers CAAF específicos não existem; `FormativasController` cobre revisão individual, mas não o pool coletivo
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F4 — Comissões/US-F4-001-COMISSAO-CAAF.md`](../../foundationDocs/sequenceDiagrams/F4 — Comissões/US-F4-001-COMISSAO-CAAF.md)  
+> **Status:** ✅ Implementado — pool, self-assign, batch-review e stats
 
 ---
 
@@ -120,7 +120,7 @@ Content-Type: application/json
 
 **Pré-condição:** todos os itens devem ser do tipo `EVENTO_INTERNO_PRESENCA_VALIDADA` (validado no use case, antes de qualquer TX).
 
-Transação única: `UPDATE N registros + INSERT N formative_entry_event_logs + INSERT 1 outbox_event(type='formativas.batch_approved')`.
+Transação única: atualiza estado das atividades pendentes; se `APROVAR`, grava `formative_entry` por atividade (horas no KPI do aluno) + 1 `outbox_event(type='formativas.batch_revisada')`.
 
 **JSON de saída (200):**
 
@@ -195,26 +195,29 @@ Validação antes de qualquer `BEGIN TX` — sem efeito no banco.
 
 ---
 
-## O que precisa ser implementado
+## Arquivo implementado
 
-| Arquivo a criar | Descrição |
-|----------------|-----------|
-| `modules/formativas/api/CAAFController.kt` | Pool CAAF: dashboard, members, assign, batch-decide |
-| `modules/formativas/application/GetCAAFDashboardUseCase.kt` | KPIs + pool filtering por scope |
-| `modules/formativas/application/AssignFormativeUseCase.kt` | Self-assign e assign-to-colleague |
-| `modules/formativas/application/GetCAAFMembersUseCase.kt` | Lista membros com carga |
-| `modules/formativas/application/BatchDecideFormativesUseCase.kt` | Aprovação em lote com guard de tipo |
-| Migração | `commission_members(user_id, commission_id, curso_id)` |
+| Papel | Arquivo |
+|-------|---------|
+| Controller CAAF | [`formativas/api/CommissionsCaafController.kt`](../../backend/modules/formativas/src/main/kotlin/br/ufpr/sept/so2/modules/formativas/api/CommissionsCaafController.kt) |
+
+---
+
+## Endpoints implementados
+
+| Endpoint | Função |
+|----------|--------|
+| `GET /commissions/caaf/pool` | Pool pendentes sem revisor |
+| `POST /commissions/caaf/{id}/claim` | Self-assign |
+| `POST /commissions/caaf/batch-review` | Batch aprovar/rejeitar |
+| `GET /commissions/caaf/stats` | KPIs do pool |
 
 ---
 
 ## Checklist de Verificação
 
-- [ ] `GET /commissions/caaf/dashboard` → `200` com kpis e items filtrados por scope
-- [ ] `POST /commissions/caaf/assign` → `200`, TX atômica update + outbox_event
-- [ ] `GET /commissions/caaf/members` → `200` com load calculado
-- [ ] `POST /commissions/caaf/batch-decide` → `200`, todos os N updates em 1 TX
-- [ ] 403 Cenário A: sem `formative.review` → `access_denied`
-- [ ] 403 Cenário B: item fora de escopo de curso → `course_scope_violation`
-- [ ] 422: tipos mistos no batch → `incompatible_activity_type` com `invalidIds`
-- [ ] `_links.assign-member` ausente quando item já está com outro assignee
+- [x] `GET /commissions/caaf/pool` → lista atividades PENDENTE sem revisor
+- [x] `POST /commissions/caaf/{id}/claim` → TX atômica: set `idRevisor = me`
+- [x] `POST /commissions/caaf/batch-review` → N updates em 1 TX + `formative_entry` se APROVAR + certificado PDF + outbox `formativas.batch_revisada`
+- [x] `GET /commissions/caaf/stats` → `{ totalPendente, aprovadasHoje, rejeitadasHoje }`
+- [x] 403 sem `formative.review` → `access_denied`

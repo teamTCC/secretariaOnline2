@@ -1,7 +1,7 @@
 # T-F0-002 — Solicitar Link de Recuperação de Senha
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-002-RECUPERAR-SENHA.md`](../../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-002-RECUPERAR-SENHA.md)  
-> **Status:** ✅ Implementado — com divergência no canal de envio (ver nota de gap)
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-002-RECUPERAR-SENHA.md`](../../foundationDocs/sequenceDiagrams/F0 — Público/US-F0-002-RECUPERAR-SENHA.md)  
+> **Status:** ✅ Implementado — Outbox + rate limit 3/hora + `retryAfterSeconds`
 
 ---
 
@@ -13,6 +13,9 @@
 | Use Case | [`ForgotPasswordUseCase.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/ForgotPasswordUseCase.kt) |
 | DTO | [`AuthDtos.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/api/dto/AuthDtos.kt) |
 | JWT (token de 1 uso) | [`JwtTokenService.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/services/JwtTokenService.kt) |
+| Outbox (produtor) | [`ForgotPasswordUseCase.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/ForgotPasswordUseCase.kt) |
+| Outbox (handler) | [`PasswordResetOutboxHandler.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/outbox/PasswordResetOutboxHandler.kt) |
+| Dispatcher | [`OutboxDispatcher.kt`](../../backend/modules/notificacoes/src/main/kotlin/br/ufpr/sept/so2/modules/notificacoes/OutboxDispatcher.kt) |
 | Serviço de e-mail | [`MailService.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/services/MailService.kt) |
 | Rate Limit | [`RateLimitFilter.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/security/RateLimitFilter.kt) |
 
@@ -24,17 +27,24 @@
 
 ```
 POST /auth/forgot-password
-  → RateLimitFilter (se configurado para este endpoint)
+  → RateLimitFilter (3 req/hora por email+IP; 429 + retryAfterSeconds se exceder)
   → AuthController.forgotPassword()
   → ForgotPasswordUseCase.execute(ForgotPasswordCommand)
     → DB: SELECT usuario BY email (normalizado lowercase)
     → SE existe e ativo:
         → JwtTokenService.issueOneTimeToken(sub=userId, audience="password-reset", ttl=24h)
-        → MailService.sendPasswordResetEmail(to, nome, token)
+        → INSERT outbox_event (iam.password_reset_requested, payload={email, nome, token})
         → AuditPublisher: PASSWORD_RESET_REQUESTED
+        → COMMIT  (202 sai aqui — o SMTP ainda não rodou)
     → SE não existe:
         → apenas log.debug (sem ação)
   → Response: 202 Accepted {mensagem: "Se este email existir, enviaremos..."}
+
+[assíncrono, a cada 5s]
+  OutboxDispatcher
+    → PasswordResetOutboxHandler
+    → MailService.sendPasswordResetEmail(to, nome, token)
+    → UPDATE outbox_event SET status='PROCESSED'
 ```
 
 ### JSON de entrada (Request Body)
@@ -142,34 +152,48 @@ if (usuario != null && usuario.ativo) {
 
 ## F0.2-c — Rate Limit
 
-O diagrama especifica proteção de 3 tentativas/hora por e-mail+IP. O `RateLimitFilter` atual implementa proteção apenas para `/auth/login`. A proteção de `/auth/forgot-password` precisa ser adicionada ao filtro com um bucket separado (janela de 1h, 3 req/hora).
+O `RateLimitFilter` aplica um bucket separado de **3 req/hora por e-mail+IP** em `POST /auth/forgot-password`. O body é cacheado (`CachedBodyHttpServletRequest`) para o controller ainda conseguir desserializar o JSON.
 
-> **Gap:** Rate limit de `/auth/forgot-password` **não está implementado** no `RateLimitFilter.kt` atual. O filtro só intercepta `POST /auth/login`.
+Resposta ao exceder o limite:
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 1847
+Content-Type: application/problem+json
+
+{
+  "type": "https://secretariaonline.ufpr.br/errors/rate-limit",
+  "title": "Muitas tentativas",
+  "status": 429,
+  "detail": "Muitas tentativas. Aguarde antes de tentar novamente.",
+  "retryAfterSeconds": 1847
+}
+```
 
 ---
 
-## Nota sobre o Canal de Envio (Gap vs. Diagrama)
+## Canal de Envio — Padrão Outbox (10.1a + 10.1b)
 
-O diagrama `F0.2-a` especifica o padrão **Outbox** para o disparo do e-mail:
-
-```
-Diagrama:
-  UC->>DB: INSERT outbox_event (iam.password_reset_requested)
-  [depois] OutboxDispatcher → MailAdapter → e-mail
-```
-
-A implementação atual envia o e-mail **sincronamente** via `MailService.sendPasswordResetEmail()` dentro do `@Transactional` do use case:
+O use case **não** chama SMTP. Ele grava `outbox_event` na mesma `@Transactional`:
 
 ```kotlin
-// ForgotPasswordUseCase.kt — envio síncrono (atual)
-mailService.sendPasswordResetEmail(
-    to = usuario.email.value,
-    nome = usuario.nome,
-    token = token,
+outboxRepo.save(
+    OutboxEventEntity(
+        eventType = OutboxEventTypes.PASSWORD_RESET_REQUESTED, // iam.password_reset_requested
+        aggregateType = "Usuario",
+        aggregateId = usuario.id,
+        payload = mapOf(
+            "email" to usuario.email.value,
+            "nome" to usuario.nome,
+            "token" to token,
+        ),
+    ),
 )
 ```
 
-**Impacto:** Se o serviço de e-mail estiver lento ou indisponível, a requisição do usuário irá falhar ou demorar. O padrão Outbox tornaria isso assíncrono e resiliente. Para MVP isso é aceitável, mas a migração para Outbox é recomendada conforme o diagrama.
+O `OutboxDispatcher` (`@Scheduled(fixedDelay = 5000)`) busca linhas `PENDING`, roteia para `PasswordResetOutboxHandler`, que chama `MailService.sendPasswordResetEmail`. Se o SMTP falhar, a linha permanece `PENDING` com backoff (30s → 5min → 1h); após 8 tentativas vira `DEAD`.
+
+**Por que isso importa:** o `202` não depende do SMTP. Restart do processo não perde o e-mail. Falha transitória de Mailhog/Mailgun é retentada.
 
 ---
 
@@ -177,8 +201,9 @@ mailService.sendPasswordResetEmail(
 
 - [x] `POST /auth/forgot-password` → sempre `202 Accepted`
 - [x] E-mail existente → token JWT de 1 uso gerado (24h, audience="password-reset", JTI único)
-- [x] E-mail existente → `MailService.sendPasswordResetEmail()` chamado
-- [x] E-mail não existente → `202` sem token, sem e-mail, sem exceção
+- [x] E-mail existente → `INSERT outbox_event(iam.password_reset_requested)` na mesma TX
+- [x] Dispatcher → `PasswordResetOutboxHandler` → `MailService.sendPasswordResetEmail()`
+- [x] E-mail não existente → `202` sem token, sem outbox, sem exceção
 - [x] Audit log: `PASSWORD_RESET_REQUESTED` para e-mails encontrados
-- [ ] Rate limit 3/hora em `/auth/forgot-password` — **não implementado**
-- [ ] Padrão Outbox para disparo assíncrono — **envio é síncrono atualmente**
+- [x] Rate limit 3/hora em `/auth/forgot-password`
+- [x] `retryAfterSeconds` + header `Retry-After` no 429

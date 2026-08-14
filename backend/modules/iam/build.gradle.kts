@@ -5,6 +5,8 @@ plugins {
 
 dependencies {
     api(project(":shared"))
+    implementation(project(":modules:notificacoes"))
+    implementation(project(":modules:arquivos"))
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")
@@ -12,6 +14,8 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
     implementation("com.bucket4j:bucket4j-core:8.10.1")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
+    implementation("com.github.librepdf:openpdf:2.0.3")
+    implementation("com.google.firebase:firebase-admin:9.4.3")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")

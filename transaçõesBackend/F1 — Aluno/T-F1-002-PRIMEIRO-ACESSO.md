@@ -1,6 +1,6 @@
 # T-F1-002 — Primeiro Acesso: Definir Senha e Aceitar LGPD
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-002-PRIMEIRO-ACESSO.md`](../../foundationDocs/sequenceDiagrams/F1%20—%20Aluno/US-F1-002-PRIMEIRO-ACESSO.md)  
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-002-PRIMEIRO-ACESSO.md`](../../foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-002-PRIMEIRO-ACESSO.md)  
 > **Status:** ✅ Totalmente implementado
 
 ---
@@ -18,7 +18,7 @@
 ## F1.2-D01 — Happy Path: Conclusão do primeiro acesso
 
 ### Pré-condição
-O aluno já fez login com a **senha provisória** (ver [T-F0-001](../F0%20—%20Público/T-F0-001-LOGIN.md)) e recebeu `mustChangePassword: true`. O access token emitido no login é válido para autenticar este endpoint.
+O aluno já fez login com a **senha provisória** (ver [T-F0-001](../F0 — Público/T-F0-001-LOGIN.md)) e recebeu `mustChangePassword: true`. O access token emitido no login é válido para autenticar este endpoint.
 
 ### Fluxo completo
 

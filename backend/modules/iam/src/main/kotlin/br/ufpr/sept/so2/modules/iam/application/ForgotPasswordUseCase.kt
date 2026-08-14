@@ -2,7 +2,9 @@ package br.ufpr.sept.so2.modules.iam.application
 
 import br.ufpr.sept.so2.modules.iam.application.ports.out.UsuarioRepository
 import br.ufpr.sept.so2.modules.iam.infrastructure.services.JwtTokenService
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.MailService
+import br.ufpr.sept.so2.modules.notificacoes.OutboxEventTypes
+import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventEntity
+import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository
 import br.ufpr.sept.so2.shared.audit.AuditPayload
 import br.ufpr.sept.so2.shared.audit.AuditPublisher
 import org.slf4j.LoggerFactory
@@ -19,7 +21,7 @@ data class ForgotPasswordCommand(
 class ForgotPasswordUseCase(
     private val usuarioRepository: UsuarioRepository,
     private val jwtTokenService: JwtTokenService,
-    private val mailService: MailService,
+    private val outboxRepo: OutboxEventJpaRepository,
     private val auditPublisher: AuditPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -37,10 +39,20 @@ class ForgotPasswordUseCase(
                     ttl = Duration.ofHours(24),
                 )
 
-            mailService.sendPasswordResetEmail(
-                to = usuario.email.value,
-                nome = usuario.nome,
-                token = token,
+            // Same TX as the audit trail: if COMMIT fails, no e-mail is ever sent.
+            // OutboxDispatcher delivers via MailService within ~5s (retry with backoff).
+            outboxRepo.save(
+                OutboxEventEntity(
+                    eventType = OutboxEventTypes.PASSWORD_RESET_REQUESTED,
+                    aggregateType = "Usuario",
+                    aggregateId = usuario.id,
+                    payload =
+                        mapOf(
+                            "email" to usuario.email.value,
+                            "nome" to usuario.nome,
+                            "token" to token,
+                        ),
+                ),
             )
 
             auditPublisher.publish(
@@ -55,11 +67,9 @@ class ForgotPasswordUseCase(
                 ),
             )
 
-            log.info("Email de recuperação de senha enviado para usuario={}", usuario.id)
+            log.info("Recuperação de senha enfileirada no outbox para usuario={}", usuario.id)
         } else {
-            // Log for security monitoring, but don't reveal to caller
             log.debug("Tentativa de recuperação de senha para email não cadastrado: {}", command.email)
         }
-        // Always returns 202 Accepted — no information leak
     }
 }

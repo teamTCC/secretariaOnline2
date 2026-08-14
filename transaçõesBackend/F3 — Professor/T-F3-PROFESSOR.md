@@ -1,13 +1,13 @@
 # T-F3 — Professor: Dashboards, Eventos, Deliberação, Formativas
 
-> **Diagramas de referência:** [`foundationDocs/sequenceDiagrams/F3 — Professor/`](../../foundationDocs/sequenceDiagrams/F3%20—%20Professor/)  
-> **Status:** ✅ Implementado (Dashboard, Eventos, Deliberação, Formativas) | ⏳ Stub (Estágio, TCC, Comunicado)
+> **Diagramas de referência:** [`foundationDocs/sequenceDiagrams/F3 — Professor/`](../../foundationDocs/sequenceDiagrams/F3 — Professor/)  
+> **Status:** ✅ Implementado (Dashboard, Eventos, Deliberação, Formativas, Estágio, TCC, Comunicados)
 
 ---
 
 ## F3.1 — Dashboard do Professor
 
-> **Ver:** [T-F1-001-DASHBOARD](../F1%20—%20Aluno/T-F1-001-DASHBOARD.md) — seção "Dashboards do Professor e da Secretaria"
+> **Ver:** [T-F1-001-DASHBOARD](../F1 — Aluno/T-F1-001-DASHBOARD.md) — seção "Dashboards do Professor e da Secretaria"
 
 ```
 GET /bff/dashboard/professor
@@ -45,7 +45,7 @@ Authorization: Bearer eyJhbGci...  (hasAuthority('dashboard.view_self_professor'
 
 ## F3.2 — Gestão de Eventos (CRUD + Janelas + Encerramento)
 
-> **Ver:** [T-F1-009-PRESENCA](../F1%20—%20Aluno/T-F1-009-PRESENCA.md) — o professor usa os mesmos endpoints do `EventAttendanceController`
+> **Ver:** [T-F1-009-PRESENCA](../F1 — Aluno/T-F1-009-PRESENCA.md) — o professor usa os mesmos endpoints do `EventAttendanceController`
 
 ### Principais capabilities do professor
 
@@ -70,7 +70,7 @@ Authorization: Bearer eyJhbGci...  (hasAuthority('request.deliberate'))
 }
 ```
 
-> **Ver:** [T-F1-005-SOLICITACOES](../F1%20—%20Aluno/T-F1-005-SOLICITACOES.md) — seção "Aplicar Transição"
+> **Ver:** [T-F1-005-SOLICITACOES](../F1 — Aluno/T-F1-005-SOLICITACOES.md) — seção "Aplicar Transição"
 
 ---
 
@@ -88,7 +88,7 @@ Authorization: Bearer eyJhbGci...  (hasAuthority('formative.review'))
 }
 ```
 
-> **Ver:** [T-F1-006-FORMATIVAS](../F1%20—%20Aluno/T-F1-006-FORMATIVAS.md) — seção "Revisar Atividade"
+> **Ver:** [T-F1-006-FORMATIVAS](../F1 — Aluno/T-F1-006-FORMATIVAS.md) — seção "Revisar Atividade"
 
 ---
 

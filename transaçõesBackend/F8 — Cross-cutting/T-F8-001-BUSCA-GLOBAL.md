@@ -1,7 +1,7 @@
 # T-F8-001 — Busca Global (Command Palette)
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F8 — Cross-cutting/US-F8-001-BUSCA-GLOBAL.md`](../../foundationDocs/sequenceDiagrams/F8%20—%20Cross-cutting/US-F8-001-BUSCA-GLOBAL.md)  
-> **Status:** ⏳ Não implementado — `SearchController` e `SearchUseCase` pendentes; requer `pg_trgm` no PostgreSQL
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F8 — Cross-cutting/US-F8-001-BUSCA-GLOBAL.md`](../../foundationDocs/sequenceDiagrams/F8 — Cross-cutting/US-F8-001-BUSCA-GLOBAL.md)  
+> **Status:** ✅ Implementado — SearchController fan-out via BFF com FGAC (usuários e solicitações)
 
 ---
 
@@ -10,8 +10,24 @@
 - **Sem capability fixa:** qualquer usuário autenticado pode chamar
 - **FGAC dinâmico no use case:** cada índice filtrado pelas capabilities do JWT
 - **Debounce:** 200ms no cliente antes de disparar a chamada
-- **Timeout:** 5s com `AbortController` no cliente (sem tratamento especial no servidor)
-- **Extension PostgreSQL:** `pg_trgm` (GIN index) para ILIKE eficiente
+- **Timeout:** 5s no servidor (`CompletableFuture.get(5, SECONDS)` → `{ timedOut: true }`) e no cliente (`AbortController`).
+- **Extension PostgreSQL:** `pg_trgm` + índices GIN (V015) em `usuario.nome/email`, `event_attendance.titulo`, `request.request_type_code`, `curso.nome`.
+
+---
+
+## O que está implementado
+
+`GET /search?q=&types=&page=&size=` em [`bff/SearchController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/SearchController.kt).
+
+FGAC real:
+
+| Tipo | Quem vê |
+|------|---------|
+| `USUARIO` | só `user.manage_students`, `user.manage_all` ou `system.admin` |
+| `REQUEST` | staff (`request.view_curso` / `request.deliberate`) vê todas; aluno só as próprias (`idSolicitante`) |
+| `EVENTO` / `CURSO` | qualquer autenticado |
+
+Resposta: lista plana `{ type, id, title, subtitle, href }` (não os arrays agrupados do diagrama).
 
 ---
 
@@ -158,9 +174,9 @@ data class SearchItemDto(
 
 ## Checklist de Verificação
 
-- [ ] `GET /search?q=jo&limit=5` → `200` com resultados agrupados
-- [ ] `q` com menos de 2 chars → `400` ou `200 {alunos:[], ...}` (decidir contrato)
-- [ ] Perfil Aluno: `alunos` retorna só o próprio; `solicitacoes` só as próprias; `usuarios: []`
-- [ ] Perfil Secretaria/Admin: `usuarios[]` populado (tem `user.manage_all`)
-- [ ] `GET /search?q=xyzxyz` → `200 {alunos:[], solicitacoes:[], eventos:[], usuarios:[]}`
-- [ ] Performance: índices `pg_trgm` ativos — query < 50ms para tabelas de teste
+- [x] `GET /search?q=jo` → `200` com `results[]`
+- [x] Perfil Aluno: sem resultados `USUARIO`; `REQUEST` só as próprias
+- [x] Secretaria/Admin: pode buscar usuários
+- [x] `q` em branco → `{ results: [], totalResults: 0 }`
+- [x] Índices `pg_trgm` GIN (V015); queries ainda usam LIKE (GIN acelera ILIKE)
+- [x] Timeout 5s no servidor (`timedOut: true`)

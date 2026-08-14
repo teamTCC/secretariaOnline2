@@ -81,8 +81,12 @@ class CertificateEntity(
     id: UUID = UUID.randomUUID(),
     @Column(name = "id_aluno", nullable = false)
     val idAluno: UUID,
-    @Column(name = "id_evento", nullable = false)
-    val idEvento: UUID,
+    @Column(name = "id_evento")
+    val idEvento: UUID? = null,
+    @Column(nullable = false, length = 20)
+    val origem: String = "EVENTO",
+    @Column(name = "id_activity")
+    val idActivity: UUID? = null,
     @Column(name = "hash_sha256", nullable = false, unique = true, length = 64)
     val hashSha256: String,
     @Column(name = "signature_ed25519", nullable = false, length = 200)

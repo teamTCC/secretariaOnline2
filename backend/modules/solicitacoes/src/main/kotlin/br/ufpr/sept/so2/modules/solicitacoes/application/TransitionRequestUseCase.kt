@@ -1,5 +1,7 @@
 package br.ufpr.sept.so2.modules.solicitacoes.application
 
+import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventEntity
+import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.domain.Request
 import br.ufpr.sept.so2.modules.solicitacoes.domain.RequestState
 import br.ufpr.sept.so2.modules.solicitacoes.domain.WorkflowDefinition
@@ -26,6 +28,7 @@ class TransitionRequestUseCase(
     private val requestRepo: RequestJpaRepository,
     private val requestTypeRepo: RequestTypeJpaRepository,
     private val requestEventRepo: RequestEventJpaRepository,
+    private val outboxRepo: OutboxEventJpaRepository,
     private val objectMapper: ObjectMapper,
 ) {
     @Transactional
@@ -86,6 +89,27 @@ class TransitionRequestUseCase(
                 estadoNovo = result.newState.name,
                 idAtor = command.actorId,
                 parecer = command.parecer,
+            ),
+        )
+
+        // Enqueue outbox event so the OutboxDispatcher can send email/push
+        // notifications to the applicant asynchronously — same transaction ensures
+        // at-least-once delivery without needing a message broker.
+        outboxRepo.save(
+            OutboxEventEntity(
+                eventType = "solicitacoes.${command.action.lowercase()}",
+                aggregateType = "Request",
+                aggregateId = command.requestId,
+                payload =
+                    mapOf(
+                        "requestId" to command.requestId.toString(),
+                        "action" to command.action,
+                        "estadoAnterior" to domainRequest.estado.name,
+                        "estadoNovo" to result.newState.name,
+                        "idSolicitante" to entity.idSolicitante.toString(),
+                        "tipoCode" to entity.requestTypeCode,
+                        "parecer" to (command.parecer ?: ""),
+                    ),
             ),
         )
     }

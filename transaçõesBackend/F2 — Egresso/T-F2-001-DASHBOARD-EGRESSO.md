@@ -1,7 +1,7 @@
 # T-F2-001 — Dashboard do Egresso e Reemissão de Certificados
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F2 — Egresso/US-F2-001-DASHBOARD-EGRESSO.md`](../../foundationDocs/sequenceDiagrams/F2%20—%20Egresso/US-F2-001-DASHBOARD-EGRESSO.md)  
-> **Status:** ⏳ Não implementado — `AlumniController` e use cases pendentes
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F2 — Egresso/US-F2-001-DASHBOARD-EGRESSO.md`](../../foundationDocs/sequenceDiagrams/F2 — Egresso/US-F2-001-DASHBOARD-EGRESSO.md)  
+> **Status:** ✅ Implementado — endpoint BFF `GET /bff/dashboard/egresso`
 
 ---
 

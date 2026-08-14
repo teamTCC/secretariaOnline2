@@ -1,6 +1,7 @@
 package br.ufpr.sept.so2.modules.arquivos
 
 import io.minio.BucketExistsArgs
+import io.minio.GetObjectArgs
 import io.minio.GetPresignedObjectUrlArgs
 import io.minio.MakeBucketArgs
 import io.minio.MinioClient
@@ -85,6 +86,16 @@ class MinioStorageService(
         )
         log.debug("Arquivo removido do MinIO: {}", storageKey)
     }
+
+    fun download(storageKey: String): ByteArray =
+        minioClient
+            .getObject(
+                GetObjectArgs
+                    .builder()
+                    .bucket(bucket)
+                    .`object`(storageKey)
+                    .build(),
+            ).use { it.readBytes() }
 
     fun exists(storageKey: String): Boolean =
         try {

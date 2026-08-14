@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.context.request.WebRequest
 import java.net.URI
 import java.time.OffsetDateTime
+import java.util.UUID
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -66,13 +67,14 @@ class GlobalExceptionHandler {
         ex: Exception,
         request: WebRequest,
     ): ProblemDetail {
-        log.error("Erro inesperado em {}: {}", request.getDescription(false), ex.message, ex)
+        val incidentId = "INC-${OffsetDateTime.now().year}-${UUID.randomUUID().toString().replace("-", "").take(4)}"
+        log.error("Erro inesperado [{}] em {}: {}", incidentId, request.getDescription(false), ex.message, ex)
         return problemDetail(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "Erro interno",
             "Ocorreu um erro inesperado. Tente novamente ou contate o suporte.",
             "internal-error",
-        )
+        ).also { it.setProperty("incidentId", incidentId) }
     }
 
     private fun problemDetail(

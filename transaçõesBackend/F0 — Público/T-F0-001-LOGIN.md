@@ -1,6 +1,6 @@
 # T-F0-001 — Autenticação de Usuário (Login)
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-001-LOGIN.md`](../../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-001-LOGIN.md)  
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-001-LOGIN.md`](../../foundationDocs/sequenceDiagrams/F0 — Público/US-F0-001-LOGIN.md)  
 > **Status:** ✅ Totalmente implementado
 
 ---
@@ -210,7 +210,7 @@ Content-Type: application/problem+json
 }
 ```
 
-> **Nota de gap:** O diagrama especifica `retryAfterSeconds` na resposta 429 para o frontend exibir countdown. O campo ainda não está implementado no `RateLimitFilter` — seria necessário calcular `bucket.availableTokens()` e dividir pelo tempo da janela.
+> **Nota:** O 429 inclui `retryAfterSeconds` e o header `Retry-After`. O mesmo filtro limita `POST /auth/forgot-password` (3/h por email+IP), `GET /publico/solicitacoes/**` + `GET /publico/verificar-certificado/**` (10/min por IP) e `POST /publico/contato` (10/min por IP).
 
 ---
 
@@ -297,6 +297,22 @@ Resposta: `401` + redirect para `/login`.
 
 ---
 
+## CSRF — Double Submit Cookie
+
+Mutações autenticadas (`POST`/`PATCH`/`PUT`/`DELETE`) exigem o header `X-XSRF-TOKEN` igual ao cookie `XSRF-TOKEN` (não httpOnly, para o SPA ler).
+
+```
+GET /auth/csrf
+→ 200 { "token", "headerName": "X-XSRF-TOKEN", "parameterName" }
+Set-Cookie: XSRF-TOKEN=…; Path=/; SameSite=Lax
+```
+
+Isentos: `/auth/login`, `/auth/refresh`, `/auth/forgot-password`, `/auth/reset-password`, Swagger, Actuator, JWKS.
+
+Implementação: `CookieCsrfTokenRepository.withHttpOnlyFalse()` + `SpaCsrfTokenRequestHandler` + `CsrfCookieFilter` em [`SecurityConfig.kt`](../../backend/app/src/main/kotlin/br/ufpr/sept/so2/config/SecurityConfig.kt). CORS permite o header `X-XSRF-TOKEN`.
+
+---
+
 ## Como o JWT é validado em cada requisição protegida
 
 O `JwtAuthenticationFilter` roda em todo request:
@@ -335,4 +351,6 @@ val podeDeliberar = user.authorities.contains("request.deliberate")
 - [x] Conta bloqueada após 10 falhas consecutivas — 401 sem revelar bloqueio
 - [x] `POST /auth/refresh` com token válido → novo par de tokens
 - [x] Reuso de refresh token → todas as sessões revogadas + `401`
-- [ ] `retryAfterSeconds` no corpo 429 — **não implementado ainda**
+- [x] `retryAfterSeconds` no corpo 429 + header `Retry-After`
+- [x] `POST /auth/logout` → revoga todos os refresh tokens do usuário + apaga o cookie
+- [x] CSRF Double Submit: `GET /auth/csrf` emite cookie `XSRF-TOKEN` (não httpOnly) + header `X-XSRF-TOKEN`; login/refresh/forgot/reset são isentos

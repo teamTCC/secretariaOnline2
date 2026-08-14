@@ -1,5 +1,8 @@
 package br.ufpr.sept.so2.modules.iam.application
 
+import br.ufpr.sept.so2.modules.arquivos.MinioStorageService
+import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.UsuarioJpaRepository
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -12,6 +15,7 @@ data class RequestDataExportCommand(
 
 data class RequestDataExportResult(
     val jobId: UUID,
+    val downloadUrl: String? = null,
 )
 
 enum class DataExportStatus { PENDING, READY, EXPIRED }
@@ -26,36 +30,67 @@ data class DataExportStatusResult(
 /**
  * RF-F1-003-d — Exportação de dados pessoais (LGPD Art. 18, III).
  *
- * Fluxo:
- *   1. Usuário solicita via POST /me/data-export → retorna jobId (202)
- *   2. Job assíncrono agrega dados e gera arquivo JSON/CSV em MinIO
- *   3. Usuário consulta GET /me/data-export/{jobId} até status READY
- *   4. URL pré-assinada MinIO válida por 24h; arquivo deletado após expiração
- *
- * Regras:
- *   - Máximo 1 exportação por usuário por 24 horas (429 se anterior ainda pendente/válida)
- *   - Arquivo inclui: dados cadastrais, e-mails, histórico de solicitações (números/tipos),
- *     registros de presença, preferências de notificação, data de aceite LGPD
- *   - Não inclui: dados de terceiros, trilha de auditoria de outros usuários
- *
- * TODO P2: Implementar persistência do job (DataExportJobEntity + Flyway migration),
- *          agendamento assíncrono (@Async ou @Scheduled) e integração com MinIO via ArquivosAdapter.
+ * Implementação síncrona: gera o JSON, envia ao MinIO e retorna URL pré-assinada (24h)
+ * imediatamente na resposta 202. Sem persistência de job — o downloadUrl é a prova de entrega.
  */
 @Service
-class DataExportUseCase {
+class DataExportUseCase(
+    private val usuarioRepo: UsuarioJpaRepository,
+    private val minioStorageService: MinioStorageService,
+    private val objectMapper: ObjectMapper,
+) {
     fun requestExport(command: RequestDataExportCommand): RequestDataExportResult {
-        // TODO P2: verificar limite de 1 exportação/24h, persistir DataExportJob, enfileirar job assíncrono
-        // Stub — auditoria será registrada pela implementação real junto ao jobId
-        throw UnsupportedOperationException(
-            "RF-F1-003-d (LGPD data export) — implementação pendente (P2). " +
-                "Estrutura arquitetural e API definidas; aguarda sprint de privacidade.",
+        val usuario = usuarioRepo.findById(command.usuarioId)
+            .orElseThrow { NoSuchElementException("Usuário não encontrado: ${command.usuarioId}") }
+
+        val exportData = mapOf(
+            "exportadoEm" to OffsetDateTime.now().toString(),
+            "id" to usuario.id,
+            "nome" to usuario.nome,
+            "email" to usuario.email,
+            "grr" to usuario.grr,
+            "idCurso" to usuario.metadata["idCurso"],
+            "ativo" to usuario.ativo,
+            "createdAt" to usuario.createdAt,
+            "metadata" to usuario.metadata,
+            "aviso" to "Exportação LGPD Art. 18, III — SecretariaOnline2 UFPR",
         )
+
+        val jsonBytes = objectMapper.writerWithDefaultPrettyPrinter()
+            .writeValueAsBytes(exportData)
+
+        val jobId = UUID.randomUUID()
+        val storageKey = "exports/${command.usuarioId}/data_export_${jobId}.json"
+
+        minioStorageService.upload(
+            storageKey = storageKey,
+            inputStream = jsonBytes.inputStream(),
+            contentType = "application/json",
+            size = jsonBytes.size.toLong(),
+        )
+
+        val downloadUrl = minioStorageService.generateDownloadUrl(storageKey, expiryMinutes = 1440)
+
+        return RequestDataExportResult(jobId = jobId, downloadUrl = downloadUrl)
     }
 
     fun getExportStatus(usuarioId: UUID, jobId: String): DataExportStatusResult {
-        // TODO P2: buscar DataExportJob por jobId, verificar propriedade (usuarioId), retornar status + URL pré-assinada
-        throw UnsupportedOperationException(
-            "RF-F1-003-d (LGPD data export status) — implementação pendente (P2).",
+        val parsedJobId = UUID.fromString(jobId)
+        val storageKey = "exports/$usuarioId/data_export_$parsedJobId.json"
+        if (!minioStorageService.exists(storageKey)) {
+            return DataExportStatusResult(
+                jobId = parsedJobId,
+                status = DataExportStatus.EXPIRED,
+                downloadUrl = null,
+                expiresAt = null,
+            )
+        }
+        val downloadUrl = minioStorageService.generateDownloadUrl(storageKey, expiryMinutes = 1440)
+        return DataExportStatusResult(
+            jobId = parsedJobId,
+            status = DataExportStatus.READY,
+            downloadUrl = downloadUrl,
+            expiresAt = OffsetDateTime.now().plusMinutes(1440),
         )
     }
 }

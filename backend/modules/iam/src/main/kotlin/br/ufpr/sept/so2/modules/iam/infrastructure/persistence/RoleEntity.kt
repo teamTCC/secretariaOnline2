@@ -19,7 +19,7 @@ class RoleEntity(
     @Column(nullable = false, unique = true, length = 50)
     val code: String,
     @Column(nullable = false, length = 200)
-    val descricao: String,
+    var descricao: String,
     @ManyToMany(fetch = FetchType.EAGER)
     @jakarta.persistence.JoinTable(
         name = "role_authority",

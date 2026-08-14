@@ -17,9 +17,11 @@ import br.ufpr.sept.so2.modules.iam.application.RefreshTokenCommand
 import br.ufpr.sept.so2.modules.iam.application.RefreshTokenUseCase
 import br.ufpr.sept.so2.modules.iam.application.ResetPasswordCommand
 import br.ufpr.sept.so2.modules.iam.application.ResetPasswordUseCase
+import br.ufpr.sept.so2.modules.iam.application.ports.out.RefreshTokenRepository
 import br.ufpr.sept.so2.shared.security.currentUserId
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.security.SecurityRequirements
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
@@ -27,6 +29,8 @@ import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.web.csrf.CsrfToken
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -34,15 +38,27 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/auth")
-@Tag(name = "Autenticação", description = "Endpoints públicos de autenticação e gerenciamento de senhas")
+@Tag(name = "Autenticação", description = "Login/refresh/forgot/reset são públicos. first-access e logout exigem JWT.")
 class AuthController(
     private val loginUseCase: LoginUseCase,
     private val refreshTokenUseCase: RefreshTokenUseCase,
     private val forgotPasswordUseCase: ForgotPasswordUseCase,
     private val resetPasswordUseCase: ResetPasswordUseCase,
     private val firstAccessUseCase: FirstAccessUseCase,
+    private val refreshTokenRepository: RefreshTokenRepository,
 ) {
+    @GetMapping("/csrf")
+    @SecurityRequirements
+    @Operation(summary = "Emitir cookie XSRF-TOKEN (Double Submit) e devolver o valor do token")
+    fun csrf(csrfToken: CsrfToken): Map<String, String> =
+        mapOf(
+            "token" to csrfToken.token,
+            "headerName" to csrfToken.headerName,
+            "parameterName" to csrfToken.parameterName,
+        )
+
     @PostMapping("/login")
+    @SecurityRequirements
     @Operation(
         summary = "Autenticar usuário",
         description = "Autentica via email/GRR + senha. Retorna access token (JWT 15min) e refresh token (7 dias).",
@@ -86,6 +102,7 @@ class AuthController(
     }
 
     @PostMapping("/refresh")
+    @SecurityRequirements
     @Operation(summary = "Renovar access token usando refresh token")
     fun refresh(
         @Valid @RequestBody request: RefreshTokenRequest,
@@ -119,11 +136,13 @@ class AuthController(
     }
 
     @PostMapping("/forgot-password")
+    @SecurityRequirements
     @Operation(
         summary = "Solicitar redefinição de senha",
         description = "Envia link de redefinição por email. Sempre responde 202 (anti-enumeração).",
     )
     @ApiResponse(responseCode = "202", description = "Requisição recebida")
+    @ApiResponse(responseCode = "429", description = "Muitas tentativas — rate limit atingido")
     fun forgotPassword(
         @Valid @RequestBody request: ForgotPasswordRequest,
         httpRequest: HttpServletRequest,
@@ -140,6 +159,7 @@ class AuthController(
     }
 
     @PostMapping("/reset-password")
+    @SecurityRequirements
     @Operation(summary = "Redefinir senha com token de email")
     fun resetPassword(
         @Valid @RequestBody request: ResetPasswordRequest,
@@ -176,8 +196,9 @@ class AuthController(
     }
 
     @PostMapping("/logout")
-    @Operation(summary = "Encerrar sessão")
+    @Operation(summary = "Encerrar sessão — revoga todos os refresh tokens do usuário")
     fun logout(httpResponse: HttpServletResponse): ResponseEntity<Map<String, String>> {
+        refreshTokenRepository.revokeAllForUser(currentUserId())
         val cookie =
             Cookie("refresh_token", "").apply {
                 isHttpOnly = true

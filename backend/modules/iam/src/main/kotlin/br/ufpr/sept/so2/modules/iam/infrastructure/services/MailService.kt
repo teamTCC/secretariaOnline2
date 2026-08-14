@@ -4,7 +4,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.MimeMessageHelper
-import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 
 @Service
@@ -15,7 +14,6 @@ class MailService(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Async
     fun sendPasswordResetEmail(
         to: String,
         nome: String,
@@ -37,7 +35,6 @@ class MailService(
         sendHtml(to = to, subject = "Redefinição de senha — SecretariaOnline", html = html)
     }
 
-    @Async
     fun sendWelcomeEmail(
         to: String,
         nome: String,
@@ -55,7 +52,6 @@ class MailService(
         sendHtml(to = to, subject = "Bem-vindo ao SecretariaOnline — UFPR", html = html)
     }
 
-    @Async
     fun sendNotificationEmail(
         to: String,
         subject: String,
@@ -79,7 +75,8 @@ class MailService(
             mailSender.send(message)
             log.debug("Email enviado para {}: {}", to, subject)
         } catch (e: Exception) {
-            log.error("Falha ao enviar email para {}: {}", to, e.message, e)
+            log.error("Falha ao enviar email para {}: {}", to, e.message)
+            throw e
         }
     }
 }

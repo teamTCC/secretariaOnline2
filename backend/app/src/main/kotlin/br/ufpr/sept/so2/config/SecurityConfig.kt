@@ -14,6 +14,8 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository
+import org.springframework.security.web.csrf.CsrfFilter
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
@@ -31,8 +33,24 @@ class SecurityConfig(
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain =
         http
-            .csrf { it.disable() }
-            .cors { it.configurationSource(corsConfigSource()) }
+            .csrf { csrf ->
+                val repo = CookieCsrfTokenRepository.withHttpOnlyFalse()
+                repo.cookiePath = "/"
+                csrf
+                    .csrfTokenRepository(repo)
+                    .csrfTokenRequestHandler(SpaCsrfTokenRequestHandler())
+                    .ignoringRequestMatchers(
+                        "/auth/login",
+                        "/auth/refresh",
+                        "/auth/forgot-password",
+                        "/auth/reset-password",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/actuator/**",
+                        "/.well-known/**",
+                    )
+            }.cors { it.configurationSource(corsConfigSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
                 auth
@@ -41,7 +59,10 @@ class SecurityConfig(
                         "/auth/refresh",
                         "/auth/forgot-password",
                         "/auth/reset-password",
+                        "/auth/csrf",
                         "/publico/**",
+                        "/faq",
+                        "/faq/**",
                         "/.well-known/**",
                         "/actuator/health",
                         "/actuator/info",
@@ -51,7 +72,8 @@ class SecurityConfig(
                     ).permitAll()
                     .anyRequest()
                     .authenticated()
-            }.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter::class.java)
+            }.addFilterAfter(CsrfCookieFilter(), CsrfFilter::class.java)
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter::class.java)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
             .exceptionHandling { ex ->
                 ex.authenticationEntryPoint { _, response, _ ->
@@ -98,7 +120,7 @@ class SecurityConfig(
         val config = CorsConfiguration()
         config.allowedOrigins = allowedOrigins
         config.allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-        config.allowedHeaders = listOf("Authorization", "Content-Type", "X-Requested-With")
+        config.allowedHeaders = listOf("Authorization", "Content-Type", "X-Requested-With", "X-XSRF-TOKEN")
         config.allowCredentials = true
         config.maxAge = 3600L
         val source = UrlBasedCorsConfigurationSource()

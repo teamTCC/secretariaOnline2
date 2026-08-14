@@ -1,6 +1,6 @@
 # T-F0-003 — Definir Nova Senha via Token
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-003-NOVA-SENHA.md`](../../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-003-NOVA-SENHA.md)  
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-003-NOVA-SENHA.md`](../../foundationDocs/sequenceDiagrams/F0 — Público/US-F0-003-NOVA-SENHA.md)  
 > **Status:** ✅ Totalmente implementado
 
 ---

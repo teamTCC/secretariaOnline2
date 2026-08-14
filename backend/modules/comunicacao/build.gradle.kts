@@ -6,6 +6,7 @@ plugins {
 dependencies {
     api(project(":shared"))
     implementation(project(":modules:iam"))
+    implementation(project(":modules:notificacoes"))
     implementation("org.springframework.boot:spring-boot-starter-mail")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
 

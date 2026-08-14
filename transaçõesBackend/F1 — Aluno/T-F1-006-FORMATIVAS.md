@@ -1,6 +1,6 @@
 # T-F1-006 — Horas Formativas (Atividades Complementares)
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-006-FORMATIVAS.md`](../../foundationDocs/sequenceDiagrams/F1%20—%20Aluno/US-F1-006-FORMATIVAS.md)  
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-006-FORMATIVAS.md`](../../foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-006-FORMATIVAS.md)  
 > **Status:** ✅ Implementado — submit, listagem, revisão CAAF, resumo KPI
 
 ---
@@ -29,7 +29,8 @@ Content-Type: application/json
   "descricao": "Participação na palestra promovida pelo DINF em 2026-06-15",
   "categoria": "PALESTRA",
   "cargaHoraria": 4.0,
-  "dataRealizacao": "2026-06-15"
+  "dataRealizacao": "2026-06-15",
+  "storageKeyComprovante": "formativas/orphan/uuid_comprovante.pdf"
 }
 ```
 
@@ -126,7 +127,21 @@ fun resumo(): Map<String, Any> {
 }
 ```
 
-> O valor de `120.0` (horas requeridas) está **hardcoded** por ora. Para cursos com cargas diferentes isso precisará ser lido da tabela de configuração do curso.
+> Horas requeridas no resumo do aluno ainda usam 120h como fallback; a colação lê `curso.horas_formativas_minimas` (T-F6-001).
+
+---
+
+## Comprovante (MinIO)
+
+```
+POST /formativas/comprovantes/presigned-url
+{ "filename": "comprovante.pdf", "contentType": "application/pdf" }
+→ { "uploadUrl", "storageKey" }
+```
+
+O aluno faz PUT no `uploadUrl` e envia `storageKeyComprovante` no `POST /formativas`.
+
+Aprovação (`PATCH /formativas/{id}/review` ou CAAF batch) também emite certificado PDF (`origem=FORMATIVA`) — ver [T-10.4](../transversal/T-10.4-CERTIFICADO.md).
 
 ---
 
@@ -170,7 +185,14 @@ fun review(@PathVariable id: UUID, @Valid @RequestBody dto: ReviewFormativaDto):
     activity.parecerRevisor = dto.parecer
     activity.idRevisor = user.userId
     activityRepo.save(activity)
-    
+    if (activity.estado == "APROVADA") {
+        entryRepo.save(FormativeEntryEntity(
+            idAluno = activity.idAluno,
+            idActivity = activity.id,
+            horasAprovadas = activity.cargaHoraria,
+        ))
+    }
+    // outbox formativas.revisada
     return ResponseEntity.ok(mapOf("estado" to activity.estado))
 }
 ```
@@ -230,7 +252,9 @@ Authorization: Bearer eyJhbGci...  (hasAuthority('formative.review'))
 - [x] `GET /formativas/resumo` → KPI com percentual calculado
 - [x] `GET /formativas/pendentes` → só acessível com `formative.review`
 - [x] `PATCH /formativas/{id}/review` com `APROVAR`/`REJEITAR` → `200` com novo estado
+- [x] Aprovação grava `formative_entry` (KPI `/formativas/resumo` soma horas aprovadas)
 - [x] Revisão só permitida quando `estado == "PENDENTE"`
-- [ ] Notificação ao aluno após revisão via Outbox — **não implementado**
-- [ ] Upload de comprovante (PDF/imagem) via MinIO — **não implementado**
-- [ ] Horas requeridas configuráveis por curso — hardcoded 120h
+- [x] Notificação ao aluno após revisão via Outbox (`formativas.revisada`)
+- [x] Upload de comprovante via MinIO presign + `storageKeyComprovante`
+- [x] Certificado PDF ao aprovar formativa
+- [ ] Resumo do aluno ainda fallback 120h (colação usa config do curso)

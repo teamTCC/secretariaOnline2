@@ -1,7 +1,7 @@
 # T-F4-002 — Pool COE: Atribuir e Acompanhar Estágios em Lote
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F4 — Comissões/US-F4-002-COMISSAO-COE.md`](../../foundationDocs/sequenceDiagrams/F4%20—%20Comissões/US-F4-002-COMISSAO-COE.md)  
-> **Status:** ⏳ Não implementado — padrão análogo ao CAAF (T-F4-001), mas para o domínio de estágios
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F4 — Comissões/US-F4-002-COMISSAO-COE.md`](../../foundationDocs/sequenceDiagrams/F4 — Comissões/US-F4-002-COMISSAO-COE.md)  
+> **Status:** ✅ Implementado — pool, assign-supervisor, bulk-assign, stats
 
 ---
 

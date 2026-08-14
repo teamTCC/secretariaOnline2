@@ -1,5 +1,7 @@
 package br.ufpr.sept.so2.modules.presenca.api
 
+import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.UsuarioJpaRepository
+import br.ufpr.sept.so2.modules.presenca.application.CertificateIssuerService
 import br.ufpr.sept.so2.modules.presenca.domain.AttendanceMode
 import br.ufpr.sept.so2.modules.presenca.domain.AttendancePhase
 import br.ufpr.sept.so2.modules.presenca.domain.EventState
@@ -7,9 +9,10 @@ import br.ufpr.sept.so2.modules.presenca.infrastructure.persistence.AttendanceSe
 import br.ufpr.sept.so2.modules.presenca.infrastructure.persistence.AttendanceSessionJpaRepository
 import br.ufpr.sept.so2.modules.presenca.infrastructure.persistence.EventAttendanceEntity
 import br.ufpr.sept.so2.modules.presenca.infrastructure.persistence.EventAttendanceJpaRepository
+import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventEntity
+import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository
 import br.ufpr.sept.so2.shared.api.PageResponse
 import br.ufpr.sept.so2.shared.security.currentUser
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
@@ -57,7 +60,9 @@ data class OpenWindowDto(
 class EventAttendanceController(
     private val eventRepo: EventAttendanceJpaRepository,
     private val sessionRepo: AttendanceSessionJpaRepository,
-    private val objectMapper: ObjectMapper,
+    private val usuarioRepo: UsuarioJpaRepository,
+    private val outboxRepo: OutboxEventJpaRepository,
+    private val certificateIssuerService: CertificateIssuerService,
 ) {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -72,7 +77,18 @@ class EventAttendanceController(
         val user = currentUser()
         val organizadorFilter = if (host == "me") user.userId else null
 
-        val page = eventRepo.findWithFilters(estado, organizadorFilter, idCurso, pageable)
+        val page =
+            if (audience == "me") {
+                val cursoIdFromUser =
+                    usuarioRepo.findById(user.userId).orElse(null)
+                        ?.metadata
+                        ?.get("idCurso")
+                        ?.toString()
+                        ?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+                eventRepo.findOpenForAudience(cursoIdFromUser ?: idCurso, pageable)
+            } else {
+                eventRepo.findWithFilters(estado, organizadorFilter, idCurso, pageable)
+            }
         return PageResponse.of(page) { e ->
             mapOf(
                 "id" to e.id,
@@ -267,6 +283,55 @@ class EventAttendanceController(
         return ResponseEntity.ok(mapOf<String, Any>("mensagem" to "Janela de entrada aberta", "closeAt" to (window["closeAt"] ?: "")))
     }
 
+    @PostMapping("/{eventId}/attendance/windows/exit")
+    @PreAuthorize("hasAuthority('event.host')")
+    @Operation(summary = "Abrir janela de saída do evento (modos DUAL)")
+    fun openExitWindow(
+        @PathVariable eventId: UUID,
+        @RequestBody(required = false) dto: OpenWindowDto?,
+    ): ResponseEntity<Map<String, Any>> {
+        val event = eventRepo.findById(eventId).orElseThrow { NoSuchElementException("Evento não encontrado: $eventId") }
+        val user = currentUser()
+        require(
+            event.idOrganizador == user.userId || user.authorities.contains("event.manage"),
+        ) { "Apenas o organizador pode abrir janelas" }
+
+        val mode = AttendanceMode.valueOf(event.attendanceMode)
+        require(mode.isDual()) { "Este evento não usa modo dual de presença." }
+        require(event.estado == EventState.EM_ANDAMENTO.name) { "Evento precisa estar em andamento para abrir a janela de saída." }
+
+        val durationSecs = dto?.durationSeconds ?: 3600
+        val now = OffsetDateTime.now()
+        val window: Map<String, Any?> =
+            mapOf(
+                "phase" to "EXIT",
+                "openAt" to now.toString(),
+                "closeAt" to now.plusSeconds(durationSecs.toLong()).toString(),
+                "secret" to if (mode.isSecret()) generatePin() else null,
+                "qrToken" to if (mode.isQr()) generateQrToken() else null,
+            )
+
+        @Suppress("UNCHECKED_CAST")
+        val updatedWindows = event.validationWindows.filter { (it["phase"] as? String) != "EXIT" } + (window as Map<String, Any>)
+        event.validationWindows = updatedWindows
+        eventRepo.save(event)
+
+        return ResponseEntity.ok(mapOf<String, Any>("mensagem" to "Janela de saída aberta", "closeAt" to (window["closeAt"] ?: "")))
+    }
+
+    @PostMapping("/{eventId}/attendance/qr/validate")
+    @PreAuthorize("hasAuthority('attendance.check_in')")
+    @Operation(summary = "Validar QR de entrada ou saída conforme o estado da sessão")
+    fun validateQr(
+        @PathVariable eventId: UUID,
+        @RequestBody dto: ConfirmAttendanceDto,
+    ): ResponseEntity<Map<String, Any>> {
+        val user = currentUser()
+        val session = sessionRepo.findByIdEventoAndIdAluno(eventId, user.userId).orElse(null)
+        val phase = if (session?.entryConfirmedAt == null) AttendancePhase.ENTRY else AttendancePhase.EXIT
+        return processAttendance(eventId, user.userId, phase, dto)
+    }
+
     @PostMapping("/{eventId}/close")
     @PreAuthorize("hasAuthority('event.host')")
     @Operation(summary = "Encerrar evento e emitir certificados")
@@ -280,7 +345,13 @@ class EventAttendanceController(
         ) { "Apenas o organizador pode encerrar o evento" }
 
         eventRepo.updateEstado(eventId, EventState.CONCLUIDO.name)
-        return ResponseEntity.ok(mapOf("mensagem" to "Evento encerrado. Certificados sendo processados."))
+        val certCount = certificateIssuerService.issueCertificatesForEvent(eventId)
+        return ResponseEntity.ok(
+            mapOf(
+                "mensagem" to "Evento encerrado. $certCount certificados emitidos.",
+                "certificadosEmitidos" to certCount,
+            ),
+        )
     }
 
     private fun processAttendance(
@@ -348,6 +419,20 @@ class EventAttendanceController(
                 sessionRepo.confirmExit(session.id, now)
             }
         }
+
+        outboxRepo.save(
+            OutboxEventEntity(
+                eventType = "presenca.confirmada",
+                aggregateType = "AttendanceSession",
+                aggregateId = session.id,
+                payload =
+                    mapOf(
+                        "eventId" to eventId.toString(),
+                        "alunoId" to alunoId.toString(),
+                        "phase" to phase.name,
+                    ),
+            ),
+        )
 
         return ResponseEntity.ok(
             mapOf("mensagem" to "${phase.name.lowercase().replaceFirstChar { it.uppercase() }} confirmada com sucesso."),

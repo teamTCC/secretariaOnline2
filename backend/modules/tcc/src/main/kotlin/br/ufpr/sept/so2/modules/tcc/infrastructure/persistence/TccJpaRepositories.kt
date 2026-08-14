@@ -18,6 +18,8 @@ interface TccJpaRepository : JpaRepository<TccEntity, UUID> {
         pageable: Pageable,
     ): Page<TccEntity>
 
+    fun countByEstado(estado: String): Long
+
     @Query(
         """
         SELECT t FROM TccEntity t

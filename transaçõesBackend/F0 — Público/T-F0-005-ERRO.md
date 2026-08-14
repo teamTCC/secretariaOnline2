@@ -1,6 +1,6 @@
 # T-F0-005 — Tratamento de Erros HTTP (GlobalExceptionHandler)
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-005-ERRO.md`](../../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-005-ERRO.md)  
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-005-ERRO.md`](../../foundationDocs/sequenceDiagrams/F0 — Público/US-F0-005-ERRO.md)  
 > **Status:** ✅ Implementado — GlobalExceptionHandler + IamExceptionHandler
 
 ---
@@ -44,7 +44,7 @@ Todos os erros do backend seguem o formato RFC 7807 (`application/problem+json`)
 | `NoSuchElementException` | `404` | `not-found` |
 | `IllegalArgumentException` | `400` | `bad-request` |
 | `AccessDeniedException` (Spring Security) | `403` | `forbidden` |
-| `Exception` genérica | `500` | `internal-server-error` |
+| `Exception` genérica | `500` | `internal-error` + `incidentId` (`INC-yyyy-xxxx`) |
 
 ---
 
@@ -54,3 +54,4 @@ Todos os erros do backend seguem o formato RFC 7807 (`application/problem+json`)
 - [x] Campo `status` sempre presente e igual ao HTTP status code
 - [x] Erros 4xx nunca expõem stack traces ao cliente
 - [x] Erros 401 para login/credenciais são idênticos (anti-enumeração)
+- [x] 5xx incluem `incidentId` (`INC-yyyy-xxxx`) correlacionável no log
