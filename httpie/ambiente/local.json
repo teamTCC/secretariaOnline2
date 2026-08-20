@@ -1,0 +1,78 @@
+{
+  "baseUrl": "http://localhost:8080",
+  "mailhogUrl": "http://localhost:8025",
+  "swaggerUrl": "http://localhost:8080/swagger-ui.html",
+  "jwksUrl": "http://localhost:8080/.well-known/jwks.json",
+  "minioConsoleUrl": "http://localhost:9001",
+
+  "accessToken": "COLE_AQUI_O_JWT_DO_LOGIN",
+  "xsrfToken": "COLE_AQUI_O_COOKIE_XSRF-TOKEN",
+  "refreshToken": "normalmente_so_no_cookie_jar",
+
+  "adminEmail": "admin@ufpr.br",
+  "adminSenha": "Admin@123456",
+
+  "alunoEmail": "ana.aluno@ufpr.br",
+  "alunoSenha": "AlunoS3nh@Forte!",
+  "alunoGrr": "20210001",
+  "alunoId": "COLE_UUID_DO_ALUNO",
+
+  "professorEmail": "prof.ana@ufpr.br",
+  "professorSenha": "ProfS3nh@Forte!",
+  "professorId": "COLE_UUID_DO_PROFESSOR",
+
+  "secretariaEmail": "secretaria@ufpr.br",
+  "secretariaSenha": "SecrS3nh@Forte!",
+  "secretariaId": "COLE_UUID_DA_SECRETARIA",
+
+  "coordenadorEmail": "coord.tads@ufpr.br",
+  "coordenadorSenha": "CoordS3nh@Forte!",
+  "coordenadorId": "COLE_UUID_DO_COORDENADOR",
+
+  "egressoEmail": "ana.egressa@ufpr.br",
+  "egressoId": "COLE_UUID_DO_EGRESSO",
+
+  "cursoId": "COLE_UUID_DO_CURSO_TADS",
+  "cursoSigla": "TADS",
+  "disciplinaId": "COLE_UUID_DISCIPLINA",
+  "periodoId": "COLE_UUID_PERIODO_LETIVO",
+
+  "requestTypeId": "COLE_UUID_REQUEST_TYPE",
+  "requestTypeCode": "DECLARACAO_MATRICULA",
+  "requestId": "COLE_UUID_SOLICITACAO",
+  "requestAno": "2026",
+  "requestNumero": "1",
+  "attachmentId": "COLE_UUID_ANEXO",
+  "storageKey": "COLE_STORAGE_KEY_MINIO",
+  "sha256": "COLE_SHA256_DO_ARQUIVO",
+
+  "eventoId": "COLE_UUID_EVENTO",
+  "pinEntrada": "COLE_PIN_6_DIGITOS",
+  "qrToken": "COLE_QR_TOKEN",
+  "deviceUuid": "httpie-desktop-device-001",
+
+  "formativaId": "COLE_UUID_FORMATIVA",
+  "internshipId": "COLE_UUID_ESTAGIO",
+  "tccId": "COLE_UUID_TCC",
+  "supervisorId": "COLE_UUID_SUPERVISOR",
+
+  "certificateId": "COLE_UUID_CERTIFICADO",
+  "certificateHash": "COLE_SHA256_CERTIFICADO",
+
+  "serviceRecordId": "COLE_UUID_ATENDIMENTO",
+  "deliveryId": "COLE_UUID_DELIVERY_COMUNICACAO",
+  "communicationId": "COLE_UUID_COMUNICADO",
+
+  "graduationId": "COLE_UUID_COLACAO",
+  "importJobId": "COLE_UUID_JOB_IMPORT",
+  "exportJobId": "COLE_UUID_JOB_EXPORT",
+  "taskId": "COLE_UUID_TAREFA",
+  "roleId": "COLE_UUID_ROLE",
+  "faqId": "COLE_UUID_FAQ",
+  "ticketId": "COLE_UUID_TICKET",
+  "outboxId": "COLE_UUID_OUTBOX",
+  "auditAtorId": "COLE_UUID_ATOR",
+  "dataExportJobId": "COLE_UUID_EXPORT_LGPD",
+  "templateId": "COLE_UUID_TEMPLATE",
+  "resetToken": "COLE_JWT_1_USO_DO_EMAIL"
+}
