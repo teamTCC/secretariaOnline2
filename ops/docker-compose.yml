@@ -1,9 +1,23 @@
 version: '3.9'
 
-# Docker Compose for LOCAL DEVELOPMENT — PostgreSQL only (per backNotes.txt)
-# The backend runs locally via Gradle bootRun (not containerized in dev)
+# ─────────────────────────────────────────────────────────────────────────────
+# SecretariaOnline2 — Local & Containerised Stack
+#
+# Three services:
+#   1. postgres  — PostgreSQL 16 (data persistence)
+#   2. redis     — Redis 7     (cache + token revocation blacklist)
+#   3. backend   — Spring Boot / Tomcat (all modules, built via Dockerfile)
+#
+# Quick start:
+#   cp backend/.env.example ops/.env && nano ops/.env   # fill JWT keys
+#   docker compose -f ops/docker-compose.yml up --build
+#
+# For local Gradle development (no backend container):
+#   docker compose -f ops/docker-compose.yml up postgres redis
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: secretaria_postgres
@@ -25,18 +39,96 @@ services:
     networks:
       - secretaria_net
 
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  # Dual role:
+  #   1. BFF dashboard cache (TTL 60 s, cache-aside in DashboardController)
+  #   2. Access-token revocation blacklist (JTI blacklist + force-logout markers)
   redis:
     image: redis:7-alpine
     container_name: secretaria_redis
     restart: unless-stopped
     ports:
       - "6379:6379"
-    command: redis-server --save "" --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: >
+      redis-server
+      --save ""
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - secretaria_net
+
+  # ── Backend (Spring Boot / Tomcat) ──────────────────────────────────────────
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: secretaria-online-2:latest
+    container_name: secretaria_backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      # Database — uses internal Docker network hostname
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/secretaria_dev
+      SPRING_DATASOURCE_USERNAME: secretaria
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
+
+      # Redis — internal hostname
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_TYPE: redis
+
+      # JWT RSA keys (required — must be set in ops/.env)
+      SECURITY_JWT_PRIVATE_KEY: ${SECURITY_JWT_PRIVATE_KEY}
+      SECURITY_JWT_PUBLIC_KEY: ${SECURITY_JWT_PUBLIC_KEY}
+      SECURITY_JWT_ACCESS_TTL: ${SECURITY_JWT_ACCESS_TTL:-900}
+
+      # Cookies — Secure=false inside Docker bridge (HTTP); set true when behind HTTPS proxy
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE:-Lax}
+
+      # CORS — exact origins
+      CORS_ALLOWED_ORIGIN_1: ${CORS_ALLOWED_ORIGIN_1:-http://localhost:3000}
+      CORS_ALLOWED_ORIGIN_2: ${CORS_ALLOWED_ORIGIN_2:-http://localhost:5173}
+      CORS_ALLOWED_ORIGIN_3: ${CORS_ALLOWED_ORIGIN_3:-}
+
+      # CORS — wildcard patterns (Vercel previews: https://*.vercel.app)
+      CORS_ALLOWED_ORIGIN_PATTERN_1: ${CORS_ALLOWED_ORIGIN_PATTERN_1:-}
+      CORS_ALLOWED_ORIGIN_PATTERN_2: ${CORS_ALLOWED_ORIGIN_PATTERN_2:-}
+
+      # Application base URL
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+
+      # Email
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_FROM: ${MAIL_FROM:-noreply@ufpr.br}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+
+      # MinIO (optional)
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://localhost:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
     networks:
       - secretaria_net
 

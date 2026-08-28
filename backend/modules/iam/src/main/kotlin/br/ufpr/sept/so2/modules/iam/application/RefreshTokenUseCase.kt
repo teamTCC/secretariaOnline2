@@ -1,6 +1,7 @@
 package br.ufpr.sept.so2.modules.iam.application
 
 import br.ufpr.sept.so2.modules.iam.application.ports.out.RefreshTokenRepository
+import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenRevocationPort
 import br.ufpr.sept.so2.modules.iam.application.ports.out.UsuarioRepository
 import br.ufpr.sept.so2.modules.iam.domain.RefreshToken
 import br.ufpr.sept.so2.modules.iam.domain.exceptions.InvalidTokenException
@@ -10,6 +11,7 @@ import br.ufpr.sept.so2.shared.audit.AuditPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Duration
 
 data class RefreshTokenCommand(
     val refreshTokenValue: String,
@@ -27,6 +29,7 @@ class RefreshTokenUseCase(
     private val usuarioRepository: UsuarioRepository,
     private val jwtTokenService: JwtTokenService,
     private val auditPublisher: AuditPublisher,
+    private val tokenRevocationPort: TokenRevocationPort,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -41,8 +44,14 @@ class RefreshTokenUseCase(
         }
 
         if (stored.isUsed() || stored.isRevoked()) {
-            // Reuse detection: revoke ALL sessions for this user (possible token theft)
+            // Reuse detection: revoke ALL sessions for this user (possible token theft).
+            // Also mark the user as force-logged-out in Redis so any live access token
+            // that was issued before this moment is immediately rejected.
             refreshTokenRepository.revokeAllForUser(stored.usuarioId)
+            tokenRevocationPort.forceLogoutUser(
+                userId = stored.usuarioId,
+                ttl = Duration.ofSeconds(jwtTokenService.accessTtlSeconds),
+            )
             auditPublisher.publish(
                 AuditPayload(
                     acao = "SUSPICIOUS_TOKEN_REUSE",

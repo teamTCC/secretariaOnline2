@@ -37,3 +37,10 @@ security:
   jwt:
     private-key: ${SECURITY_JWT_PRIVATE_KEY:PLACEHOLDER_REPLACE_ME}
     public-key: ${SECURITY_JWT_PUBLIC_KEY:PLACEHOLDER_REPLACE_ME}
+
+# Dev cookie settings — Secure=false so HttpOnly cookies work on plain HTTP (localhost)
+app:
+  security:
+    cookie:
+      secure: false
+      same-site: Lax

@@ -1,5 +1,6 @@
 package br.ufpr.sept.so2.modules.iam.security
 
+import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenRevocationPort
 import br.ufpr.sept.so2.modules.iam.infrastructure.services.JwtTokenService
 import br.ufpr.sept.so2.shared.security.AuthenticatedUser
 import io.jsonwebtoken.JwtException
@@ -14,9 +15,19 @@ import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 import java.util.UUID
 
+/**
+ * Extracts the access token from:
+ *  1. The `access_token` HttpOnly cookie (primary — browser flows)
+ *  2. The `Authorization: Bearer <token>` header (fallback — API/Swagger/httpie)
+ *
+ * After signature verification the token is checked against the Redis revocation store
+ * (individual JTI blacklist + per-user force-logout marker) before the authentication
+ * is set in the SecurityContext.
+ */
 @Component
 class JwtAuthenticationFilter(
     private val jwtTokenService: JwtTokenService,
+    private val tokenRevocationPort: TokenRevocationPort,
 ) : OncePerRequestFilter() {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -27,12 +38,27 @@ class JwtAuthenticationFilter(
     ) {
         extractToken(request)?.let { token ->
             try {
-                val claims = jwtTokenService.verify(token)
-                val userId = UUID.fromString(claims.payload.subject)
+                val jws = jwtTokenService.verify(token)
+                val payload = jws.payload
+
+                val jti = payload.id
+                val userId = UUID.fromString(payload.subject)
+                val issuedAt = payload.issuedAt
+
+                if (jti != null && tokenRevocationPort.isRevoked(jti)) {
+                    log.debug("Access token JTI {} is blacklisted — rejecting", jti)
+                    filterChain.doFilter(request, response)
+                    return
+                }
+
+                if (issuedAt != null && tokenRevocationPort.isUserForcedLogout(userId, issuedAt)) {
+                    log.debug("User {} has been force-logged-out — token issued before force-logout event", userId)
+                    filterChain.doFilter(request, response)
+                    return
+                }
 
                 @Suppress("UNCHECKED_CAST")
-                val authorities = (claims.payload["authorities"] as? List<String>)?.toSet() ?: emptySet()
-
+                val authorities = (payload["authorities"] as? List<String>)?.toSet() ?: emptySet()
                 val principal = AuthenticatedUser(userId = userId, authorities = authorities)
                 val grantedAuthorities = authorities.map { SimpleGrantedAuthority(it) }
 
@@ -48,9 +74,16 @@ class JwtAuthenticationFilter(
         filterChain.doFilter(request, response)
     }
 
+    /**
+     * Cookie takes priority over the Authorization header so that browser-based
+     * flows work seamlessly. API/Swagger/httpie callers may still use Bearer.
+     */
     private fun extractToken(request: HttpServletRequest): String? {
-        val bearerPrefix = "Bearer "
+        request.cookies?.firstOrNull { it.name == "access_token" }?.value
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return it }
+
         val header = request.getHeader("Authorization") ?: return null
-        return if (header.startsWith(bearerPrefix)) header.removePrefix(bearerPrefix).trim() else null
+        return if (header.startsWith("Bearer ")) header.removePrefix("Bearer ").trim() else null
     }
 }

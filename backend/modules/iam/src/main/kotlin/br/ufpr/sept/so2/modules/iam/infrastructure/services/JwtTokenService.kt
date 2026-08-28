@@ -29,6 +29,7 @@ class JwtTokenService(
     fun issueAccessToken(usuario: Usuario): String =
         Jwts
             .builder()
+            .id(UUID.randomUUID().toString())
             .issuer(issuer)
             .subject(usuario.id.toString())
             .claim("authorities", usuario.authorities().toList())

@@ -1,10 +1,38 @@
 # T-F0-001 — Login, refresh, logout e CSRF
 
 > **Transação:** [`T-F0-001-LOGIN.md`](../../transaçõesBackend/F0%20—%20Público/T-F0-001-LOGIN.md)  
-> **Diagrama:** [`US-F0-001-LOGIN.md`](../../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-001-LOGIN.md)  
-> **IDs:** nenhum UUID de negócio. Use `{{adminEmail}}` / `{{alunoEmail}}`.  
+> **Diagrama:** [`US-F0-001-LOGIN.md`](../../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-001-LOGIN.md)
 
 Controller: `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET /auth/csrf`.
+
+---
+
+## Dual Cookie — Como funciona nos testes
+
+Os tokens **não aparecem no body** das respostas. O backend define:
+
+| Cookie | Path | MaxAge |
+|--------|------|--------|
+| `access_token` | `/` | 900 s (15 min) |
+| `refresh_token` | `/auth` | 604800 s (7 dias) |
+
+Com httpie, use `--session <arquivo>` para que os cookies sejam guardados e reenviados automaticamente entre requests.
+
+**Fluxo recomendado (httpie CLI):**
+
+```bash
+# Cria/atualiza session file após login — cookies ficam salvos
+http --session=./session.json POST {{baseUrl}}/auth/login \
+  identificador="admin@ufpr.br" \
+  senha="Admin@123456"
+
+# Requests seguintes reenviam access_token via cookie automaticamente
+http --session=./session.json GET {{baseUrl}}/me
+```
+
+**Fallback Bearer (para Swagger UI ou testes pontuais):**
+
+O filtro aceita `Authorization: Bearer <token>` se o cookie não estiver presente. Para usar no Swagger UI, extraia o valor do cookie `access_token` (DevTools → Application → Cookies) e cole no campo `Authorization`.
 
 ---
 
@@ -16,6 +44,12 @@ Controller: `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` ·
 | URL | `{{baseUrl}}/auth/csrf` |
 | Auth | none |
 
+**httpie CLI:**
+
+```bash
+http --session=./session.json GET {{baseUrl}}/auth/csrf
+```
+
 **Esperado 200:**
 
 ```json
@@ -26,7 +60,7 @@ Controller: `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` ·
 }
 ```
 
-Copie `token` → `{{xsrfToken}}`. Confira o cookie `XSRF-TOKEN` no cookie jar.
+Salve `token` → `{{xsrfToken}}`. O cookie `XSRF-TOKEN` fica na session.
 
 ---
 
@@ -37,145 +71,121 @@ Copie `token` → `{{xsrfToken}}`. Confira o cookie `XSRF-TOKEN` no cookie jar.
 | Method | `POST` |
 | URL | `{{baseUrl}}/auth/login` |
 | Body | JSON abaixo |
+| Nota | CSRF não é exigido neste endpoint |
 
-Cole no Body:
-
-```json
-{
-  "identificador": "admin@ufpr.br",
-  "senha": "Admin@123456"
-}
+```bash
+http --session=./session.json POST {{baseUrl}}/auth/login \
+  identificador="admin@ufpr.br" \
+  senha="Admin@123456"
 ```
 
 **Esperado 200:**
 
-```json
+```
+HTTP/1.1 200 OK
+Set-Cookie: access_token=eyJhbGci…; HttpOnly; Path=/; SameSite=Lax; Max-Age=900
+Set-Cookie: refresh_token=abc…;    HttpOnly; Path=/auth; SameSite=Lax; Max-Age=604800
+
 {
-  "accessToken": "eyJhbGciOiJSUzI1NiJ9…",
-  "tokenType": "Bearer",
   "mustChangePassword": false,
   "mustAcceptLgpd": false
 }
 ```
 
-Cookies: `refresh_token` (HttpOnly, `Path=/auth`, Max-Age 604800).
-
-Copie `accessToken` → `{{accessToken}}`.
+> **`accessToken` não está mais no body.** Os cookies são gerenciados automaticamente pela session do httpie.
 
 Variantes de body:
 
-- Aluno e-mail: 
+- Aluno e-mail:
 
-```json
-{
-  "identificador": "ana.aluno@ufpr.br",
-  "senha": "AlunoS3nh@Forte!"
-}
+```bash
+http --session=./session.json POST {{baseUrl}}/auth/login \
+  identificador="ana.aluno@ufpr.br" senha="AlunoS3nh@Forte!"
 ```
 
-- Aluno GRR: 
+- Aluno GRR:
 
-```json
-{
-  "identificador": "20210001",
-  "senha": "AlunoS3nh@Forte!"
-}
+```bash
+http --session=./session.json POST {{baseUrl}}/auth/login \
+  identificador="20210001" senha="AlunoS3nh@Forte!"
 ```
 
 - Professor:
 
-```json
-{
-  "identificador": "prof.ana@ufpr.br",
-  "senha": "ProfS3nh@Forte!"
-}
+```bash
+http --session=./session.json POST {{baseUrl}}/auth/login \
+  identificador="prof.ana@ufpr.br" senha="ProfS3nh@Forte!"
 ```
 
 - Secretaria:
 
-```json
-{
-  "identificador": "secretaria@ufpr.br",
-  "senha": "SecrS3nh@Forte!"
-}
-```
-
-- Coordenador:
-
-```json
-{
-  "identificador": "coord.tads@ufpr.br",
-  "senha": "CoordS3nh@Forte!"
-}
-```
-
-- Egresso:
-
-```json
-{
-  "identificador": "ana.egressa@ufpr.br",
-  "senha": "EgressoS3nh@Forte!"
-}
+```bash
+http --session=./session.json POST {{baseUrl}}/auth/login \
+  identificador="secretaria@ufpr.br" senha="SecrS3nh@Forte!"
 ```
 
 ---
 
-## Passo 3 — Confirmar o JWT
+## Passo 3 — Confirmar acesso protegido
 
+```bash
+http --session=./session.json GET {{baseUrl}}/me
 ```
-GET {{baseUrl}}/me
-Authorization: Bearer {{accessToken}}
+
+O cookie `access_token` é enviado automaticamente (cookie jar da session).
+
+**Esperado 200:** objeto com `id`, `email`, `roles`, `_links`.
+
+**Sem session (sem cookie):** `401` Problem Details.
+
+**Com Bearer manual (fallback):**
+
+```bash
+# Extraia o access_token do cookie na session.json e use como Bearer
+http GET {{baseUrl}}/me "Authorization: Bearer eyJhbGci..."
 ```
-
-**Esperado 200:** objeto com `id`, `email`, `roles`, `_links` (`self`, `update-profile`, `change-password`, …). Copie `id` se for o usuário que você vai testar.
-
-Sem Bearer: **401** Problem Details (passo 5).
 
 ---
 
-## Passo 4 — Refresh (rotação)
+## Passo 4 — Refresh (rotação via cookie)
 
-| Campo | Valor |
-|-------|--------|
-| Method | `POST` |
-| URL | `{{baseUrl}}/auth/refresh` |
-| Body | JSON abaixo **ou** vazio se o cookie jar enviar `refresh_token` |
-
-Cole no Body:
-
-```json
-{
-  "refreshToken": "{{refreshToken}}"
-}
+```bash
+# Sem body — o refresh_token é lido do cookie (Path=/auth)
+http --session=./session.json POST {{baseUrl}}/auth/refresh
 ```
-
-Se o controller exige JSON, cole o valor do cookie `refresh_token` em `{{refreshToken}}`.
 
 **Esperado 200:**
 
-```json
+```
+Set-Cookie: access_token=<novo>; HttpOnly; Path=/; Max-Age=900
+Set-Cookie: refresh_token=<novo>; HttpOnly; Path=/auth; Max-Age=604800
+
 {
-  "accessToken": "eyJ…novo…",
-  "refreshToken": "uuid-opaco…",
-  "tokenType": "Bearer"
+  "mensagem": "Token renovado com sucesso."
 }
 ```
 
-Atualize `{{accessToken}}`. O cookie `refresh_token` é substituído.
+Os cookies são atualizados automaticamente na session. O token antigo é invalidado.
 
-**Reuso (teste negativo):** envie o **token antigo** de novo → **401** e todas as sessões revogadas (`SUSPICIOUS_TOKEN_REUSE` no audit). Depois disso o login precisa ser feito de novo.
+**Reuso (teste negativo):**
+
+Para simular reuso, copie manualmente o `refresh_token` da session.json **antes** do refresh, depois do refresh faça uma segunda chamada com o token antigo usando `Cookie: refresh_token=<token_antigo>`:
+
+```bash
+# Segundo refresh com token antigo → 401 + revogação de todas as sessões
+http POST {{baseUrl}}/auth/refresh "Cookie: refresh_token=<token_antigo>"
+```
+
+Esperado `401` + log `SUSPICIOUS_TOKEN_REUSE` na auditoria.
 
 ---
 
 ## Passo 5 — Credenciais inválidas (anti-enumeração)
 
-Cole no Body:
-
-```json
-{
-  "identificador": "naoexiste@ufpr.br",
-  "senha": "SenhaErrada123!"
-}
+```bash
+http POST {{baseUrl}}/auth/login \
+  identificador="naoexiste@ufpr.br" \
+  senha="SenhaErrada123!"
 ```
 
 **Esperado 401** `Content-Type: application/problem+json`:
@@ -188,8 +198,6 @@ Cole no Body:
   "detail": "Credenciais inválidas. Verifique seus dados e tente novamente."
 }
 ```
-
-A mensagem é **igual** para e-mail inexistente, senha errada e conta bloqueada. Não deve vazar “usuário não encontrado”.
 
 ---
 
@@ -209,44 +217,55 @@ Dispare o Passo 5 **6 vezes em menos de 1 minuto** com o mesmo identificador.
 }
 ```
 
-Header `Retry-After` presente. Bucket: 5 req/min por IP+identificador.
-
 ---
 
-## Passo 7 — Logout
+## Passo 7 — Logout (blacklist Redis + clear cookies)
+
+```bash
+http --session=./session.json POST {{baseUrl}}/auth/logout \
+  "X-XSRF-TOKEN: {{xsrfToken}}"
+```
+
+**Esperado 200:**
 
 ```
-POST {{baseUrl}}/auth/logout
-Authorization: Bearer {{accessToken}}
-X-XSRF-TOKEN: {{xsrfToken}}
+Set-Cookie: access_token=; HttpOnly; Path=/; Max-Age=0
+Set-Cookie: refresh_token=; HttpOnly; Path=/auth; Max-Age=0
+
+{
+  "mensagem": "Sessão encerrada com sucesso."
+}
 ```
 
-**Esperado 200** (mensagem de sessão encerrada). Cookie `refresh_token` apagado. `POST /auth/refresh` a seguir → 401.
+O que ocorre por baixo:
+1. JTI do access token é gravado no Redis (`auth:revoked:jti:<jti>`) com TTL = tempo restante
+2. Todos os refresh tokens do usuário são revogados no BD
+3. Ambos os cookies são limpos (MaxAge=0)
+
+Após logout, `GET {{baseUrl}}/me` → `401` (mesmo que o token não tenha expirado naturalmente).
 
 ---
 
 ## Variação `mustChangePassword`
 
-Login de usuário recém-criado (ainda com senha temporária):
+Login de usuário recém-criado:
 
 ```json
 {
-  "accessToken": "eyJ…",
-  "tokenType": "Bearer",
   "mustChangePassword": true,
   "mustAcceptLgpd": true
 }
 ```
 
-O token **é válido** — use-o só em [T-F1-002](../F1-aluno/T-F1-002-primeiro-acesso.md). `GET /bff/dashboard/aluno` pode ser bloqueado no SPA; na API o `@PreAuthorize` das rotas de negócio ainda vale.
+Cookies `access_token` e `refresh_token` são definidos normalmente. Use o token (via cookie) apenas em [T-F1-002](../F1-aluno/T-F1-002-primeiro-acesso.md).
 
 ---
 
 ## Checklist
 
 - [ ] CSRF 200 + `{{xsrfToken}}` preenchido
-- [ ] Login 200 + Bearer no environment
-- [ ] `GET /me` 200
-- [ ] Refresh 200 e token antigo recusado
+- [ ] Login 200 + cookies `access_token` e `refresh_token` definidos (NÃO no body)
+- [ ] `GET /me` 200 via cookie (sem Authorization header)
+- [ ] Refresh 200 e cookies renovados; token antigo recusado
 - [ ] Login inválido 401 genérico
-- [ ] Logout invalida refresh
+- [ ] Logout: cookies limpos + request posterior a `/me` retorna 401

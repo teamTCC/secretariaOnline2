@@ -11,22 +11,21 @@ data class LoginRequest(
     val senha: String,
 )
 
+/**
+ * Tokens (access + refresh) are delivered via HttpOnly cookies — NOT in this response body.
+ * The body only carries flags needed for the SPA to decide the post-login redirect.
+ */
 data class LoginResponse(
-    val accessToken: String,
-    val tokenType: String = "Bearer",
     val mustChangePassword: Boolean,
     val mustAcceptLgpd: Boolean,
 )
 
-data class RefreshTokenRequest(
-    @field:NotBlank(message = "Refresh token é obrigatório")
-    val refreshToken: String,
-)
-
-data class RefreshTokenResponse(
-    val accessToken: String,
-    val refreshToken: String,
-    val tokenType: String = "Bearer",
+/**
+ * Refresh endpoint reads the refresh token from cookie and sets new cookies.
+ * Body carries only the status message.
+ */
+data class RefreshResponse(
+    val mensagem: String = "Token renovado com sucesso.",
 )
 
 data class ForgotPasswordRequest(

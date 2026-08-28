@@ -81,6 +81,19 @@ app:
     allowed-origins:
       - ${CORS_ALLOWED_ORIGIN_1:http://localhost:3000}
       - ${CORS_ALLOWED_ORIGIN_2:http://localhost:5173}
+      - ${CORS_ALLOWED_ORIGIN_3:}
+    # Wildcard patterns — use for Vercel preview deployments
+    # e.g. CORS_ALLOWED_ORIGIN_PATTERN_1=https://*.vercel.app
+    allowed-origin-patterns:
+      - ${CORS_ALLOWED_ORIGIN_PATTERN_1:}
+      - ${CORS_ALLOWED_ORIGIN_PATTERN_2:}
+  security:
+    cookie:
+      # Set to false in dev/HTTP environments; always true when SameSite=None
+      secure: ${COOKIE_SECURE:true}
+      # Lax: same-site + top-level navigation (default, same-origin SPA)
+      # None: cross-origin SPA (Vercel → API on different domain) — requires Secure=true
+      same-site: ${COOKIE_SAME_SITE:Lax}
   certificate:
     private-key: ${CERT_PRIVATE_KEY:}
     public-key: ${CERT_PUBLIC_KEY:}

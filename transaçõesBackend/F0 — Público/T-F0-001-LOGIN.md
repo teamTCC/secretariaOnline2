@@ -1,7 +1,7 @@
-# T-F0-001 — Autenticação de Usuário (Login)
+# T-F0-001 — Autenticação de Usuário (Login / Refresh / Logout)
 
-> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-001-LOGIN.md`](../../foundationDocs/sequenceDiagrams/F0 — Público/US-F0-001-LOGIN.md)  
-> **Status:** ✅ Totalmente implementado
+> **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-001-LOGIN.md`](../../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-001-LOGIN.md)  
+> **Status:** ✅ Implementado — dual cookie HttpOnly (access_token + refresh_token)
 
 ---
 
@@ -11,13 +11,38 @@
 |-------|---------|
 | Controller (API) | [`backend/modules/iam/src/main/kotlin/.../iam/api/AuthController.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/api/AuthController.kt) |
 | DTOs de entrada/saída | [`backend/modules/iam/src/main/kotlin/.../iam/api/dto/AuthDtos.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/api/dto/AuthDtos.kt) |
-| Use Case (regras de negócio) | [`backend/modules/iam/src/main/kotlin/.../iam/application/LoginUseCase.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/LoginUseCase.kt) |
+| Use Case (login) | [`backend/modules/iam/src/main/kotlin/.../iam/application/LoginUseCase.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/LoginUseCase.kt) |
 | Use Case (renovação de token) | [`backend/modules/iam/src/main/kotlin/.../iam/application/RefreshTokenUseCase.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/RefreshTokenUseCase.kt) |
+| Revogação Redis (port) | [`backend/modules/iam/src/main/kotlin/.../iam/application/ports/out/TokenRevocationPort.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/ports/out/TokenRevocationPort.kt) |
+| Revogação Redis (adapter) | [`backend/modules/iam/src/main/kotlin/.../iam/infrastructure/adapters/RedisTokenRevocationAdapter.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/adapters/RedisTokenRevocationAdapter.kt) |
 | Rate Limit (Bucket4j) | [`backend/modules/iam/src/main/kotlin/.../iam/security/RateLimitFilter.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/security/RateLimitFilter.kt) |
 | JWT (emissão + verificação) | [`backend/modules/iam/src/main/kotlin/.../iam/infrastructure/services/JwtTokenService.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/services/JwtTokenService.kt) |
 | Argon2id (verificação de senha) | [`backend/modules/iam/src/main/kotlin/.../iam/infrastructure/services/Argon2PasswordService.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/services/Argon2PasswordService.kt) |
-| Filtro JWT (leitura do Bearer) | [`backend/modules/iam/src/main/kotlin/.../iam/security/JwtAuthenticationFilter.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/security/JwtAuthenticationFilter.kt) |
-| Teste | [`backend/modules/iam/src/test/kotlin/.../iam/application/LoginUseCaseTest.kt`](../../backend/modules/iam/src/test/kotlin/br/ufpr/sept/so2/modules/iam/application/LoginUseCaseTest.kt) |
+| Filtro JWT (cookie + Bearer fallback) | [`backend/modules/iam/src/main/kotlin/.../iam/security/JwtAuthenticationFilter.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/security/JwtAuthenticationFilter.kt) |
+
+---
+
+## Estratégia de Cookies (Dual Cookie HttpOnly)
+
+Ambos os tokens JWT são entregues **exclusivamente via cookies HttpOnly** — nenhum token aparece no corpo JSON das respostas.
+
+| Cookie | Path | Max-Age | HttpOnly | Secure | SameSite |
+|--------|------|---------|----------|--------|----------|
+| `access_token` | `/` | TTL do JWT (15 min padrão) | ✅ | env `COOKIE_SECURE` | env `COOKIE_SAME_SITE` |
+| `refresh_token` | `/auth` | 7 dias | ✅ | env `COOKIE_SECURE` | env `COOKIE_SAME_SITE` |
+
+**Path=/auth para o refresh token** garante que ele só é enviado para os endpoints `/auth/*`, reduzindo a superfície de exposição.
+
+### Configuração por ambiente
+
+| Ambiente | `COOKIE_SECURE` | `COOKIE_SAME_SITE` |
+|----------|-----------------|---------------------|
+| Dev local (HTTP) | `false` | `Lax` |
+| Contêiner Docker interno | `false` | `Lax` |
+| Prod HTTPS (mesmo domínio) | `true` | `Lax` |
+| Prod HTTPS (Vercel → API cross-origin) | `true` | `None` |
+
+> `SameSite=None` requer obrigatoriamente `Secure=true`. O `AuthController` aplica `secure=true` automaticamente quando `SameSite=None`.
 
 ---
 
@@ -34,7 +59,9 @@ POST /auth/login
     → Argon2id.verify(senha, senhaHash)
     → DB: INSERT refresh_token
     → DB: INSERT audit_log (LOGIN_SUCCESS)
-  → Response: 200 {accessToken} + Set-Cookie: refresh_token (httpOnly)
+  → Response: 200 {mustChangePassword, mustAcceptLgpd}
+             + Set-Cookie: access_token  (HttpOnly, Path=/)
+             + Set-Cookie: refresh_token (HttpOnly, Path=/auth)
 ```
 
 ### JSON de entrada (Request Body)
@@ -49,110 +76,58 @@ Content-Type: application/json
 }
 ```
 
-> `identificador` aceita **e-mail @ufpr.br**, **e-mail pessoal** ou **GRR numérico** (ex: `"20210001"`). O `LoginUseCase` normaliza com `.trim().lowercase()` antes do SELECT.
-
-### DTO de entrada
-
-```kotlin
-// AuthDtos.kt
-data class LoginRequest(
-    @field:NotBlank(message = "Identificador é obrigatório")
-    val identificador: String,
-    @field:NotBlank(message = "Senha é obrigatória")
-    val senha: String,
-)
-```
+> `identificador` aceita **e-mail @ufpr.br**, **e-mail pessoal** ou **GRR numérico** (ex: `"20210001"`).
 
 ### JSON de saída — sucesso (200)
 
-```json
+```
 HTTP/1.1 200 OK
-Set-Cookie: refresh_token=eyJhbGci...; HttpOnly; Secure; Path=/auth; SameSite=Lax; Max-Age=604800
+Set-Cookie: access_token=eyJhbGci...; HttpOnly; Path=/; SameSite=Lax; Max-Age=900
+Set-Cookie: refresh_token=abc123...; HttpOnly; Path=/auth; SameSite=Lax; Max-Age=604800
 
 {
-  "accessToken": "eyJhbGciOiJSUzI1NiJ9...",
-  "tokenType": "Bearer",
   "mustChangePassword": false,
   "mustAcceptLgpd": false
 }
 ```
 
-> **Nota sobre cookies:** O `refreshToken` **NÃO aparece no corpo JSON** da resposta — vai apenas no cookie `httpOnly`. O frontend nunca precisa ler o `refreshToken` via JavaScript. Isso é a implementação correta da segurança conforme o diagrama.
+> **Tokens NUNCA aparecem no corpo JSON.** O frontend não precisa de nenhum interceptor de token — o browser gerencia os cookies automaticamente.
 
 ### DTO de saída
 
 ```kotlin
-// AuthDtos.kt
 data class LoginResponse(
-    val accessToken: String,
-    val tokenType: String = "Bearer",
     val mustChangePassword: Boolean,
     val mustAcceptLgpd: Boolean,
 )
 ```
 
-### Como o JWT é emitido
+### Como o JWT é emitido (com JTI)
 
 O `JwtTokenService.issueAccessToken(usuario)` cria um RS256 JWT com:
+- **jti**: UUID único (necessário para revogação Redis no logout)
 - **sub**: UUID do usuário
-- **authorities**: lista de capabilities FGAC (ex: `["dashboard.view_own", "request.open", "formative.submit"]`)
-- **nome**: nome do usuário (para exibição no frontend)
+- **authorities**: lista de capabilities FGAC
+- **nome**: nome do usuário
 - **exp**: 15 minutos (configurável via `security.jwt.access-token-ttl-seconds`)
 - **iss**: `secretaria-online-2`
-
-```kotlin
-// JwtTokenService.kt
-fun issueAccessToken(usuario: Usuario): String =
-    Jwts.builder()
-        .issuer(issuer)
-        .subject(usuario.id.toString())
-        .claim("authorities", usuario.authorities().toList())
-        .claim("nome", usuario.nome)
-        .issuedAt(Date())
-        .expiration(Date(System.currentTimeMillis() + accessTtlSeconds * 1000))
-        .signWith(privateKey, Jwts.SIG.RS256)
-        .compact()
-```
 
 ---
 
 ## F0.1-b — Variação: `mustChangePassword = true`
 
-Quando a conta tem `senha_alterada = false` (primeiro acesso ou reset administrativo), a resposta muda apenas no campo `mustChangePassword`:
-
 ```json
 {
-  "accessToken": "eyJhbGci...",
-  "tokenType": "Bearer",
   "mustChangePassword": true,
   "mustAcceptLgpd": false
 }
 ```
 
-O frontend deve redirecionar para `/primeiro-acesso` e bloquear todas as outras rotas enquanto esse flag for `true`. O token emitido é válido — permite autenticar o `POST /auth/first-access`.
+O SPA redireciona para `/primeiro-acesso`. O token no cookie já está ativo — permite autenticar o `POST /auth/first-access`.
 
 ---
 
-## F0.1-c — Erro 401: Credenciais Inválidas (anti-enumeração)
-
-### Fluxo no UseCase
-
-```kotlin
-// LoginUseCase.kt
-val usuario = usuarioRepository.findByIdentificador(identificador)
-
-// Usuário inexistente OU inativo → mesma exceção (anti-enumeração)
-if (usuario == null || !usuario.ativo) {
-    auditPublisher.publish(AuditPayload(acao = "LOGIN_FAILED", ...))
-    throw InvalidCredentialsException()
-}
-
-// Senha errada → mesma exceção
-if (!passwordService.verify(command.senha, usuario.senhaHash)) {
-    handleFailedAttempt(usuario, command)
-    throw InvalidCredentialsException()
-}
-```
+## F0.1-c — Erro 401: Credenciais Inválidas
 
 ### JSON de saída — 401 (RFC 7807)
 
@@ -168,35 +143,11 @@ Content-Type: application/problem+json
 }
 ```
 
-> Não importa se o usuário não existe ou se a senha está errada — a mensagem é **sempre a mesma**, impedindo ataques de enumeração de contas.
+> Mensagem **idêntica** para e-mail inexistente, senha errada e conta bloqueada (anti-enumeração).
 
 ---
 
 ## F0.1-d — Erro 429: Rate Limit
-
-### Como funciona o `RateLimitFilter`
-
-O filtro intercepta `POST /auth/login` **antes** do `AuthController`. Usa Bucket4j com janela deslizante de 5 requisições por minuto, chave composta por `IP + identificador`.
-
-```kotlin
-// RateLimitFilter.kt
-val key = "${request.remoteAddr}:$identifier"
-val bucket = loginBuckets.computeIfAbsent(key) { buildLoginBucket() }
-
-if (!bucket.tryConsume(1)) {
-    response.status = 429
-    response.contentType = MediaType.APPLICATION_PROBLEM_JSON_VALUE
-    response.writer.write(objectMapper.writeValueAsString(mapOf(
-        "title" to "Muitas tentativas",
-        "status" to 429,
-        "detail" to "Muitas tentativas. Aguarde antes de tentar novamente.",
-        "type" to "https://secretariaonline.ufpr.br/errors/rate-limit"
-    )))
-    return // NÃO passa para o próximo filtro
-}
-```
-
-### JSON de saída — 429
 
 ```json
 HTTP/1.1 429 Too Many Requests
@@ -210,90 +161,124 @@ Content-Type: application/problem+json
 }
 ```
 
-> **Nota:** O 429 inclui `retryAfterSeconds` e o header `Retry-After`. O mesmo filtro limita `POST /auth/forgot-password` (3/h por email+IP), `GET /publico/solicitacoes/**` + `GET /publico/verificar-certificado/**` (10/min por IP) e `POST /publico/contato` (10/min por IP).
+Header `Retry-After` presente. Bucket: 5 req/min por IP+identificador.
 
 ---
 
-## F0.1-e — Erro 401: Conta Bloqueada
+## F0.1-e — Refresh Token: Rotação via Cookie
 
-Após 10 tentativas falhas consecutivas, a conta é bloqueada por 15 minutos:
-
-```kotlin
-// LoginUseCase.kt — handleFailedAttempt
-val newAttempts = usuario.tentativasFalhas + 1
-val bloqueadoAte = if (newAttempts >= Usuario.MAX_FAILED_ATTEMPTS) {
-    OffsetDateTime.now().plusMinutes(Usuario.LOCK_DURATION_MINUTES)
-} else null
-usuarioRepository.updateFailedAttempts(usuario.id, newAttempts, bloqueadoAte)
-
-auditPublisher.publish(AuditPayload(
-    acao = if (bloqueadoAte != null) "ACCOUNT_BLOCKED" else "LOGIN_FAILED",
-    ...
-))
-```
-
-A resposta HTTP é **idêntica** ao caso de credenciais inválidas (`401` com a mesma mensagem) — não revela ao cliente que a conta está bloqueada.
-
----
-
-## F0.1-f — Refresh Token: Rotação com Detecção de Reuso
-
-### Fluxo de renovação (normal)
+### Fluxo
 
 ```
 POST /auth/refresh
-  Body: { "refreshToken": "abc123..." }
+  (sem body — refresh_token lido do cookie HttpOnly automaticamente)
+  → AuthController.refresh()
+    → extrai refresh_token do cookie (HttpOnly)
   → RefreshTokenUseCase.execute()
-    → DB: SELECT refresh_token WHERE value = 'abc123...'
-    → isExpired()? → lança InvalidTokenException
-    → isUsed() ou isRevoked()? → RISCO DE ROUBO → revoga TODAS as sessões
+    → DB: SELECT refresh_token WHERE value = <cookie>
+    → isExpired()? → 401
+    → isUsed() ou isRevoked()? → RISCO DE ROUBO
+      → DB: revokeAllForUser
+      → Redis: forceLogoutUser(userId, TTL=accessTokenTTL) ← força expiração imediata
+      → 401
     → DB: markUsed(oldToken)
     → DB: INSERT novo refresh_token
-    → jwtTokenService.issueAccessToken(usuario)
-  → Response: { accessToken: "...", refreshToken: "..." } + Set-Cookie atualizado
+    → JWT: novo accessToken
+  → Response: 200 {mensagem}
+             + Set-Cookie: access_token  (novo, HttpOnly)
+             + Set-Cookie: refresh_token (novo, HttpOnly)
 ```
 
-### JSON de entrada
+### Saída — sucesso (200)
 
-```json
-POST /auth/refresh
-Content-Type: application/json
-
-{
-  "refreshToken": "abc-def-123-..."
-}
 ```
-
-### JSON de saída — sucesso (200)
-
-```json
 HTTP/1.1 200 OK
-Set-Cookie: refresh_token=<novo_token>; HttpOnly; Secure; Path=/auth; SameSite=Lax
+Set-Cookie: access_token=<novo>; HttpOnly; Path=/; SameSite=Lax; Max-Age=900
+Set-Cookie: refresh_token=<novo>; HttpOnly; Path=/auth; SameSite=Lax; Max-Age=604800
 
 {
-  "accessToken": "eyJhbGci...",
-  "refreshToken": "novo-token-aqui",
-  "tokenType": "Bearer"
+  "mensagem": "Token renovado com sucesso."
 }
 ```
 
-### Detecção de reuso (token theft protection)
+### Detecção de reuso com força-logout Redis
+
+Quando um token já-utilizado é apresentado:
+1. Todos os refresh tokens do usuário são revogados no BD
+2. Um marcador `auth:force-logout:user:<uuid>` é gravado no Redis com TTL = accessTokenTTL
+3. O `JwtAuthenticationFilter` rejeita qualquer access token com `iat < forceLogoutAt`
+4. O usuário é efectivamente "expulso" em ≤ tempo máximo de 1 request
+
+---
+
+## F0.1-f — Logout com Blacklist Redis
+
+### Fluxo
+
+```
+POST /auth/logout
+  Authorization: Bearer <access_token>  (ou cookie access_token)
+  X-XSRF-TOKEN: <token>
+  → AuthController.logout()
+    → extrai JTI + exp do access token atual
+    → Redis: SET auth:revoked:jti:<jti> "1" EX <ttl_restante>
+    → DB: revokeAllForUser(userId)
+    → limpa cookies access_token e refresh_token (MaxAge=0)
+  → 200 { mensagem }
+```
+
+### Saída — sucesso (200)
+
+```
+HTTP/1.1 200 OK
+Set-Cookie: access_token=; HttpOnly; Path=/; Max-Age=0
+Set-Cookie: refresh_token=; HttpOnly; Path=/auth; Max-Age=0
+
+{
+  "mensagem": "Sessão encerrada com sucesso."
+}
+```
+
+### Policiamento Redis: dois mecanismos
+
+| Mecanismo | Chave Redis | TTL | Uso |
+|-----------|-------------|-----|-----|
+| JTI blacklist | `auth:revoked:jti:<jti>` | Expiry do token | Logout individual |
+| Force-logout do usuário | `auth:force-logout:user:<uuid>` | accessTokenTTL | Reuso de refresh token detectado |
+
+O `JwtAuthenticationFilter` verifica **ambos** antes de aceitar um token:
 
 ```kotlin
-// RefreshTokenUseCase.kt
-if (stored.isUsed() || stored.isRevoked()) {
-    // POSSÍVEL ROUBO — revogar TODAS as sessões do usuário
-    refreshTokenRepository.revokeAllForUser(stored.usuarioId)
-    auditPublisher.publish(AuditPayload(
-        acao = "SUSPICIOUS_TOKEN_REUSE",
-        resultado = "DENIED",
-        detalhes = mapOf("razao" to "TOKEN_REUTILIZADO")
-    ))
-    throw InvalidTokenException("Token já utilizado — todas as sessões foram encerradas por segurança.")
-}
+// 1. JTI individualmente blacklistado?
+if (jti != null && tokenRevocationPort.isRevoked(jti)) → reject
+
+// 2. Usuário com force-logout mais recente que o iat do token?
+if (issuedAt != null && tokenRevocationPort.isUserForcedLogout(userId, issuedAt)) → reject
 ```
 
-Resposta: `401` + redirect para `/login`.
+---
+
+## Validação JWT por request (filtro)
+
+O `JwtAuthenticationFilter` roda em todo request:
+
+```
+Prioridade de extração do token:
+  1. Cookie access_token (HttpOnly — fluxo browser)
+  2. Authorization: Bearer <token> (fallback — httpie, Swagger, testes)
+```
+
+```kotlin
+private fun extractToken(request: HttpServletRequest): String? {
+    // Cookie primeiro
+    request.cookies?.firstOrNull { it.name == "access_token" }?.value
+        ?.takeIf { it.isNotBlank() }?.let { return it }
+
+    // Bearer fallback
+    val header = request.getHeader("Authorization") ?: return null
+    return if (header.startsWith("Bearer ")) header.removePrefix("Bearer ").trim() else null
+}
+```
 
 ---
 
@@ -309,48 +294,20 @@ Set-Cookie: XSRF-TOKEN=…; Path=/; SameSite=Lax
 
 Isentos: `/auth/login`, `/auth/refresh`, `/auth/forgot-password`, `/auth/reset-password`, Swagger, Actuator, JWKS.
 
-Implementação: `CookieCsrfTokenRepository.withHttpOnlyFalse()` + `SpaCsrfTokenRequestHandler` + `CsrfCookieFilter` em [`SecurityConfig.kt`](../../backend/app/src/main/kotlin/br/ufpr/sept/so2/config/SecurityConfig.kt). CORS permite o header `X-XSRF-TOKEN`.
-
----
-
-## Como o JWT é validado em cada requisição protegida
-
-O `JwtAuthenticationFilter` roda em todo request:
-
-```kotlin
-// JwtAuthenticationFilter.kt
-extractToken(request)?.let { token ->
-    val claims = jwtTokenService.verify(token)
-    val userId = UUID.fromString(claims.payload.subject)
-    val authorities = (claims.payload["authorities"] as? List<String>)?.toSet() ?: emptySet()
-    
-    val principal = AuthenticatedUser(userId = userId, authorities = authorities)
-    val authentication = UsernamePasswordAuthenticationToken(principal, null, grantedAuthorities)
-    SecurityContextHolder.getContext().authentication = authentication
-}
-```
-
-Depois, os controllers acessam o usuário autenticado com:
-
-```kotlin
-val user = currentUser() // helper em shared/security/AuthenticatedUser.kt
-val alunoId = user.userId
-val podeDeliberar = user.authorities.contains("request.deliberate")
-```
-
 ---
 
 ## Checklist de Verificação
 
-- [x] `POST /auth/login` → `200` com `accessToken` no body + `refresh_token` no cookie httpOnly
-- [x] Login com e-mail `@ufpr.br`, e-mail pessoal e GRR numérico — todos normalizados para lowercase
+- [x] `POST /auth/login` → `200` com flags `mustChangePassword/mustAcceptLgpd` + `access_token` e `refresh_token` nos cookies HttpOnly
+- [x] `accessToken` **não aparece** no corpo JSON
+- [x] `refreshToken` **não aparece** no corpo JSON
+- [x] Login com e-mail `@ufpr.br`, e-mail pessoal e GRR numérico
 - [x] `mustChangePassword: true` quando `senha_alterada = false`
-- [x] `mustAcceptLgpd: true` quando `aceite_lgpd_em` não está no metadata
-- [x] `401` com mensagem genérica para usuário inexistente E senha errada (anti-enumeração)
-- [x] `429` após 5 tentativas em 1 min (mesmo IP+identificador)
-- [x] Conta bloqueada após 10 falhas consecutivas — 401 sem revelar bloqueio
-- [x] `POST /auth/refresh` com token válido → novo par de tokens
-- [x] Reuso de refresh token → todas as sessões revogadas + `401`
-- [x] `retryAfterSeconds` no corpo 429 + header `Retry-After`
-- [x] `POST /auth/logout` → revoga todos os refresh tokens do usuário + apaga o cookie
-- [x] CSRF Double Submit: `GET /auth/csrf` emite cookie `XSRF-TOKEN` (não httpOnly) + header `X-XSRF-TOKEN`; login/refresh/forgot/reset são isentos
+- [x] `401` genérico para credenciais inválidas (anti-enumeração)
+- [x] `429` após 5 tentativas em 1 min
+- [x] `POST /auth/refresh` sem body → lê cookie → renova par de tokens via novos cookies
+- [x] Reuso de refresh token → revokeAllForUser (DB) + forceLogoutUser (Redis) + `401`
+- [x] `POST /auth/logout` → blacklist JTI no Redis + revoga refresh tokens no DB + limpa ambos os cookies
+- [x] `JwtAuthenticationFilter` verifica JTI blacklist + force-logout antes de aceitar o token
+- [x] Bearer fallback funciona para testes via httpie/Swagger
+- [x] CSRF Double Submit: `GET /auth/csrf` emite cookie `XSRF-TOKEN` + login/refresh/forgot/reset são isentos
