@@ -3,6 +3,8 @@
 Fonte canónica: [`diagrama_casos_de_uso_secretariaonline2.puml`](diagrama_casos_de_uso_secretariaonline2.puml).  
 Ordenação: primeiro **tipo** (categoria), depois **sigla** em ordem alfabética (ex.: UC-CRT-02 antes de UC-CRT-03).
 
+> **Nota:** UC-AUT-07 está nesta legenda. Os PNG gerados a partir do PlantUML **podem atrasar** — não assumir que o diagrama gráfico já contém o caso.
+
 ---
 
 ## Tipo: Ator primário (diagrama P1)
@@ -58,6 +60,7 @@ Ordenação: primeiro **tipo** (categoria), depois **sigla** em ordem alfabétic
 | UC-AUT-04 | Completar primeiro acesso |
 | UC-AUT-05 | Perfil e segurança |
 | UC-AUT-06 | Preferências de notificação |
+| UC-AUT-07 | Trocar OTT (deep-link) por sessão |
 | UC-CAD-01 | CRUD alunos |
 | UC-CAD-02 | CRUD cursos |
 | UC-CAD-03 | CRUD disciplinas |
@@ -103,7 +106,7 @@ Estes **não** são códigos UC oficiais; são identificadores internos do oval 
 
 | Sigla | Texto no diagrama | UC referenciadas (resumo) |
 |-------|-------------------|---------------------------|
-| z1 | Grupo UC-AUT-01 a UC-AUT-06 | UC-AUT-01 … UC-AUT-06 |
+| z1 | Grupo UC-AUT-01 a UC-AUT-06 | UC-AUT-01 … UC-AUT-06 (PlantUML). Legenda: também UC-AUT-07. |
 | z2 | Grupo UC-SOL-01 a UC-SOL-07 | UC-SOL-01 … UC-SOL-07 |
 | z3 | UC-CRT-01, UC-SOL-05, UC-FOR-02, UC-PRE-04 | UC-CRT-01, UC-SOL-05, UC-FOR-02, UC-PRE-04 |
 | z4 | Anexos / PDFs (SOL, FOR, EST, TCC) | âmbito funcional SOL, FOR, EST, TCC |
@@ -117,8 +120,9 @@ Elementos desenhados além dos códigos UC da tabela anterior (stereótipos e r�
 | Sigla / identificador | Tipo UML | Caso de uso base | Rótulo no diagrama |
 |-----------------------|----------|------------------|---------------------|
 | UC-AUT-04 | extend | UC-AUT-01 | `(extend) mustChangePassword` |
+| UC-AUT-07 | relacionado | UC-AUT-01 / deep-link | `POST /auth/ott` — troca OTT por sessão (ausente no PNG até o `.puml` ser atualizado) |
 | *(Ext. rascunho)* | extend | UC-SOL-01 | `(extend) rascunho opcional` — oval: "Ext.: salvar rascunho (condicional)" |
-| *(Ext. deep-link)* | extend | UC-SOL-04 | `(extend) deep-link JWT 1-uso` — oval: "Ext.: deep-link JWT 1-uso (?token=)" |
+| *(Ext. deep-link)* | extend | UC-SOL-04 | `(extend) deep-link JWT 1-uso` — oval PlantUML pode ainda mostrar `?token=`; as-built: `?ott=` + `POST /auth/ott` |
 | *(Inc. capability)* | include | UC-SOL-04 | `(include) capability + workflow S3` — oval: "Inc.: validar capability + workflow / motor S3" |
 
 **Nota:** UC-AUT-01, UC-SOL-01 e UC-SOL-04 também aparecem como **casos de uso base** na secção "Caso de uso — sigla formal" acima; esta secção só acrescenta as **relações** modeladas em P3. Includes análogos noutros UC: ver [`casos_de_uso.md`](casos_de_uso.md) secção 4.1.

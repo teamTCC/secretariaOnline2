@@ -53,7 +53,7 @@
 ## F5.18-D01 — GET /reports/secretary (cache MISS — filtros + 4 datasets)
 
 **Escopo:** happy path — secretaria acessa /secretaria/estatisticas com filtros; TanStack Query não tem cache; backend agrega 4 datasets e retorna payload único  
-**Atores:** Secretaria, WebApp, JwtFilter, ReportController, SecretaryReportUseCase, Postgres  
+**Atores:** Secretaria, WebApp, JwtFilter, ReportsController, ReportsQuery  
 **Pré-condições:** secretaria autenticada com `report.view_secretary`; cache TanStack Query ausente ou expirado (> 5 min)
 
 ```mermaid
@@ -65,29 +65,30 @@ sequenceDiagram
     end
     box #fff8ee Servidor
         participant JwtFilter
-        participant ReportController
-        participant SecretaryReportUC as SecretaryReportUseCase
-        participant Postgres
+        participant RC as ReportsController
+        participant Query as ReportsQuery
+        participant ReqPort as SolicitacaoBffReadPort
+        participant IamPort as IamBffReadPort
     end
 
-    Secretaria->>WebApp: acessa /secretaria/estatisticas?periodo=2025-2 &curso=TADS
-    WebApp->>JwtFilter: GET /reports/secretary?periodo=2025-2&curso=TADS (Bearer, report.view_secretary ✓)
-    JwtFilter->>JwtFilter: valida JWT + report.view_secretary ✓
-    JwtFilter->>ReportController: repassa (secretariaId, filtros)
-    ReportController->>SecretaryReportUC: execute(secretariaId, filtros)
-    SecretaryReportUC->>Postgres: SELECT agregado — 4 datasets × filtros aplicados
-    Postgres-->>SecretaryReportUC: solicitacoesPorTipo · evolucaoTemporal · distribuicaoPorEstado · rankingCursos
-    SecretaryReportUC-->>ReportController: SecretaryReportDto (4 arrays)
-    ReportController-->>WebApp: 200 {…}
-    WebApp->>WebApp: TanStack Query cache 5min
-    WebApp-->>Secretaria: DS/Chart × 4 renderizados + DS/DataTable drill-down
+    Secretaria->>WebApp: acessa /secretaria/estatisticas?periodo=2025-2&curso=TADS
+    WebApp->>JwtFilter: GET /reports/secretary?periodo=2025-2&curso=TADS (cookie)
+    JwtFilter->>RC: JWT ok + report.view_secretary ✓
+    RC->>Query: secretary(periodo, curso)
+    Query->>IamPort: countAlunosAtivos / countByRoleCode
+    Query->>ReqPort: countAbertas, countByType, countByEstado
+    IamPort-->>Query: kpis IAM
+    ReqPort-->>Query: datasets solicitações
+    Query-->>RC: SecretaryReportResponse
+    RC-->>WebApp: 200 {kpis, solicitacoesPorTipo, ...}
+    WebApp-->>Secretaria: DS/Chart × 4 + DS/DataTable drill-down
 ```
 
 **Notas:**
-- Passo 6: `SecretaryReportUseCase` executa 4 queries agregadas com os filtros recebidos (`periodoId`, `cursoId`). Podem ser executadas em paralelo (coroutines) ou via CTE para reduzir round-trips. O `cursoId=null` retorna dados de todos os cursos vinculados à `secretariaId` (RN-F5-011-02).
-- Passo 10: TanStack Query armazena o resultado com chave `['reports', 'secretary', { periodo, curso }]` e `staleTime=5min`. Enquanto não expirado, novas navegações para a mesma URL servem do cache (ver F5.18-D02).
-- CA-F5-011-02 (drill-down): após o render, clicar em barra/fatia filtra client-side o array do dataset correspondente e renderiza a `DS/DataTable` com paginação de 20 por página — sem HTTP adicional. DRY.
-- CA-F5-011-05 (URL): params `?periodo=2025-2&curso=TADS` são lidos pela URL ao montar o componente e passados como `defaultValues` dos selects + como parâmetros do GET. Mesma chamada deste diagrama.
+- BFF **nunca** acessa JPA/Postgres. Demais ports: `IamDashboardPort`, `TccDashboardPort`, `EstagioSummaryPort`, `FormativaBffReadPort`, `PresencaBffReadPort`, `AcademicoReadPort`.
+- Não existe `RelatoriosController` nem `SecretaryReportUseCase`.
+- Auth: cookie `access_token` (Bearer fallback). `_links` no relatório de coordenação é `Map<String,String>`.
+- TanStack Query chave `['reports', 'secretary', { periodo, curso }]` staleTime=5min (cache **client** — distinto do Redis `bff-dashboard` 60 s).
 
 **Lacunas:** nenhuma.
 
@@ -127,7 +128,7 @@ sequenceDiagram
 ## F5.11-ERRO-403 — 403 FGAC: report.view_secretary ausente
 
 **Escopo:** usuário sem `report.view_secretary` tenta acessar o endpoint de estatísticas  
-**Atores:** Secretaria, WebApp, JwtFilter, ReportController  
+**Atores:** Secretaria, WebApp, JwtFilter, ReportsController  
 **Pré-condições:** JWT válido; `report.view_secretary` ausente nas authorities
 
 ```mermaid
@@ -139,13 +140,13 @@ sequenceDiagram
     end
     box #fff8ee Servidor
         participant JwtFilter
-        participant ReportController
+        participant RC as ReportsController
     end
 
     Secretaria->>WebApp: acessa /secretaria/estatisticas (sem report.view_secretary)
-    WebApp->>JwtFilter: GET /reports/secretary?periodo=...&curso=... (Bearer, report.view_secretary ✗)
-    JwtFilter->>JwtFilter: valida JWT + report.view_secretary ✗ (authority ausente)
-    JwtFilter-->>WebApp: 403 Problem Details (access_denied, required: report.view_secretary)
+    WebApp->>JwtFilter: GET /reports/secretary?periodo=...&curso=... (cookie, report.view_secretary ✗)
+    JwtFilter->>JwtFilter: valida JWT + report.view_secretary ✗
+    JwtFilter-->>WebApp: 403 Problem Details (access_denied)
     WebApp-->>Secretaria: DS/AlertBanner error (acesso negado — tela inacessível)
 ```
 

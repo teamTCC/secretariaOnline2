@@ -63,7 +63,7 @@ sequenceDiagram
     end
 
     Professor->>WebApp: acessa /estagios?to=me
-    WebApp->>JwtFilter: GET /internships?canReview=true (Bearer)
+    WebApp->>JwtFilter: GET /internships?canReview=true (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + internship.review ✓
     JwtFilter->>InternshipController: repassa (professorId)
     InternshipController->>Postgres: SELECT internships WHERE orientadorId=professorId OR coeVinculo=professorId
@@ -108,7 +108,7 @@ sequenceDiagram
     ReviewDocUC->>Postgres: BEGIN TX
     ReviewDocUC->>Postgres: UPDATE internship_document SET estado=APROVADO
     ReviewDocUC->>Postgres: INSERT internship_event (PARECER_EMITIDO, decisao, parecer, actor_id)
-    ReviewDocUC->>Postgres: INSERT outbox_event (type=estagios.document_reviewed, {internshipId, docId})
+    ReviewDocUC->>Outbox: OutboxEventPublisher.enqueue(estagios.document_reviewed)
     ReviewDocUC->>Postgres: COMMIT
     ReviewDocUC-->>InternshipController: InternshipDocumentDto (APROVADO)
     InternshipController-->>WebApp: 200 {documento, estado: APROVADO, _links: [arquivar?]}
@@ -152,7 +152,7 @@ sequenceDiagram
     CloseInternshipUC->>Postgres: BEGIN TX
     CloseInternshipUC->>Postgres: UPDATE internship SET estado=CONCLUIDO, closedAt=now()
     CloseInternshipUC->>Postgres: INSERT internship_event (ARQUIVADO, actor_id)
-    CloseInternshipUC->>Postgres: INSERT outbox_event (type=estagios.closed, {internshipId, alunoId})
+    CloseInternshipUC->>Outbox: OutboxEventPublisher.enqueue(estagios.closed)
     CloseInternshipUC->>Postgres: COMMIT
     CloseInternshipUC-->>InternshipController: InternshipDto (CONCLUIDO)
     InternshipController-->>WebApp: 200 {estado: CONCLUIDO, _links: []}

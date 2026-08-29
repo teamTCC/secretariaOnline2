@@ -69,7 +69,7 @@ sequenceDiagram
     end
 
     Secretaria->>WebApp: acessa /secretaria/alunos + digita "João" na busca
-    WebApp->>JwtFilter: GET /students?q=João&page=0&size=20 (Bearer, user.manage_students ✓)
+    WebApp->>JwtFilter: GET /students?q=João&page=0&size=20 (cookie access_token, user.manage_students ✓)
     JwtFilter->>StudentController: repassa (secretariaId, cursoIds[])
     StudentController->>Postgres: SELECT usuario WHERE (nome ILIKE %João% OR grr=... OR email ILIKE)
     Postgres-->>StudentController: {content[], totalElements, _links por item}
@@ -112,7 +112,7 @@ sequenceDiagram
     StudentController->>Postgres: BEGIN TX
     StudentController->>Postgres: INSERT usuario(grr, cpf, email, senha_hash, mustChangePassword=true)
     StudentController->>Postgres: INSERT audit_log(user.create, operadorId=secretariaId, targetUserId)
-    StudentController->>Postgres: INSERT outbox_event(iam.student_created — email boas-vindas)
+    StudentController->>Outbox: OutboxEventPublisher.enqueue(iam.student_created)
     StudentController->>Postgres: COMMIT
     StudentController-->>WebApp: 201 {id, grr, nome, _links}
     WebApp-->>Secretaria: Drawer fecha + linha adicionada (dispatch async → link 10.1b)
@@ -120,7 +120,7 @@ sequenceDiagram
 
 **Notas:**
 - Passo 4: `StudentController` gera a senha temporária em memória (não persistida em texto claro) e calcula o hash Argon2id antes de abrir a TX — a senha temporária só trafega no payload do `outbox_event` (criptografado em trânsito via TLS; template de e-mail é o único ponto de exposição).
-- Passos 5–9: TX atômica — `INSERT usuario` + `INSERT audit_log` + `INSERT outbox_event` em COMMIT único; se falhar, nenhum evento é enfileirado e nenhum e-mail é enviado (padrão 10.1a).
+- Passos 5–9: TX atômica — `INSERT usuario` + `INSERT audit_log` + `OutboxEventPublisher.enqueue` em COMMIT único; se falhar, nenhum evento é enfileirado e nenhum e-mail é enviado (padrão 10.1a).
 - Passo 11: dispatch assíncrono via `OutboxDispatcher` envia e-mail de boas-vindas com senha temporária; DRY → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1b. `mustChangePassword=true` força troca no próximo login (DRY → [`F1/US-F1-002-PRIMEIRO-ACESSO.md`](../F1/US-F1-002-PRIMEIRO-ACESSO.md)).
 
 **Lacunas:** nenhuma.
@@ -192,7 +192,7 @@ sequenceDiagram
     StudentController->>Postgres: BEGIN TX
     StudentController->>Postgres: UPDATE usuario SET senha_hash=Argon2id(...), mustChangePassword=true
     StudentController->>Postgres: INSERT audit_log(user.password_reset, operadorId=secretariaId)
-    StudentController->>Postgres: INSERT outbox_event(iam.password_reset_by_admin — email)
+    StudentController->>Outbox: OutboxEventPublisher.enqueue(iam.password_reset_by_admin)
     StudentController->>Postgres: COMMIT
     StudentController-->>WebApp: 200 {message: senha_reset_ok}
     WebApp-->>Secretaria: toast "E-mail enviado ao aluno" (dispatch async → link 10.1b)

@@ -1,9 +1,9 @@
-# T-F0-001 — Login, refresh, logout e CSRF
+# T-F0-001 — Login, refresh, logout, CSRF e `POST /auth/ott`
 
 > **Transação:** [`T-F0-001-LOGIN.md`](../../transaçõesBackend/F0%20—%20Público/T-F0-001-LOGIN.md)  
 > **Diagrama:** [`US-F0-001-LOGIN.md`](../../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-001-LOGIN.md)
 
-Controller: `POST /auth/login` · `POST /auth/refresh` · `POST /auth/logout` · `GET /auth/csrf`.
+Controller: `POST /auth/login` · `POST /auth/refresh` · `POST /auth/ott` · `POST /auth/logout` · `GET /auth/csrf`.
 
 ---
 
@@ -247,6 +247,45 @@ Após logout, `GET {{baseUrl}}/me` → `401` imediatamente (não aguarda expirar
 
 ---
 
+## Passo 8 — `POST /auth/ott` (deep-link `?ott=`)
+
+Troca o JWT one-time do e-mail por sessão. CSRF **não** é exigido. `permitAll`. Rate limit **igual ao login** (`RateLimitFilter` 5/min).
+
+Pegue `{{ottJwt}}` no payload do outbox (`solicitacoes.*` com `generateOneTimeToken`) — [T-10.1](../transversal/T-10.1-outbox.md). O compose operacional **não** inclui Mailhog.
+
+```bash
+http --session=./session.json POST {{baseUrl}}/auth/ott \
+  token="{{ottJwt}}"
+```
+
+Body JSON:
+
+```json
+{ "token": "{{ottJwt}}" }
+```
+
+**Esperado 200** — mesmo contrato do login:
+
+```
+Set-Cookie: access_token=…; HttpOnly; Path=/
+Set-Cookie: refresh_token=…; HttpOnly; Path=/auth
+
+{
+  "mustChangePassword": false,
+  "mustAcceptLgpd": false
+}
+```
+
+JSON **sem** `accessToken`/`refreshToken`. Cookies na session.
+
+**Replay (teste negativo):** dispare o **mesmo** body de novo.
+
+**Esperado 401** Problem Details (`unauthorized`) — JTI já consumido.
+
+**Rate limit:** 6× `POST /auth/ott` no mesmo IP em < 1 min → **429** (mesmo filtro do Passo 6).
+
+---
+
 ## Variação `mustChangePassword`
 
 Login de usuário recém-criado:
@@ -270,3 +309,5 @@ Cookies `access_token` e `refresh_token` são definidos normalmente. Use o token
 - [ ] Refresh 200 e cookies renovados; token antigo recusado
 - [ ] Login inválido 401 genérico
 - [ ] Logout: cookies limpos + request posterior a `/me` retorna 401
+- [ ] `POST /auth/ott` 200 + cookies (flags no JSON, sem tokens)
+- [ ] Segundo `POST /auth/ott` com o mesmo token → 401

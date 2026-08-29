@@ -1,7 +1,8 @@
-# T-F0-001 — Autenticação de Usuário (Login / Refresh / Logout)
+# T-F0-001 — Autenticação de Usuário (Login / Refresh / Logout / OTT)
 
 > **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F0 — Público/US-F0-001-LOGIN.md`](../../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-001-LOGIN.md)  
-> **Status:** ✅ Implementado — dual cookie HttpOnly (access_token + refresh_token)
+> **As-built:** [`as-built-backend.md`](../../foundationDocs/analysis/as-built-backend.md) §2  
+> **Status:** ✅ Implementado — dual cookie HttpOnly (access_token + refresh_token); JSON **sem** tokens; `POST /auth/ott` (F0.1-g/h)
 
 ---
 
@@ -12,7 +13,10 @@
 | Controller (API) | [`backend/modules/iam/src/main/kotlin/.../iam/api/AuthController.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/api/AuthController.kt) |
 | DTOs de entrada/saída | [`backend/modules/iam/src/main/kotlin/.../iam/api/dto/AuthDtos.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/api/dto/AuthDtos.kt) |
 | Use Case (login) | [`backend/modules/iam/src/main/kotlin/.../iam/application/LoginUseCase.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/LoginUseCase.kt) |
+| Use Case (OTT / deep-link) | [`backend/modules/iam/src/main/kotlin/.../iam/application/ExchangeOttUseCase.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/ExchangeOttUseCase.kt) |
 | Use Case (renovação de token) | [`backend/modules/iam/src/main/kotlin/.../iam/application/RefreshTokenUseCase.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/RefreshTokenUseCase.kt) |
+| Port JWT | [`TokenServicePort`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/ports/out/TokenServicePort.kt) |
+| Port senha | [`PasswordHasherPort`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/ports/out/PasswordHasherPort.kt) |
 | Revogação Redis (port) | [`backend/modules/iam/src/main/kotlin/.../iam/application/ports/out/TokenRevocationPort.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/ports/out/TokenRevocationPort.kt) |
 | Revogação Redis (adapter) | [`backend/modules/iam/src/main/kotlin/.../iam/infrastructure/adapters/RedisTokenRevocationAdapter.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/adapters/RedisTokenRevocationAdapter.kt) |
 | Rate Limit (Bucket4j) | [`backend/modules/iam/src/main/kotlin/.../iam/security/RateLimitFilter.kt`](../../backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/security/RateLimitFilter.kt) |
@@ -55,13 +59,16 @@ POST /auth/login
   → RateLimitFilter (Bucket4j: 5 req/min por IP+identificador)
   → AuthController.login()
   → LoginUseCase.execute(LoginCommand)
-    → DB: SELECT usuario BY identificador
-    → Argon2id.verify(senha, senhaHash)
-    → DB: INSERT refresh_token
-    → DB: INSERT audit_log (LOGIN_SUCCESS)
+    → UsuarioRepository.findByIdentificador
+    → PasswordHasherPort.verify (Argon2id no adapter)
+    → TokenServicePort.issueAccessToken (claim sid)
+    → TokenRevocationPort.createSession → Redis auth:session:{sid}
+    → RefreshTokenRepository.save
+    → AuditPublisher LOGIN_SUCCESS
   → Response: 200 {mustChangePassword, mustAcceptLgpd}
              + Set-Cookie: access_token  (HttpOnly, Path=/)
              + Set-Cookie: refresh_token (HttpOnly, Path=/auth)
+             (JSON NUNCA contém accessToken / refreshToken)
 ```
 
 ### JSON de entrada (Request Body)
@@ -113,7 +120,7 @@ O `JwtTokenService.issueAccessToken(usuario, sid)` cria um RS256 JWT com:
 - **exp**: 15 minutos (configurável via `security.jwt.access-token-ttl-seconds`)
 - **iss**: `secretaria-online-2`
 
-O `LoginUseCase` grava `auth:session:<sid>` no Redis com TTL = accessTTL + 60s **antes** de retornar os tokens. Se o Redis estiver indisponível, a criação da sessão lança exceção e o login falha — sem sessão Redis, o token não funcionaria de qualquer forma.
+O `LoginUseCase` injeta `TokenServicePort` + `PasswordHasherPort` + `TokenRevocationPort` (Redis). Grava `auth:session:<sid>` com TTL = accessTTL + 60s **antes** de devolver `LoginResult` ao controller (tokens só para `Set-Cookie`). Redis indisponível → o login falha (fail-closed).
 
 ---
 
@@ -164,7 +171,7 @@ Content-Type: application/problem+json
 }
 ```
 
-Header `Retry-After` presente. Bucket: 5 req/min por IP+identificador.
+Header `Retry-After` presente. Bucket: 5 req/min por IP+identificador. O mesmo `RateLimitFilter` cobre `POST /auth/ott` (`isOtt`, 5/min por IP).
 
 ---
 
@@ -261,6 +268,71 @@ Todos os checks são **fail-closed**: Redis indisponível = request negado.
 
 ---
 
+## F0.1-g — `POST /auth/ott` (exchange do deep-link)
+
+Deep-link de e-mail (`/solicitacoes/:id?ott=<jwt>`) **não** faz login com senha. O cliente troca o JWT one-time por sessão.
+
+| | |
+|--|--|
+| Body | `{ "token": "<jwt>" }` (`OttExchangeRequest`) |
+| Auth | `permitAll` |
+| CSRF | ignorado (`SecurityConfig` ignore `/auth/ott`) |
+| Rate limit | `RateLimitFilter` (`isOtt`) — mesmo teto do login, **5/min por IP** |
+| Use case | `ExchangeOttUseCase` → `TokenServicePort.parse` (audience `request:{uuid}`) → consome JTI no Redis → `TokenServicePort.issueAccessToken` + `createSession` + `RefreshTokenRepository` + `AuditPublisher` `OTT_EXCHANGED` |
+
+### Fluxo (happy path)
+
+```
+POST /auth/ott
+  → RateLimitFilter (pass-through se < 5/min)
+  → AuthController.exchangeOtt()
+  → ExchangeOttUseCase.execute(ExchangeOttCommand)
+    → TokenServicePort.parse — audience deve começar com request:
+    → UsuarioRepository.findById(subject)
+    → TokenRevocationPort.isRevoked(jti)? → 401
+    → TokenRevocationPort.revokeAccessToken(jti)  (consome)
+    → Redis SET auth:session:{sid}
+    → INSERT refresh_token
+  → 200 Set-Cookie access_token + refresh_token
+     + { mustChangePassword, mustAcceptLgpd }
+```
+
+### JSON de entrada
+
+```json
+POST /auth/ott
+Content-Type: application/json
+
+{
+  "token": "{{ottJwt}}"
+}
+```
+
+### JSON de saída — 200 (mesmo contrato do login)
+
+```
+HTTP/1.1 200 OK
+Set-Cookie: access_token=…; HttpOnly; Path=/
+Set-Cookie: refresh_token=…; HttpOnly; Path=/auth
+
+{
+  "mustChangePassword": false,
+  "mustAcceptLgpd": false
+}
+```
+
+Tokens **somente** nos cookies. JSON **nunca** contém `accessToken`/`refreshToken`.
+
+Emissão do `?ott=` no e-mail: [T-10.1-OUTBOX](../transversal/T-10.1-OUTBOX.md) (10.1c).
+
+---
+
+## F0.1-h — Replay OTT → 401
+
+Segundo `POST /auth/ott` com o mesmo JWT: JTI já revogado no Redis → `InvalidTokenException` → **401** Problem Details (`unauthorized`). Mensagem de domínio: "Token já utilizado. Solicite um novo link." HTTP 401 (não 409). Token inválido, expirado ou audience ≠ `request:*` também 401.
+
+---
+
 ## Validação JWT por request (filtro)
 
 O `JwtAuthenticationFilter` roda em todo request:
@@ -292,7 +364,7 @@ GET /auth/csrf
 Set-Cookie: XSRF-TOKEN=…; Path=/; SameSite=Lax
 ```
 
-Isentos: `/auth/login`, `/auth/refresh`, `/auth/forgot-password`, `/auth/reset-password`, Swagger, Actuator, JWKS.
+Isentos (`SecurityConfig` CSRF ignore + `permitAll`): `/auth/login`, `/auth/refresh`, `/auth/ott`, `/auth/forgot-password`, `/auth/reset-password`, Swagger, Actuator, JWKS.
 
 ---
 
@@ -313,5 +385,6 @@ Isentos: `/auth/login`, `/auth/refresh`, `/auth/forgot-password`, `/auth/reset-p
 - [x] Logout instantâneo: token recusado imediatamente após logout (mesmo antes do TTL expirar)
 - [x] `JwtAuthenticationFilter` fail-closed: Redis indisponível = request não autenticado
 - [x] Bearer fallback funciona para testes via httpie/Swagger
-- [x] CSRF Double Submit: `GET /auth/csrf` emite cookie `XSRF-TOKEN` + login/refresh/forgot/reset são isentos
+- [x] CSRF Double Submit: `GET /auth/csrf` emite cookie `XSRF-TOKEN` + login/refresh/ott/forgot/reset são isentos (`permitAll`)
+- [x] `POST /auth/ott` → mesmo contrato do login (200 flags + cookies); replay 401; `RateLimitFilter` 5/min
 - [x] `ResetPasswordUseCase` força logout de todas as sessões após troca de senha

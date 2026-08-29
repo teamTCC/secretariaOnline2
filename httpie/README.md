@@ -1,7 +1,8 @@
 # HTTPie Desktop — Tutoriais de teste das transações
 
 > Pasta irmã de `[transaçõesBackend/](../transaçõesBackend/README.md)`.  
-> Cada tutorial descreve **como testar no HTTPie Desktop** o que as transações implementam no backend.
+> Cada tutorial descreve **como testar no HTTPie Desktop** o que as transações implementam no backend.  
+> Contrato vivo: [`as-built-backend.md`](../foundationDocs/analysis/as-built-backend.md).
 
 ---
 
@@ -23,7 +24,7 @@ Os **bodies JSON** estão **dentro de cada tutorial** — copie o bloco e cole n
 - **Base URL local:** `http://localhost:8080`
 - **Swagger (contrato vivo):** [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
 - **OpenAPI JSON:** [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
-- **Mailhog (e-mails de reset / senha temporária):** [http://localhost:8025](http://localhost:8025)
+- **E-mail em dev:** `ops/docker-compose.yml` **não** sobe Mailhog/Mailpit nesta passagem as-built. Leia o JWT de reset/OTT no payload de `outbox_event` (`GET /admin/outbox`). Catcher SMTP em `:8025` é opcional e fora do compose operacional.
 - **Placeholders:** valores `{{entre_colchetes}}` devem ser substituídos por IDs reais da sua base (veja o catálogo).
 - **Caminhos reais dos controllers** (não só os dos diagramas). Quando o diagrama e o código divergem, o tutorial usa o **código**.
 
@@ -48,7 +49,7 @@ Cada tutorial aponta de volta para:
 
 | ID           | Tutorial                                                                             | Transação                                                                                   | Diagrama                                                                                                                                                                                                |
 | ------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T-F0-001     | [Login / refresh / logout / CSRF](F0-publico/T-F0-001-login.md)                      | [T-F0-001](../transaçõesBackend/F0%20—%20Público/T-F0-001-LOGIN.md)                         | [US-F0-001](../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-001-LOGIN.md)                                                                                                                     |
+| T-F0-001     | [Login / refresh / logout / CSRF / **POST /auth/ott**](F0-publico/T-F0-001-login.md) | [T-F0-001](../transaçõesBackend/F0%20—%20Público/T-F0-001-LOGIN.md)                         | [US-F0-001](../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-001-LOGIN.md) (inclui F0.1-g OTT)                                                                                                 |
 | T-F0-002     | [Recuperar senha](F0-publico/T-F0-002-recuperar-senha.md)                            | [T-F0-002](../transaçõesBackend/F0%20—%20Público/T-F0-002-RECUPERAR-SENHA.md)               | [US-F0-002](../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-002-RECUPERAR-SENHA.md)                                                                                                           |
 | T-F0-003     | [Nova senha (token 1 uso)](F0-publico/T-F0-003-nova-senha.md)                        | [T-F0-003](../transaçõesBackend/F0%20—%20Público/T-F0-003-NOVA-SENHA.md)                    | [US-F0-003](../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-003-NOVA-SENHA.md)                                                                                                                |
 | T-F0-004     | [Contato público](F0-publico/T-F0-004-contato.md)                                    | [T-F0-004](../transaçõesBackend/F0%20—%20Público/T-F0-004-CONTATO.md)                       | [US-F0-004](../foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-004-CONTATO.md)                                                                                                                   |
@@ -138,11 +139,12 @@ Cada tutorial aponta de volta para:
 1. GET  /actuator/health
 2. GET  /auth/csrf                          → cookie XSRF-TOKEN
 3. POST /auth/login                         → cookies access_token + refresh_token (sem JWT no JSON)
+3b. POST /auth/ott {token}                  → mesmo 200 + cookies; 2ª chamada 401 (replay)
 4. GET  /me                                 → confirma sessão (cookie ou Bearer fallback)
 5. GET  /bff/dashboard/aluno                (session do aluno)
 6. GET  /requests/types                     → copie idRequestType e idCurso
 7. POST /requests                           → copie requestId
-8. GET  /requests/{id}                      → leia _links HATEOAS
+8. GET  /requests/{id}                      → leia `_links` (mapa rel → string URL, não HAL `{ href }`)
 9. Continue pela transação que estiver implementando
 ```
 

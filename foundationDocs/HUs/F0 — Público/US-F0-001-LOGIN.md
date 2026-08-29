@@ -7,7 +7,7 @@
 | **Tela** | F0.1 — `/login` |
 | **Prioridade** | **P0 — MVP v1** |
 | **Plataforma** | Web + Mobile |
-| **API primária** | `POST /auth/login` |
+| **API primária** | `POST /auth/login` (relacionado: `POST /auth/ott`) |
 | **Frames Figma** | [Default/Desktop](https://www.figma.com/design/y1ZC44ThrXH0CIpEWZITh6/secretariaOnline2?node-id=26-152) · [Error/Desktop](https://www.figma.com/design/y1ZC44ThrXH0CIpEWZITh6/secretariaOnline2?node-id=26-188) · [Loading/Desktop](https://www.figma.com/design/y1ZC44ThrXH0CIpEWZITh6/secretariaOnline2?node-id=26-255) · [Default/Mobile](https://www.figma.com/design/y1ZC44ThrXH0CIpEWZITh6/secretariaOnline2?node-id=26-295) |
 | **Spec de tela** | `telasFigma/telas0/F0.1-login.md` |
 | **Substitui (legado)** | `web/logarUsuario.jsp` [T01] |
@@ -30,7 +30,7 @@
 |----|-------|
 | **RN-F0.1-01** | O campo identificador aceita três formatos: e-mail institucional (`@ufpr.br`), e-mail pessoal cadastrado ou GRR (formato numérico). O backend normaliza o identificador antes da busca. |
 | **RN-F0.1-02** | A verificação de senha usa exclusivamente o algoritmo **Argon2id** (substituição ao MD5 do legado). Nenhum hash MD5 deve ser gerado ou comparado pelo novo sistema. |
-| **RN-F0.1-03** | Em caso de sucesso, o backend emite dois tokens: **access token** JWT (validade: 15 minutos) e **refresh token** rotativo (validade: 7 dias). O frontend web armazena o access token em memória e o refresh token em cookie `httpOnly + SameSite=Lax`. No mobile, ambos são armazenados em Keychain (iOS) ou Keystore (Android). |
+| **RN-F0.1-03** | Em caso de sucesso, o backend emite dois tokens **apenas em cookies HttpOnly** (nunca no JSON): `access_token` (JWT, Path=/, 15 min) e `refresh_token` (rotativo, Path=/auth, 7 dias). O JSON de 200 contém somente `mustChangePassword` e `mustAcceptLgpd`. JWT inclui claim `sid`; sessão Redis obrigatória em `auth:session:<sid>`. Fallback: `Authorization: Bearer`. Mobile: cookies/Keychain conforme o cliente. |
 | **RN-F0.1-04** | Se o campo `usuario.senha_alterada = false` (primeiro acesso ou reset administrativo), a resposta deve conter `mustChangePassword: true`. O frontend **bloqueia** o acesso ao dashboard e redireciona para `/primeiro-acesso`. |
 | **RN-F0.1-05** | Após autenticação bem-sucedida com `mustChangePassword = false`, o frontend redireciona para `/inicio` (F1.1). |
 
@@ -49,7 +49,8 @@
 
 | ID | Regra |
 |----|-------|
-| **RN-F0.1-12** | A proteção CSRF é implementada via **Double Submit Cookie** + `SameSite=Lax`. O legado usava JSESSIONID; o novo sistema **não** usa sessão do servidor. |
+| **RN-F0.1-12** | A proteção CSRF é implementada via **Double Submit Cookie** + `SameSite=Lax`. Não há sessão servlet (JSESSIONID). Há sessão Redis `auth:session:<sid>` obrigatória no login (claim JWT `sid`). |
+| **RN-F0.1-13** | Deep-link de e-mail usa `?ott=`. O cliente troca o JWT de uso único em `POST /auth/ott` (`ExchangeOttUseCase`): body `{ "token": "<jwt>" }`, audience `request:{uuid}`. Sucesso: mesmo contrato do login (cookies + JSON de flags). Replay do JTI → 401. Relacionado: UC-AUT-07. |
 
 ---
 
@@ -65,7 +66,9 @@ Quando preenche o campo "Email ou GRR" com identificador válido
   E clica no botão "Entrar"
 Então o componente DS/Button exibe estado "loading" (spinner + label "Entrando...")
   E o sistema realiza POST /auth/login com os campos como JSON
-  E ao receber 200 OK armazena o access token e o refresh token
+  E ao receber 200 OK o JSON contém apenas mustChangePassword e mustAcceptLgpd
+  E o browser recebe cookies HttpOnly access_token e refresh_token
+  E o backend cria sessão Redis auth:session:<sid>
   E redireciona para /inicio (F1.1)
   E o evento iam.login_success é registrado na tabela audit_log
 ```
@@ -76,7 +79,8 @@ Então o componente DS/Button exibe estado "loading" (spinner + label "Entrando.
 Dado que o usuário está em /login
   E a conta tem senha_alterada = false
 Quando informa credenciais corretas e clica em "Entrar"
-Então o sistema recebe mustChangePassword = true na resposta
+Então o sistema recebe mustChangePassword = true (e mustAcceptLgpd conforme o aceite) no JSON
+  E os tokens vão só nos cookies (não no body)
   E o frontend bloqueia o acesso ao dashboard
   E redireciona para /primeiro-acesso (F1.2)
   E não é possível navegar para /inicio até que a senha seja alterada
@@ -162,6 +166,16 @@ Então o card de autenticação ocupa toda a largura com margem horizontal de 16
   E todos os elementos são interativos com touch (target mínimo 44px)
 ```
 
+### CA-10 — Exchange OTT (relacionado — deep-link)
+
+```gherkin
+Dado que o usuário abriu um e-mail com URL contendo ?ott=<jwt>
+Quando o cliente envia POST /auth/ott com { "token": "<jwt>" }
+Então o sistema consome o JTI (Redis), emite sessão Redis e cookies access_token + refresh_token
+  E retorna 200 com o mesmo JSON do login (mustChangePassword, mustAcceptLgpd)
+  E uma segunda apresentação do mesmo token retorna 401
+```
+
 ---
 
 ## 4. Componentes de UI (Design System)
@@ -192,14 +206,20 @@ Content-Type: application/json
 }
 ```
 
-**Response (200 OK):**
+**Response (200 OK):** JSON **sem** tokens. Cookies HttpOnly: `access_token` (Path=/) e `refresh_token` (Path=/auth). Sessão Redis `auth:session:<sid>`.
 ```json
 {
-  "accessToken": "eyJ...",
-  "refreshToken": "eyJ...",
-  "mustChangePassword": false
+  "mustChangePassword": false,
+  "mustAcceptLgpd": false
 }
 ```
+
+```http
+Set-Cookie: access_token=<jwt>; HttpOnly; Secure; SameSite=Lax; Path=/
+Set-Cookie: refresh_token=<opaque>; HttpOnly; Secure; SameSite=Lax; Path=/auth
+```
+
+**Relacionado — `POST /auth/ott`:** body `{ "token": "<jwt>" }`. 200 = mesmo JSON + mesmos cookies. Replay → 401.
 
 **Response (401 — erro genérico):**
 ```json
@@ -254,4 +274,5 @@ Content-Type: application/json
 | Fluxo de autenticação | `foundationDocs/analysis/fluxos_por_perfil.md` §1 F0.1 |
 | Mapa de rotas | `foundationDocs/analysis/telas.md` §2 F0.1 |
 | Análise arquitetural (segurança) | `foundationDocs/analysis/analise_arquitetural_secretariaonline2.md` §8 |
+| As-built backend | `foundationDocs/analysis/as-built-backend.md` |
 | Página Figma F0 | [Telas / F0 — Público](https://www.figma.com/design/y1ZC44ThrXH0CIpEWZITh6/secretariaOnline2?node-id=18-152) |

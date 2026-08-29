@@ -59,7 +59,7 @@ sequenceDiagram
     end
 
     Aluno->>WebApp: acessa /certificados (filtros opcionais: tipo, ano)
-    WebApp->>JwtFilter: GET /certificates?beneficiario=me&tipo=:t&ano=:a (Bearer)
+    WebApp->>JwtFilter: GET /certificates?beneficiario=me&tipo=:t&ano=:a (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + certificate.view_own ✓
     JwtFilter->>CertificateController: repassa (alunoId, filtros)
     CertificateController->>Postgres: SELECT certificate WHERE aluno_id=:alunoId AND tipo LIKE :tipo AND EXTRACT(YEAR FROM emitido_em)=:ano
@@ -146,7 +146,9 @@ sequenceDiagram
     CertificateIssuerUseCase->>CertificateIssuerUseCase: gerar PDF (dados+QR Code) + SHA-256(pdf) + ED25519.sign(hash) em memória
     CertificateIssuerUseCase->>MinIO: PUT certificado_{hash}.pdf (upload via SDK interno)
     MinIO-->>CertificateIssuerUseCase: {fileKey, etag}
-    CertificateIssuerUseCase->>Postgres: BEGIN; INSERT certificate {alunoId, tipo, referenciaId, hash, signature, fileKey} + INSERT outbox_event(certificate.issued) + COMMIT
+    CertificateIssuerUseCase->>Postgres: BEGIN; INSERT certificate {alunoId, tipo, referenciaId, hash, signature, fileKey}
+    CertificateIssuerUseCase->>Outbox: OutboxEventPublisher.enqueue(certificate.issued)
+    CertificateIssuerUseCase->>Postgres: COMMIT
     OutboxScheduler->>NotificacaoDispatcher: dispatch(certificado.emitido, alunoId, tipo)
     NotificacaoDispatcher->>Postgres: INSERT notificacao_in_app + enqueue push FCM (async)
     NotificacaoDispatcher-->>OutboxScheduler: enviado
@@ -154,7 +156,7 @@ sequenceDiagram
 
 **Notas:**
 - Passo 4: self-call agrupa geração de PDF, cálculo SHA-256 e assinatura ED25519 — operações em memória no servidor. O QR Code (`/publico/verificar-certificado/:hash`) é embutido no PDF neste passo.
-- Passo 7: `INSERT certificate` + `INSERT outbox_event` + `UPDATE outbox_event (PROCESSED)` são atômicos. Falha no MinIO (passo 5-6) interrompe antes do BEGIN — o `outbox_event` original permanece PENDING e será reprocessado no próximo ciclo (at-least-once delivery).
+- Passo 7: `INSERT certificate` + `OutboxEventPublisher.enqueue` + `UPDATE outbox_event (PROCESSED)` são atômicos. Falha no MinIO (passo 5-6) interrompe antes do BEGIN — o `outbox_event` original permanece PENDING e será reprocessado no próximo ciclo (at-least-once delivery).
 - Passo 10: `notificacao_in_app` incrementa o KpiCard de certificados no Dashboard (CA-03 / US-F1-001 TanStack Query invalida ao próximo poll ou SSE).
 - O push FCM notifica: "Seu certificado de [atividade] foi emitido." (CA-03).
 - Dispatch detalhado do outbox: `transversal/10.1-outbox-notificacao.md`.

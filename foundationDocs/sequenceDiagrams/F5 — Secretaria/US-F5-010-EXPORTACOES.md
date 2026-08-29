@@ -40,7 +40,7 @@
 |------|--------|
 | CA-F5-010-03 — exibição EXPIRADO na lista | Mesmo GET /exports de D03; diferença é só `status: EXPIRADO` e ausência de `_links.download` (HATEOAS cego). DRY. |
 | CA-F5-010-04 — aria-live / acessibilidade | Atributo `aria-live="polite"` no componente de status; nenhuma chamada HTTP adicional. |
-| RN-F5-010-08 — dispatch e-mail export.ready | INSERT outbox mostrado em D02 (TX); dispatch async completo (multicanal) em `transversal/10.1`. DRY. |
+| RN-F5-010-08 — dispatch e-mail export.ready | `OutboxEventPublisher.enqueue` em D02 (TX); dispatch async completo (multicanal) em `transversal/10.1`. DRY. |
 | Exportação XLSX | Fora de escopo (apenas CSV). |
 | Agendamento automático de exportações | Fora de escopo. |
 | Exportações de logs de auditoria | Restrito ao Admin; fora de escopo desta HU. |
@@ -113,14 +113,14 @@ sequenceDiagram
     MinIO-->>ExportWorker: storageKey, ETag
     ExportWorker->>Postgres: BEGIN TX
     ExportWorker->>Postgres: UPDATE export_job SET status=PRONTO, storageKey, expiresAt=now()+7d
-    ExportWorker->>Postgres: INSERT outbox_event (exports.ready, {jobId, secretariaId})
+    ExportWorker->>Outbox: OutboxEventPublisher.enqueue(exports.ready)
     ExportWorker->>Postgres: COMMIT
 ```
 
 **Notas:**
 - Passo 1: `FOR UPDATE SKIP LOCKED` evita que múltiplas instâncias do worker processem o mesmo job concorrentemente (padrão Outbox/Competing Consumers).
 - Passo 5: a serialização acontece em memória. Para volumes muito grandes (N > threshold), `ExportWorker` pode usar streaming direto para MinIO via multipart upload — detalhe de implementação; fluxo lógico idêntico.
-- Passos 8–11: TX atômica — `UPDATE export_job(PRONTO)` + `INSERT outbox_event(exports.ready)` na mesma TX. Se o COMMIT falhar (ex.: queda após PUT MinIO), o worker não marcará o job como PRONTO e reprocessará na próxima execução (at-least-once).
+- Passos 8–11: TX atômica — `UPDATE export_job(PRONTO)` + `OutboxEventPublisher.enqueue(exports.ready)` na mesma TX. Se o COMMIT falhar (ex.: queda após PUT MinIO), o worker não marcará o job como PRONTO e reprocessará na próxima execução (at-least-once).
 - Passo 10: o `OutboxDispatcher` (a cada 5 s) lê `exports.ready` e envia e-mail com link de download — fluxo completo em → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md).
 
 **Lacunas:** nenhuma.

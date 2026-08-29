@@ -65,7 +65,7 @@ sequenceDiagram
     end
 
     Professor->>WebApp: acessa /tccs?to=me
-    WebApp->>JwtFilter: GET /tccs?canReview=true (Bearer)
+    WebApp->>JwtFilter: GET /tccs?canReview=true (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + tcc.supervise ✓
     JwtFilter->>TccController: repassa (professorId)
     TccController->>Postgres: SELECT tccs WHERE orientadorId=professorId OR banca_membroId=professorId
@@ -110,7 +110,7 @@ sequenceDiagram
     ReviewTccUC->>Postgres: BEGIN TX
     ReviewTccUC->>Postgres: INSERT tcc_evaluation (nota, parecer, situacao, actor_id)
     ReviewTccUC->>Postgres: UPDATE tcc SET situacao=APROVADO (nota >= nota_minima curso)
-    ReviewTccUC->>Postgres: INSERT outbox_event (type=tcc.reviewed, {tccId, alunoId, situacao})
+    ReviewTccUC->>Outbox: OutboxEventPublisher.enqueue(tcc.reviewed)
     ReviewTccUC->>Postgres: COMMIT
     ReviewTccUC-->>TccController: TccDto (APROVADO)
     TccController-->>WebApp: 200 {situacao: APROVADO, _links: []}

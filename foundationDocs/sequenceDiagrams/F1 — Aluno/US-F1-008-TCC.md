@@ -59,7 +59,7 @@ sequenceDiagram
     end
 
     Aluno->>WebApp: acessa /tccs
-    WebApp->>JwtFilter: GET /tccs?aluno=me (Bearer)
+    WebApp->>JwtFilter: GET /tccs?aluno=me (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + tcc.view_own ✓
     JwtFilter->>TccController: repassa (alunoId)
     TccController->>Postgres: SELECT tcc WHERE aluno_id=:alunoId ORDER BY created_at DESC
@@ -143,7 +143,9 @@ sequenceDiagram
     JwtFilter->>TccController: repassa (alunoId, tccId, fileKey)
     TccController->>SubmitTccUseCase: execute(cmd)
     SubmitTccUseCase->>Postgres: BEGIN; UPDATE tcc SET fileKey=:key, situacao=SUBMETIDO, updated_at=now()
-    SubmitTccUseCase->>Postgres: INSERT tcc_event {tipo=SUBMISSAO, data=now()} + INSERT outbox_event(tcc.submitted, tccId, bancaIds) + COMMIT
+    SubmitTccUseCase->>Postgres: INSERT tcc_event {tipo=SUBMISSAO, data=now()}
+    SubmitTccUseCase->>Outbox: OutboxEventPublisher.enqueue(tcc.submitted)
+    SubmitTccUseCase->>Postgres: COMMIT
     TccController-->>WebApp: 200 OK {situacao: SUBMETIDO, _links}
     WebApp-->>Aluno: badge "SUBMETIDO" + botão "Enviar versão final" desaparece
 ```
@@ -151,7 +153,7 @@ sequenceDiagram
 **Notas:**
 - Passo 1: upload do PDF ao MinIO ocorre **antes** desta chamada — DRY → `F1/US-F1-005-SOLICITACOES.md` F1.8-D03 (presigned PUT). O POST aqui registra apenas o `fileKey`.
 - Passo 6: a cláusula `AND aluno_id=:alunoId` é o guard IDOR — garante que nenhum aluno submeta versão ao TCC de outro.
-- Passo 7: `INSERT tcc_event` + `INSERT outbox_event` + `COMMIT` são atômicos. O `outbox_event` notifica todos os membros da banca (`bancaIds` obtidos do JOIN em passo 6). Dispatch: `transversal/10.1-outbox-notificacao.md`.
+- Passo 7: `INSERT tcc_event` + `OutboxEventPublisher.enqueue` + `COMMIT` são atômicos. O `outbox_event` notifica todos os membros da banca (`bancaIds` obtidos do JOIN em passo 6). Dispatch: `transversal/10.1-outbox-notificacao.md`.
 - Passo 9: `_links` retornado após submissão não contém mais `upload-final` — o botão desaparece sem lógica de estado hardcoded no frontend (CA-02 último critério).
 
 **Lacunas:** nenhuma.

@@ -14,6 +14,7 @@ erDiagram
     PERIODO_LETIVO ||--o{ CALENDARIO_ACADEMICO : define
 
     %% Solicitações (sem DELIBERATION, FORM_SCHEMA, WORKFLOW_DEFINITION — I2, I3)
+    %% REQUEST_LINE_ITEM é conceitual-only: NÃO existe no Flyway (linhas em request.dados JSONB)
     REQUEST_TYPE ||--o{ REQUEST : classifica
     REQUEST_TYPE ||--o{ CALENDARIO_ACADEMICO : vigencia
     USUARIO ||--o{ REQUEST : abre

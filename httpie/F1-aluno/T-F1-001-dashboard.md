@@ -4,7 +4,7 @@
 > **Diagrama:** `[US-F1-001](../../foundationDocs/sequenceDiagrams/F1%20—%20Aluno/US-F1-001-DASHBOARD.md)`  
 > **IDs:** nenhum no path. `alunoId` sai do JWT.  
 > **Authority:** `dashboard.view_own`  
-> **Código:** `DashboardAlunoController` (HTTP) + `DashboardAlunoQuery` (agregação + cache)
+> **Código:** `DashboardAlunoController` (HTTP) + `DashboardAlunoQuery` (ports: `SolicitacaoDashboardPort`, `PresencaDashboardPort`, `FormativaDashboardPort`, `IamDashboardPort` — sem JPA no BFF)
 
 Pré-requisito: login aluno ([T-F0-001](../F0-publico/T-F0-001-login.md) + [02 bootstrap](../02-bootstrap-usuarios-demo.md)). Cookie `access_token` na session **ou** Bearer fallback.
 

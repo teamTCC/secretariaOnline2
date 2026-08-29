@@ -74,5 +74,6 @@
   "auditAtorId": "COLE_UUID_ATOR",
   "dataExportJobId": "COLE_UUID_EXPORT_LGPD",
   "templateId": "COLE_UUID_TEMPLATE",
-  "resetToken": "COLE_JWT_1_USO_DO_EMAIL"
+  "resetToken": "COLE_JWT_1_USO_DO_EMAIL",
+  "ottJwt": "COLE_JWT_OTT_DO_DEEP_LINK"
 }

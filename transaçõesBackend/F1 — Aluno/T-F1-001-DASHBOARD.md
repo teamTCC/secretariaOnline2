@@ -1,6 +1,7 @@
 # T-F1-001 — Dashboard do Aluno (BFF)
 
 > **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-001-DASHBOARD.md`](../../foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-001-DASHBOARD.md)  
+> **As-built:** [`as-built-backend.md`](../../foundationDocs/analysis/as-built-backend.md) §3 (ports BFF; `_links` strings; cache 60s)  
 > **Status:** ✅ Implementado — BFF agrega dados em chamada única (cache Redis TTL 60s — ver T-10.7)
 
 Cada perfil tem **controller HTTP slim + query de agregação**. Não há um god-class único: aluno, professor, egresso e secretaria são classes distintas.
@@ -13,9 +14,10 @@ Cada perfil tem **controller HTTP slim + query de agregação**. Não há um god
 |-------|---------|
 | Controller (HTTP + FGAC) | [`bff/DashboardAlunoController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/DashboardAlunoController.kt) |
 | Query (cache-aside + agregação) | [`bff/application/DashboardAlunoQuery.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/application/DashboardAlunoQuery.kt) |
-| Repository de solicitações | [`solicitacoes/persistence/SolicitacoesJpaRepositories.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/infrastructure/persistence/SolicitacoesJpaRepositories.kt) |
-| Repository de eventos | `presenca/persistence/EventAttendanceJpaRepository` |
-| Repository de formativas | `formativas/persistence/FormativeEntryJpaRepository` |
+| Port solicitações | `SolicitacaoDashboardPort` → adapter no módulo `solicitacoes` |
+| Port eventos | `PresencaDashboardPort` → adapter no módulo `presenca` |
+| Port formativas | `FormativaDashboardPort` → adapter no módulo `formativas` |
+| Port IAM | `IamDashboardPort` → adapter no módulo `iam` |
 
 Outros dashboards (arquivos próprios, mesmo prefixo `/bff/dashboard`):
 
@@ -36,7 +38,9 @@ O endpoint `GET /bff/dashboard/aluno` agrega **4 blocos + KPIs** em uma única c
 3. **Eventos abertos** (`EM_ANDAMENTO`, máx. 3)
 4. **Últimas solicitações** (5 mais recentes)
 
-O controller só autoriza e delega. A lógica (queries, `try/catch` por bloco, cache-aside) vive em `DashboardAlunoQuery`.
+O controller só autoriza e delega. A lógica (queries, `try/catch` por bloco, cache-aside) vive em `DashboardAlunoQuery`, que injeta **ports** — nunca `*JpaRepository` de outro módulo.
+
+`_links` no JSON é objeto com **strings** (`self`, `novaSolicitacao`, `formativas`, `eventos`). Itens de pendência/evento usam `_link` (singular, string), não `_links.acao.href`.
 
 ---
 
@@ -101,7 +105,7 @@ Cookie: access_token=eyJhbGci...
 
 ## Como os `_links` HATEOAS funcionam
 
-O frontend usa `useActions(_links)` para renderizar condicionalmente botões e tiles. `novaSolicitacao` só entra no mapa se o JWT tiver `request.open`:
+O frontend usa `useActions(_links)` para renderizar condicionalmente botões e tiles. `_links` é `Map<String,String>` (valores = path), **não** HAL `EntityModel`. `novaSolicitacao` só entra no mapa se o JWT tiver `request.open`:
 
 ```kotlin
 // DashboardAlunoQuery.kt
@@ -168,4 +172,4 @@ Não ficam neste controller. Ver:
 - [x] `kpis.atendimentosPendentes` (count `PENDENTE_CIENCIA`)
 - [x] Cache Redis TTL=60s — ver T-10.7
 - [x] Degradação graciosa por bloco
-- [x] Controller slim; agregação em `DashboardAlunoQuery`
+- [x] Controller slim; agregação em `DashboardAlunoQuery` via ports (`SolicitacaoDashboardPort`, `PresencaDashboardPort`, `FormativaDashboardPort`, `IamDashboardPort`)

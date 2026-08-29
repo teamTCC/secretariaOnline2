@@ -2,7 +2,7 @@
 
 | HU | Tela | Capability | API primária | Fonte |
 |----|------|------------|-------------|-------|
-| US-F2-001 | F2.1 — `/egresso/inicio` | `alumni.view_own` | `GET /alumni/me` | `fluxos_por_perfil.md` §3 F2.1 |
+| US-F2-001 | F2.1 — `/egresso/inicio` | `alumni.view_own` | `GET /bff/dashboard/egresso` | `fluxos_por_perfil.md` §3 F2.1 · `as-built-backend.md` §3 |
 
 ---
 
@@ -10,9 +10,9 @@
 
 | ID diagrama | Origem (CA/RN) | Tipo | Status |
 |-------------|----------------|------|--------|
-| F2.1-D01 | CA-02 — `GET /alumni/me` dashboard read-only | SEQUENCIA | gerado |
-| F2.1-D02 | RN-F2.1-10 — `_links.download` diploma (presigned MinIO) | SEQUENCIA | gerado |
-| F2.1-D03 | CA-03 — reemitir certificado (`_links.reemitir`, mesmo hash) | SEQUENCIA | gerado |
+| F2.1-D01 | CA-02 — `GET /bff/dashboard/egresso` (Query + ports + cache 60 s) | SEQUENCIA | gerado |
+| F2.1-D02 | RN-F2.1-10 — diploma institucional `GET /graduations/{id}/diploma-url` (secretaria/admin) | SEQUENCIA | gerado |
+| F2.1-D03 | CA-03 — certificado `GET /certificates/{id}/download-url` (mesmo artefato) | SEQUENCIA | gerado |
 | F2.1-D04 | CA-04 — 403 egresso tenta rota exclusiva de aluno | ERRO | gerado |
 | — | CA-05 — navegar para /perfil e /certificados | DRY | → US-F1-003, US-F1-010 |
 | — | Trigger transição ALUNO→EGRESSO | DRY | → US-F5-005 (tela F5.11) |
@@ -45,7 +45,7 @@
 
 | CA/RN | Motivo |
 |-------|--------|
-| CA-06 — Skeleton (loading) | Estado TanStack Query `isFetching`; o backend executa o mesmo `GET /alumni/me` — sem fluxo distinto. |
+| CA-06 — Skeleton (loading) | Estado TanStack Query `isFetching`; o backend executa o mesmo `GET /bff/dashboard/egresso` — sem fluxo distinto. |
 | CA-06 — EmptyState (sem certificados) | Condicional de apresentação: `certificados[]` vazio retornado na resposta F2.1-D01 — sem nova chamada. |
 | CA-07 — aria-readonly, H1/H2, aria-label em botões | Atributos HTML estáticos; nenhuma chamada backend específica. |
 | RN-F2.1-02 — redirect `/erro/403` (client-side) | Parte do fluxo F2.1-D04 (RouteGuard); sem sequência backend adicional. |
@@ -53,118 +53,123 @@
 
 ---
 
-## F2.1-D01 — GET /alumni/me — Dashboard read-only (happy path)
+## F2.1-D01 — GET /bff/dashboard/egresso (happy path — cache MISS)
 
-**Escopo:** Egresso autenticado acessa `/egresso/inicio`; WebApp carrega dados via `GET /alumni/me` e renderiza dashboard estritamente read-only com diploma, certificados e dados de colação.
-**Atores:** Egresso, WebApp, AlumniController, GetAlumniProfileUC, Postgres
-**Pré-condições:** JWT válido com `alumni.view_own`; `usuario.role = EGRESSO`; registro de diploma existe na base.
+**Escopo:** Egresso autenticado acessa `/egresso/inicio`; BFF agrega via ports (sem JPA no módulo BFF).  
+**Atores:** Egresso, WebApp, JwtFilter, DashboardEgressoController, DashboardEgressoQuery, Redis  
+**Pré-condições:** cookie `access_token` com `alumni.view_own`
 
 ```mermaid
 sequenceDiagram
   autonumber
-  box #f4f4f4 Cliente
+  box #e8f4fc Cliente
     participant Egresso
     participant WebApp
   end
   box #fff8ee Servidor
-    participant AlumniCtrl as AlumniController
-    participant ProfileUC as GetAlumniProfileUC
-    participant PG as Postgres
+    participant JwtFilter
+    participant DashCtrl as DashboardEgressoController
+    participant Query as DashboardEgressoQuery
+    participant Redis
+    participant Ports
   end
 
   Egresso->>WebApp: navega /egresso/inicio
-  WebApp->>AlumniCtrl: GET /alumni/me (Bearer, alumni.view_own ✓)
-  AlumniCtrl->>ProfileUC: execute(alumniId)
-  ProfileUC->>PG: SELECT usuario, diploma, certificados[], colacao WHERE alumniId=:id
-  PG-->>ProfileUC: {nome, curso, conclusaoEm, cra, diploma, certificados[], _links}
-  ProfileUC-->>AlumniCtrl: AlumniProfile + _links por certificado + diploma
-  AlumniCtrl-->>WebApp: 200 {…}
-  WebApp-->>Egresso: renderiza dashboard read-only (KpiRow + Diploma + Certificados + Colacao)
+  WebApp->>JwtFilter: GET /bff/dashboard/egresso (cookie access_token)
+  JwtFilter->>DashCtrl: JWT ok + alumni.view_own ✓
+  DashCtrl->>Query: execute(egressoId)
+  Query->>Redis: GET bff-dashboard egresso:{id}
+  Redis-->>Query: MISS
+  Query->>Ports: Tcc + Iam + Presenca + Comunicacao + Formativa
+  Ports-->>Query: tccsDefendidos, certificados?, comunicados?
+  Query->>Redis: PUT bff-dashboard egresso:{id} TTL=60s
+  Query-->>DashCtrl: DashboardEgressoResponse
+  DashCtrl-->>WebApp: 200 {_links strings, certificados[]._link}
+  WebApp-->>Egresso: dashboard read-only (KPIs + certificados + comunicados)
 ```
 
 **Notas:**
-- Passo 4: consulta restrita ao `alumniId` do JWT — sem acesso a dados de outros egressos ou listagem de turma (RN-F2.1-06).
-- Passo 7: resposta HATEOAS — `_links.download` no objeto `diploma`; `_links.reemitir` por certificado. O frontend usa `useActions(resource)` para renderizar botões condicionalmente (RN-F2.1-09).
-- Dashboard **estritamente read-only**: nenhum CTA de criação; todos os badges em variante `success`/`neutral` "Concluído" (RN-F2.1-04/05).
+- **Não existe** `GET /alumni/me` nem `AlumniController` as-built. Dashboard = `DashboardEgressoQuery` + ports.
+- Cache name `bff-dashboard`, chave `egresso:{id}`, TTL **60 s**.
+- `_links` strings (`self`, `certificados`, `comunicados`). Itens de certificado usam `_link`.
+- Auth: cookie `access_token` (Bearer fallback).
 
-**Lacunas:** nenhuma.
+**Lacunas:** campos `nomeAluno`/`emailAluno`/`certificados`/`comunicados` podem vir null se o port ainda não popular — `_degraded` quando um port falha.
 
 ---
 
-## F2.1-D02 — Download Diploma (presigned MinIO)
+## F2.1-D02 — Diploma institucional (secretaria/admin)
 
-**Escopo:** Egresso clica em "Download" do diploma; backend gera URL pré-assinada do MinIO para o PDF oficial sem regenerar o artefato.
-**Atores:** Egresso, WebApp, AlumniController, DiplomaDownloadUC, MinIO
-**Pré-condições:** `_links.download` presente na resposta F2.1-D01; arquivo `diploma/{uuid}.pdf` armazenado no MinIO pela secretaria (US-F5-005).
+**Escopo:** staff gera URL pré-assinada do PDF de diploma — **não** é path de egresso (`alumni.view_own`).
+**Atores:** Secretaria, WebApp, GraduationController, GraduationQuery, MinIO
+**Pré-condições:** cookie com `diploma.register` ou `alumni.list` ou `system.admin`; registro de colação existe (US-F5-005)
 
 ```mermaid
 sequenceDiagram
   autonumber
-  box #f4f4f4 Cliente
-    participant Egresso
+  box #e8f4fc Cliente
+    participant Secretaria
     participant WebApp
   end
   box #fff8ee Servidor
-    participant AlumniCtrl as AlumniController
-    participant DownloadUC as DiplomaDownloadUC
+    participant GCtrl as GraduationController
+    participant Query as GraduationQuery
     participant MinIO
   end
 
-  Egresso->>WebApp: clica Download diploma (_links.download ✓)
-  WebApp->>AlumniCtrl: GET /alumni/me/diploma/download (Bearer, alumni.view_own ✓)
-  AlumniCtrl->>DownloadUC: presignedUrl(alumniId)
-  DownloadUC->>MinIO: presignedGet(key=diploma/{uuid}.pdf, ttl=900s)
-  MinIO-->>DownloadUC: URL pré-assinada (expira em 15 min)
-  DownloadUC-->>AlumniCtrl: {presignedUrl, fileName, expiresIn: 900}
-  AlumniCtrl-->>WebApp: 200 {url, fileName, expiresIn: 900}
-  WebApp-->>Egresso: abre download do PDF no browser
+  Secretaria->>WebApp: pede URL do diploma do registro
+  WebApp->>GCtrl: GET /graduations/{id}/diploma-url (cookie)
+  GCtrl->>Query: diplomaUrl(id)
+  Query->>MinIO: presigned GET (storage_key, TTL 15 min)
+  MinIO-->>Query: downloadUrl
+  Query-->>GCtrl: DiplomaUrlResponse
+  GCtrl-->>WebApp: 200 {downloadUrl}
+  WebApp-->>Secretaria: abre PDF no browser
 ```
 
 **Notas:**
-- Passo 4: `ttl=900s` — URL gerada sob demanda; nenhum novo artefato criado (RN-F2.1-10).
-- O PDF é o arquivo oficial armazenado pela secretaria ao registrar o diploma (US-F5-005 tela F5.11); não é regenerado nem reassinado.
-- Diferença de F2.1-D03 (reemissão de certificado): diploma não tem hash/assinatura ED25519 — é documento institucional direto via MinIO presigned.
+- `@PreAuthorize` as-built: `diploma.register` **ou** `alumni.list` **ou** `system.admin`. **Não** há mapping `alumni.view_own` neste path.
+- Egresso baixa certificado de participação em F2.1-D03 (`GET /certificates/{id}/download-url`), não o diploma institucional.
+- Não existe `GET /alumni/me` nem `AlumniController`.
 
 **Lacunas:** nenhuma.
 
 ---
 
-## F2.1-D03 — Reemitir Certificado (presigned MinIO — mesmo hash/assinatura)
+## F2.1-D03 — Download de certificado (mesmo artefato, sem reemitir)
 
-**Escopo:** Egresso clica em "Reemitir PDF" de um certificado; backend recupera o artefato já existente no MinIO e gera URL pré-assinada — **sem criar novo certificado** nem nova assinatura.
-**Atores:** Egresso, WebApp, CertificateController, ReissueCertificateUC, Postgres, MinIO
-**Pré-condições:** `_links.reemitir` presente para o certificado; `certificate.storage_key` aponta para PDF no MinIO com `estado = EMITIDO`.
+**Escopo:** egresso (dono) ou `event.manage` obtém presigned GET do PDF já emitido — sem novo hash/assinatura.
+**Atores:** Egresso, WebApp, CertificateController, CertificateQuery, MinIO
+**Pré-condições:** certificado emitido; `_links.download` de `GET /certificates/mine` ou `_link` do dashboard
 
 ```mermaid
 sequenceDiagram
   autonumber
-  box #f4f4f4 Cliente
+  box #e8f4fc Cliente
     participant Egresso
     participant WebApp
   end
   box #fff8ee Servidor
     participant CertCtrl as CertificateController
-    participant ReissueUC as ReissueCertificateUC
-    participant PG as Postgres
+    participant Query as CertificateQuery
     participant MinIO
   end
 
-  Egresso->>WebApp: clica Reemitir PDF (_links.reemitir ✓)
-  WebApp->>CertCtrl: POST /certificates/{id}/reissue (Bearer, alumni.view_own ✓)
-  CertCtrl->>ReissueUC: reissue(certId, alumniId)
-  ReissueUC->>PG: SELECT certificate WHERE id=certId AND owner=alumniId
-  PG-->>ReissueUC: {storage_key, hash, signature, estado=EMITIDO}
-  ReissueUC->>MinIO: presignedGet(storage_key, ttl=900s)
-  MinIO-->>ReissueUC: URL pré-assinada (expira em 15 min)
-  ReissueUC-->>CertCtrl: {presignedUrl, hash, fileName, expiresIn: 900}
-  CertCtrl-->>WebApp: 200 {…}
-  WebApp-->>Egresso: download inicia; hash disponível para verificação pública
+  Egresso->>WebApp: clica Baixar certificado (_links.download)
+  WebApp->>CertCtrl: GET /certificates/{id}/download-url (cookie)
+  CertCtrl->>Query: downloadUrl(id, userId, authorities)
+  Query->>Query: dono ou event.manage ✓
+  Query->>MinIO: generateDownloadUrl(storageKey, 15min)
+  MinIO-->>Query: downloadUrl
+  Query-->>CertCtrl: DownloadUrlResponse
+  CertCtrl-->>WebApp: 200 {downloadUrl}
+  WebApp-->>Egresso: browser inicia download do PDF
 ```
 
 **Notas:**
-- Passo 4–5: `owner = alumniId` previne IDOR — sem acesso a certificados de outros egressos (RN-F2.1-06).
-- Passos 6–7: **sem novo certificado** — apenas URL pré-assinada para o artefato existente. Hash SHA-256 e assinatura ED25519 são os originais (RN-F2.1-07/08). Nenhum `INSERT certificate` ocorre.
-- Passo 9: `_links.verify` aponta para `/publico/verificar-certificado/{hash}` — o certificado reemitido continua verificável publicamente (CA-03). Ver [`F0/US-F0-007-VERIFICAR-CERTIFICADO.md`](../F0/US-F0-007-VERIFICAR-CERTIFICADO.md).
+- As-built: só `GET /certificates/mine` e `GET /certificates/{id}/download-url`. **Não** há `POST .../reissue`.
+- IDOR: `idAluno == userId` ou `event.manage`. Hash/assinatura originais (CA-03).
+- Verificação pública: `/publico/verificar-certificado/{hash}` — [`F0/US-F0-007-VERIFICAR-CERTIFICADO.md`](../F0/US-F0-007-VERIFICAR-CERTIFICADO.md).
 
 **Lacunas:** nenhuma.
 

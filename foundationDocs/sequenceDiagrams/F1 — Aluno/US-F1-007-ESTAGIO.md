@@ -59,7 +59,7 @@ sequenceDiagram
     end
 
     Aluno->>WebApp: acessa /estagios
-    WebApp->>JwtFilter: GET /internships?aluno=me (Bearer)
+    WebApp->>JwtFilter: GET /internships?aluno=me (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + internship.view_own ✓
     JwtFilter->>InternshipsController: repassa (alunoId)
     InternshipsController->>Postgres: SELECT internship WHERE aluno_id=:alunoId ORDER BY vigencia_inicio DESC
@@ -142,7 +142,7 @@ sequenceDiagram
     JwtFilter->>InternshipsController: repassa (alunoId, internshipId, documentType, fileKey)
     InternshipsController->>UploadDocumentUseCase: execute(cmd)
     UploadDocumentUseCase->>Postgres: BEGIN; UPDATE internship_document SET fileKey=:key, status=AGUARDANDO_PARECER, updated_at=now()
-    UploadDocumentUseCase->>Postgres: INSERT outbox_event(estagios.document_uploaded, internshipId, alunoId, documentType)
+    UploadDocumentUseCase->>Outbox: OutboxEventPublisher.enqueue(estagios.document_uploaded)
     InternshipsController-->>WebApp: 200 OK {documentType, status: AGUARDANDO_PARECER}
     WebApp-->>Aluno: status do documento atualizado "Enviado — aguardando parecer do orientador."
 ```

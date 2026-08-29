@@ -60,7 +60,7 @@
 1. `GET /bff/dashboard/aluno` retorna saudação, KPIs (horas formativas validadas/requeridas, solicitações abertas, eventos hoje, certificados), pendências (máx. 3), últimas solicitações (máx. 5), próximos eventos (máx. 3), prazos, último parecer e `_links` (RN-F1.1-01 a RN-F1.1-06).
 2. Durante carregamento: `DS/Skeleton` por bloco; após 200 OK renderiza conteúdo completo (CA-01).
 3. KpiCard de horas formativas exibe `validadas / requeridas` com barra de progresso (CA-02).
-4. Pendências exibem CTA derivado de `_links` do item; seção vazia com `DS/EmptyState` quando ausente (CA-03, CA-06).
+4. Pendências exibem CTA derivado de `PendenciaItem._link` (string; não `_links.acao.href`); seção vazia com `DS/EmptyState` quando ausente (CA-03, CA-06).
 5. Solicitações com `prazo_em < now` exibem data em `status/danger` (CA-04, RN-F1.1-04).
 6. Eventos com janela ativa exibem badge "Janela aberta" quando aplicável (RN-F1.1-05).
 7. Degradação graciosa: falha em um módulo exibe `DS/AlertBanner` warning na seção afetada sem bloquear demais seções (CA-05).

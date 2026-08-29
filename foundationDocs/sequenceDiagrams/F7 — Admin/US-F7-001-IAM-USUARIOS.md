@@ -62,7 +62,7 @@ sequenceDiagram
     participant Postgres
 
     Admin->>WebApp: Acessa /admin/usuarios
-    WebApp->>IAMController: GET /admin/usuarios?q=&page=0&size=20 (Bearer, user.manage_all ✓)
+    WebApp->>IAMController: GET /admin/usuarios?q=&page=0&size=20 (cookie access_token, user.manage_all ✓)
     IAMController->>ListUsersUC: execute(UserQuery, Pageable)
     ListUsersUC->>Postgres: SELECT usuario BY filtros LIMIT 20 OFFSET 0
     Postgres-->>ListUsersUC: Page<UsuarioEntity>
@@ -104,7 +104,7 @@ sequenceDiagram
     CreateUserUC->>CreateUserUC: Argon2id.hash(senhaTemporaria)
     CreateUserUC->>Postgres: BEGIN TX
     CreateUserUC->>Postgres: INSERT usuario {mustChangePassword=true}
-    CreateUserUC->>Postgres: INSERT outbox_event(type='iam.user_created')
+    CreateUserUC->>Outbox: OutboxEventPublisher.enqueue(iam.user_created)
     CreateUserUC->>Postgres: INSERT audit_log {acao='CREATE_USER', operadorId}
     CreateUserUC->>Postgres: COMMIT
     CreateUserUC-->>IAMController: UsuarioDto + _links
@@ -182,7 +182,7 @@ sequenceDiagram
     ResetPasswordUC->>ResetPasswordUC: gerar JWT 1-uso (JTI único, exp=24h, aud=password-reset)
     ResetPasswordUC->>Postgres: BEGIN TX
     ResetPasswordUC->>Postgres: INSERT password_reset_token {jti, exp, used=false}
-    ResetPasswordUC->>Postgres: INSERT outbox_event(type='iam.password_reset_requested')
+    ResetPasswordUC->>Outbox: OutboxEventPublisher.enqueue(iam.password_reset_requested)
     ResetPasswordUC->>Postgres: INSERT audit_log {acao='RESET_PASSWORD', operadorId, targetUserId}
     ResetPasswordUC->>Postgres: COMMIT
     ResetPasswordUC-->>IAMController: {email, linkSent: true}

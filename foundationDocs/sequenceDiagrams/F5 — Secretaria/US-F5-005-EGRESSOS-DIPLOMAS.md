@@ -30,7 +30,7 @@
 
 | Padrão | Arquivo canônico |
 |--------|-----------------|
-| Outbox fase TX (INSERT outbox_event em COMMIT único) | [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1a |
+| Outbox fase TX (`OutboxEventPublisher.enqueue` no COMMIT) | [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1a |
 | Outbox fase dispatch (notificação push + e-mail ao egresso) | [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1b |
 | Dashboard Egresso (efeito downstream de F5.11-D03) | [`F2/US-F2-001-DASHBOARD-EGRESSO.md`](../F2/US-F2-001-DASHBOARD-EGRESSO.md) F2.1-D01 |
 | 403 FGAC capability ausente | [`F5/US-F5-003-GESTAO-ALUNOS.md`](US-F5-003-GESTAO-ALUNOS.md) F5.6-ERRO-03 |
@@ -150,7 +150,7 @@ sequenceDiagram
     GraduationController->>Postgres: BEGIN TX
     GraduationController->>Postgres: INSERT graduation_record(alunoId, cursoId, dataCerimonia, livro, folha, ata) × N
     GraduationController->>Postgres: UPDATE usuario SET role=EGRESSO, revoga capabilities ALUNO
-    GraduationController->>Postgres: INSERT outbox_event(egressos.graduated, alunoId) × N
+    GraduationController->>Outbox: OutboxEventPublisher.enqueue(egressos.graduated) xN
     GraduationController->>Postgres: INSERT audit_log(graduation.confirm, operadorId, alunoIds[])
     GraduationController->>Postgres: COMMIT
     GraduationController-->>WebApp: 201 {graduationIds[], total: N}
@@ -160,8 +160,8 @@ sequenceDiagram
 **Notas:**
 - Passos 4–9: **TX única** para todos os N alunos — se qualquer INSERT/UPDATE falhar, o COMMIT não ocorre e nenhum aluno é promovido (RN-F5-005-09). Evita estado parcial onde parte dos alunos seria EGRESSO e outra parte continuaria ALUNO.
 - Passo 6: `UPDATE usuario SET role=EGRESSO` remove as capabilities do perfil ALUNO (`request.view_own`, `event.attend`, etc.) e concede as do perfil EGRESSO (`alumni.view_own`). O JWT do aluno retém as capabilities antigas até expirar (15 min); em `/egresso/inicio` o frontend força re-autenticação via refresh token se detectar `role ≠ EGRESSO` (§5.2 F5.11b).
-- Passo 7: `INSERT outbox_event(egressos.graduated)` × N — um evento por aluno; `OutboxDispatcher` processa em lote e envia e-mail de boas-vindas ao portal do egresso (RN-F5-005-10). DRY → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1b para o dispatch completo.
-- Downstream (DRY): após a promoção, o aluno passa a ter acesso via `GET /alumni/me` (dashboard egresso) → [`F2/US-F2-001-DASHBOARD-EGRESSO.md`](../F2/US-F2-001-DASHBOARD-EGRESSO.md) F2.1-D01.
+- Passo 7: `OutboxEventPublisher.enqueue(egressos.graduated)` × N na mesma TX; dispatcher envia e-mail de boas-vindas (RN-F5-005-10). DRY → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1b.
+- Downstream (DRY): após a promoção, o egresso acessa `GET /bff/dashboard/egresso` → [`F2/US-F2-001-DASHBOARD-EGRESSO.md`](../F2/US-F2-001-DASHBOARD-EGRESSO.md) F2.1-D01.
 
 **Lacunas:** nenhuma.
 

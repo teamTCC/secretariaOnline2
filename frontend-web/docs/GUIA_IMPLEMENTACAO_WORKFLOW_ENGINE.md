@@ -6,16 +6,22 @@
 
 **Princípio diretor:** *uma engine, N tipos, três telas*. Adicionar tipo = publicar JSON no banco. **Nunca** criar `SegundaChamadaForm.tsx` / `TrancamentoPage.tsx`.
 
+**Contrato as-built (2026-08):** `foundationDocs/analysis/as-built-backend.md` — cookies HttpOnly (JSON **sem** JWT), `_links` **sempre** `Map<String,String>`, GET em `RequestQuery`, publish grava `request_type_version` (V019), deep-link `POST /auth/ott`.
+
 **Fontes de verdade (código, não HUs):**
 
-- `backend/modules/solicitacoes/api/RequestController.kt`
+- `backend/modules/solicitacoes/api/RequestController.kt` (HTTP fino)
+- `backend/modules/solicitacoes/application/RequestQuery.kt` (GET lista/detalhe/types + montagem de `_links`)
 - `backend/modules/solicitacoes/api/RequestAttachmentController.kt`
 - `backend/modules/solicitacoes/api/AdminRequestTypeController.kt`
 - `backend/modules/solicitacoes/api/dto/SolicitacoesRequests.kt`
 - `backend/modules/solicitacoes/api/dto/SolicitacoesResponses.kt`
 - `backend/modules/solicitacoes/api/SolicitacoesExceptionHandler.kt`
+- `backend/modules/iam/api/AuthController.kt` (`POST /auth/ott`)
 
-**Base URL:** sem `context-path` — paths abaixo são a raiz da API (`http://localhost:8080/requests/...`). CSRF: `GET /auth/csrf` + header `X-XSRF-TOKEN` em POST/PATCH/DELETE. Cookies HttpOnly para sessão (`withCredentials: true`).
+**Este arquivo é a cópia canônica** para o time de front. Ponteiro em `tutor/GUIA_IMPLEMENTACAO_WORKFLOW_ENGINE.md`.
+
+**Base URL:** sem `context-path` — paths abaixo são a raiz da API (`http://localhost:8080/requests/...`). CSRF: `GET /auth/csrf` + header `X-XSRF-TOKEN` em POST/PATCH/DELETE autenticados. Cookies HttpOnly (`credentials: 'include'`). JSON de login/ott **nunca** traz tokens.
 
 ---
 
@@ -45,7 +51,7 @@ Rotas de UI alinhadas a `agents/frontend-engineer.md` e telas Figma F1.7–F1.9.
 | `/solicitacoes/nova` atualizar rascunho | PATCH | `/requests/{id}/draft` | `request.open` | F1.8 |
 | `/solicitacoes/nova` submeter | POST | `/requests/{id}/submit` | `request.open` | F1.8 |
 | `/solicitacoes/nova` abrir direto | POST | `/requests` | `request.open` (ou `request.open_on_behalf`) | F1.8-D04 |
-| Lookup disciplinas | GET | `/academico/cursos/{cursoId}/disciplinas?search=` | autenticado | widget `entity-select` |
+| Lookup disciplinas | GET | `/academico/disciplinas?idCurso=&search=` **ou** `/academico/cursos/{cursoId}/disciplinas?search=` | autenticado | widget `entity-select` (seed `x-ui.endpoint`) |
 | Cursos (wizard) | GET | `/academico/cursos` | autenticado | F1.8 |
 | `/solicitacoes/:id` | GET | `/requests/{id}` | view_own / view_curso / deliberate | F1.9 |
 | Timeline | GET | `/requests/{id}/events` | idem | F1.9 |
@@ -86,13 +92,13 @@ Raiz obrigatória no publish: `"type": "object"` + `"properties"`. Extensões us
 | `format`: `uuid` / `date` | property | entity-select / date-picker |
 | `minLength`, `minimum`, `maximum`, `minItems` | property | Zod + mensagens |
 | `x-ui.widget` | property (ou no array) | registry de widgets |
-| `x-ui.endpoint` | `entity-select` | URL de lookup (ver §6 — o seed aponta um path que **não existe** tal qual) |
+| `x-ui.endpoint` | `entity-select` | URL de lookup — seed usa `/academico/disciplinas` (**existe** alias as-built; ver §6) |
 | `x-ui.rows` | textarea | altura |
 | `x-required-attachments` | raiz do schema | categorias obrigatórias no open/submit |
 
 ### 3.2 `dados` (payload da instância)
 
-Objeto JSONB. Campos de tabela = **arrays de objetos** (não `request_line_item` — isso é P2 / N/A MVP).
+Objeto JSONB. Campos de tabela = **arrays de objetos**. Não há tabela `request_line_item` no Flyway (V001–V019).
 
 Exemplo `TRANCAMENTO_DISCIPLINA` (seed `V011`):
 
@@ -137,7 +143,7 @@ Transições relevantes no seed completo:
 | `RESUBMIT` | `resubmit` | `request.open` + guard solicitante |
 | `REQUEST_REVIEW` | `request-review` | `request.open` + `allowsReview()` (INDEFERIDA + ≤ 5 dias) |
 
-Geração do `rel` no backend: `action.lowercase().replace('_', '-')` (`RequestController.getById`).
+Geração do `rel` no backend: `action.lowercase().replace('_', '-')` em `RequestQuery.getById`.
 
 ### 3.4 Tipos seedados (19)
 
@@ -149,43 +155,28 @@ Smoke rápido: `DECLARACAO_MATRICULA` (form simples). Tabela: `TRANCAMENTO_DISCI
 
 ## 4. HATEOAS
 
-Há **dois formatos** de `_links` no mesmo módulo. Normalize no `useActions`.
-
-### 4.1 Mapa `string` (DTOs com `@JsonProperty("_links")`)
-
-Usado em: create, draft, list item, protocol, transition applied.
-
-```json
-{ "_links": { "self": "/requests/{id}", "submit": "/requests/{id}/submit" } }
-```
-
-### 4.2 HAL Spring HATEOAS (`EntityModel`)
-
-Usado em: `GET /requests/{id}`, `GET /requests/types`, `GET /requests/types/{code}`.
+**Um formato só** (as-built 2026-08): `_links` é `Map<String,String>` em **todos** os DTOs de solicitação (lista, detalhe, types, create, draft, protocol, transition). **Não** há HAL `EntityModel` `{ rel: { href } }` neste módulo.
 
 ```json
 {
   "_links": {
-    "self": { "href": "/requests/{id}" },
-    "events": { "href": "/requests/{id}/events" },
-    "attachments": { "href": "/requests/{id}/attachments" },
-    "defer": { "href": "/requests/{id}/transitions", "type": "POST" }
+    "self": "/requests/{id}",
+    "events": "/requests/{id}/events",
+    "attachments": "/requests/{id}/attachments",
+    "defer": "/requests/{id}/transitions"
   }
 }
 ```
 
-Helper sugerido:
+Dashboard BFF: `_links` do envelope também são strings. Itens de pendência usam `_link` (singular, string) — **não** `_links.acao.href`.
 
 ```ts
-type LinkValue = string | { href: string; type?: string }
-
-function hrefOf(v: LinkValue | undefined): string | undefined {
-  if (!v) return undefined
-  return typeof v === 'string' ? v : v.href
+function hrefOf(links: Record<string, string> | undefined, rel: string): string | undefined {
+  return links?.[rel]
 }
 ```
 
-**Nunca** assuma que o `rel` da transição é o href da tela. O `href` de `defer` aponta para **o mesmo** `POST /requests/{id}/transitions`; o `rel` identifica a `action` (converter `defer` → `DEFER` com `rel.replace(/-/g, '_').toUpperCase()`).
+**Nunca** assuma que o `rel` da transição é uma URL de tela. O valor de `defer` aponta para **o mesmo** `POST /requests/{id}/transitions`; o `rel` identifica a `action` (converter `defer` → `DEFER` com `rel.replace(/-/g, '_').toUpperCase()`).
 
 ### 4.3 Tabela `rel` → UI
 
@@ -314,13 +305,16 @@ Um único registry. Chave: `property["x-ui"]?.widget` ou fallback por `type`/`fo
 | `date-picker` | `string` `YYYY-MM-DD` (`format: date`) | |
 | `file-upload` | **não** vai em `dados` | fluxo de anexos §8; categoria no confirm |
 
-### `entity-select` — gap do seed vs API real
+### `entity-select` — seed vs API
 
 Seeds usam `"endpoint": "/academico/disciplinas"` (às vezes `?enrolled=true` / `?tipo=ELETIVA`).
 
-**Path real:** `GET /academico/cursos/{cursoId}/disciplinas?search=` → `PageResponse` de `{ id, codigo, nome, creditos }` (`AcademicoController`). Query `enrolled` / `tipo` **não** existem hoje.
+**Paths reais (ambos 200):**
 
-Implementação: ignorar o host do `x-ui.endpoint` se não for 2xx; sempre prefixar com o `idCurso` do wizard. Exibir `codigo — nome`; gravar só o `id` (UUID) no campo.
+- `GET /academico/disciplinas?idCurso=&search=` — alias as-built; `enrolled`/`tipo` são **aceitos e ignorados** (não 400).
+- `GET /academico/cursos/{cursoId}/disciplinas?search=` — mesmo `PageResponse` `{ id, codigo, nome, creditos }`.
+
+Preferir o endpoint do schema; passar `idCurso` do wizard quando filtrar. Exibir `codigo — nome`; gravar só o `id` (UUID).
 
 Não criar um form por `RequestType`.
 
@@ -332,7 +326,7 @@ Não criar um form por `RequestType`.
 - Runtime: `dados.<campo> = [ { ...colunas }, ... ]`.
 - `minItems` no schema (ex.: 1) é validado no servidor no open/submit.
 - Célula com `entity-select` reusa o widget do §6.
-- **Não** há tabela `request_line_item` no MVP (`STATUS: pendente no backend` / N/A). Não esperar IDs de linha.
+- **Não** há tabela `request_line_item` no Flyway (V001–V019). Linhas vivem em `dados` JSONB. Não esperar IDs de linha.
 
 Seed de referência: `TRANCAMENTO_DISCIPLINA.disciplinas`, `ADIANTAMENTO_PERIODO.disciplinasDesejadas` (`V011` / `V017`).
 
@@ -431,11 +425,11 @@ Envelope `PageResponse`:
 }
 ```
 
-### Detalhe `GET /requests/{id}` (`RequestDetailResponse` + HAL)
+### Detalhe `GET /requests/{id}` (`RequestDetailResponse`)
 
-Campos: `id`, `numeroAnual`, `ano`, `protocolo`, `tipoCode`, `tipoDescricao`, `estado`, `idSolicitante`, `dados`, **`formSchema`**, `parecer`, `prazoEm`, `concludedAt`, `createdAt`, `_links`.
+Campos: `id`, `numeroAnual`, `ano`, `protocolo`, `tipoCode`, `tipoDescricao`, `estado`, `idSolicitante`, `dados`, **`formSchema`** (snapshot da versão da instância, V019), `idRequestTypeVersion`, `parecer`, `prazoEm`, `concludedAt`, `createdAt`, `_links` (mapa string).
 
-Render read-only: `DynamicForm` disabled com `formSchema` + `dados` (FE-12). Sem round-trip extra para o schema.
+Render read-only: `DynamicForm` disabled com `formSchema` + `dados` (FE-12). Sem round-trip extra para o schema. Não misturar com o `formSchema` atual de `GET /requests/types/{code}` se o admin republicou o tipo.
 
 Timeline: `GET /requests/{id}/events` → `[{ tipo, estadoAnterior, estadoNovo, parecer, createdAt }]` ASC.
 
@@ -479,15 +473,21 @@ Para `AUTORIZACAO_IMAGEM`, a authority alternativa `image_authorization.review` 
 
 Campo: `idSolicitanteOnBehalf` (UUID do aluno) no `POST /requests`. Sem `request.open_on_behalf` → **400**. O `idSolicitante` persistido é o do aluno.
 
-### Deep-link JWT
+### Deep-link JWT (`?ott=`)
 
 Após transições com `generateOneTimeToken: true` no `workflow_json` (ex. `FORWARD_TO_DELIBERATOR` em `SEGUNDA_CHAMADA`), o outbox monta:
 
 `{frontendUrl}/solicitacoes/{requestId}?ott={jwt}`
 
-- TTL 3 dias; audience `request:{requestId}`; JTI one-shot (blacklist no verify).
-- **STATUS: pendente no backend** — não existe `POST /auth/ott` (nem equivalente) para trocar o OTT por sessão. `AuthController` só faz login/refresh/cookies.
-- O que a tela deve fazer hoje: se `?ott=` estiver na URL, redirecionar para login se anônimo, depois `navigate(/solicitacoes/:id)` e **apagar** o query param. Não enviar o OTT como `Authorization` Bearer (não é access token). Quando o IAM expor exchange, o guia deve ser atualizado.
+- TTL 3 dias; audience `request:{requestId}`; JTI one-shot.
+- **As-built:** `POST /auth/ott` `{ "token": "<jwt>" }` (`ExchangeOttUseCase`) — `permitAll`, CSRF ignore, rate limit igual ao login. 200 = mesmo JSON do login (`mustChangePassword`, `mustAcceptLgpd`) + cookies de sessão. Replay → 401.
+
+O que a tela deve fazer:
+
+1. Se `?ott=` na URL: `POST /auth/ott` com o token (sem CSRF).
+2. Sucesso → cookies gravados → `navigate(/solicitacoes/:id)` e **apagar** o query param.
+3. **Não** enviar o OTT como `Authorization: Bearer` (não é access token).
+4. Se o exchange falhar (401): mensagem genérica + ir para `/login` (o deep-link já foi consumido ou expirou).
 
 ### BFF (contagens reais)
 
@@ -505,7 +505,7 @@ Não confundir com `GET /requests/types` (catálogo **publicado** para o wizard)
 |------|----------------|
 | POST | Cria com `ativo=false` (rascunho). Code uppercased, unique. |
 | PATCH `/{id}` | Atualiza `descricao`, `formSchema`, `workflowJson`, `prazoDias`. **Não** revalida schema (só o publish). Emite audit `request_type.update`. |
-| POST `/{id}/publish` | Valida estrutura do schema (`type=object` + `properties`) e do workflow (`initial` ∈ `states`, transições com `requiresAuthority` não vazio). Seta `ativo=true`. Audit `request_type.publish`. |
+| POST `/{id}/publish` | Valida estrutura do schema e do workflow. Seta `ativo=true`. Grava snapshot imutável em `request_type_version` (V019). Audit `request_type.publish`. |
 | DELETE | 204 se `count(request)=0`; senão 400. |
 
 Body `UpsertRequestTypeDto`:
@@ -524,7 +524,7 @@ Resposta: `{ id, code, descricao, formSchema, workflowJson, prazoDias, ativo }`.
 
 Cliente: preview com o mesmo `DynamicForm`. Publish inválido → 400 (`IllegalArgumentException`), não 422.
 
-**STATUS: pendente no backend (P2)** — não há `request_type_version`, enum `DRAFT`/`PUBLISHED`, nem FK `id_request_type_version` na instância. Equivalente MVP: `ativo=false|true`. Instâncias em andamento leem o tipo **atual** (sem snapshot).
+**As-built V019:** tabela `request_type_version` + `request.id_request_type_version`. Open/draft carimbam a versão vigente. GET detalhe usa o `form_schema` **da versão da instância**, não o tipo “ao vivo”. Continua **sem** enum `DRAFT`/`PUBLISHED` — equivalente: `ativo=false|true`.
 
 Três painéis (F7.4): lista (inclui rascunhos) | editor JSON schema + workflow | preview. Após publish, o tipo aparece em `GET /requests/types` **sem redeploy**.
 
@@ -559,7 +559,7 @@ Alinhar a `agents/frontend-engineer.md`. Blueprint visual: **DashboardA** (ignor
 frontend-web/src/
   shared/
     api/client.ts              # axios, cookies, CSRF, 401→refresh
-    api/hateoas.ts             # useActions + hrefOf (string | HAL)
+    api/hateoas.ts             # useActions(Record<string, string>) — sem HAL
     api/types/                 # gerados do OpenAPI (preferir a Swagger em /swagger-ui)
     ui/                        # DS: Button, DataTable, ActionBar, Badge…
     tokens/tokens.css
@@ -597,7 +597,7 @@ Query keys: `solicitacoesKeys.list(filters)`, `.detail(id)`, `.types()`, `.event
 | FE-03 | `DynamicForm` ← `form_schema` | documentado §6 |
 | FE-04 | `jsonSchemaToZod` + RHF; 422 servidor manda | documentado §1, §5, §12 |
 | FE-05 | `multi-select-table` | documentado §7 |
-| FE-06 | widgets + lookup | documentado §6 (gap endpoint disciplinas) |
+| FE-06 | widgets + lookup | documentado §6 (`GET /academico/disciplinas` alias) |
 | FE-07 | `AttachmentUpload` SHA-256 | documentado §8 |
 | FE-08 | `ReviewSummary` | documentado §5 passo 3 |
 | FE-09 | rascunho local vs `SaveDraft` | documentado §5 |
@@ -617,12 +617,12 @@ Do `agents/workflow-engine-specialist.md` e `frontend-engineer.md`:
 - `if (tipoCode === 'SEGUNDA_CHAMADA')` no form.
 - `if (userRole === 'SECRETARIO')` ou `estado === 'EM_DELIBERACAO'` para botões — usar `_links`.
 - Confiar só no Zod; ignorar 422.
-- Tratar `_links` HAL `{href}` e `_links` string como se fossem o mesmo shape sem normalizar.
+- Esperar HAL `{ href }` — o back unificou `_links` em **string**.
 - Upload direto no backend sem presign; pular `confirm`.
 - Enviar `action: "DEFERIR"` — o seed usa `DEFER`, `DENY`, `ASSIGN`, …
 - Hardcoded hex/px; copiar DashboardB/C.
-- Inventar `GET /academico/disciplinas` sem `{cursoId}`.
-- Usar o JWT `ott` como access token.
+- Usar o JWT `ott` como access token — exchange em `POST /auth/ott`.
+- Renderizar `formSchema` do catálogo publicado em vez do snapshot do GET detalhe (`idRequestTypeVersion`).
 
 ---
 
@@ -645,6 +645,8 @@ Do `agents/workflow-engine-specialist.md` e `frontend-engineer.md`:
 
 | Recurso | Caminho |
 |---------|---------|
+| As-built backend | `foundationDocs/analysis/as-built-backend.md` |
+| Plano de entregas front | `frontend-web/docs/plano-entregas-frontend.md` |
 | Gap report | `foundationDocs/analysis/workflow_engine_gap_report.md` |
 | Prompt desta entrega | `prompts/PROMPT_workflow_engine_auditoria_e_implementacao_backend.md` |
 | HU aluno | `foundationDocs/HUs/F1 — Aluno/US-F1-005-SOLICITACOES.md` |
@@ -659,4 +661,4 @@ Do `agents/workflow-engine-specialist.md` e `frontend-engineer.md`:
 
 ---
 
-*Última conferência de contratos: 2026-08-29 — Chat E (Fase 6), contra controllers/DTOs listados no topo.*
+*Última conferência de contratos: 2026-08-29 — as-built (V019, `_links` string, `POST /auth/ott`, `RequestQuery`).*

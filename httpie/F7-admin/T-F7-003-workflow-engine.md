@@ -4,7 +4,7 @@
 > **Diagrama:** [`US-F7-003`](../../foundationDocs/sequenceDiagrams/F7%20—%20Admin/US-F7-003-WORKFLOW-ENGINE.md)  
 > **Authority:** `request_type.manage` (listagem também com `request.view_curso`)
 
-O aluno só vê tipos **publicados** (`ativo=true`) em `GET /requests/types`.
+O aluno só vê tipos **ativos** (`ativo=true`) em `GET /requests/types`. Publish chama `ManageRequestTypeUseCase.publish` → snapshot **`request_type_version`** (Flyway **V019**). GET detalhe da instância usa o `form_schema` dessa versão.
 
 ---
 
@@ -90,7 +90,7 @@ Schema inválido → **422**.
 POST {{baseUrl}}/request-types/{{requestTypeId}}/publish
 ```
 
-Exige `formSchema` e `workflowJson` não vazios → `ativo=true`.
+Exige `formSchema` e `workflowJson` não vazios → `ativo=true` + linha em `request_type_version`.
 
 Confira no token **aluno**:
 

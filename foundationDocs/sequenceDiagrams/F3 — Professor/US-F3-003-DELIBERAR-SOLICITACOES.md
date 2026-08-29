@@ -67,7 +67,7 @@ sequenceDiagram
     end
 
     Professor->>WebApp: acessa /solicitacoes?to=me
-    WebApp->>JwtFilter: GET /requests?canDeliberate=true (Bearer)
+    WebApp->>JwtFilter: GET /requests?canDeliberate=true (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + request.deliberate ✓
     JwtFilter->>RequestController: repassa (professorId)
     RequestController->>Postgres: SELECT requests WHERE canDeliberate=true AND deliberatorId=professorId
@@ -113,7 +113,7 @@ sequenceDiagram
     DeliberateUC->>Postgres: BEGIN TX
     DeliberateUC->>Postgres: UPDATE request SET estado=DEFERIDA
     DeliberateUC->>Postgres: INSERT request_event + audit_log (DEFERIDA, parecer, actor_id)
-    DeliberateUC->>Postgres: INSERT outbox_event (type=solicitacoes.deliberated)
+    DeliberateUC->>Outbox: OutboxEventPublisher.enqueue(solicitacoes.deliberated)
     DeliberateUC->>Postgres: COMMIT
     DeliberateUC-->>RequestController: RequestDto (DEFERIDA)
     RequestController-->>WebApp: 200 {estado: DEFERIDA, _links: []}
@@ -122,7 +122,7 @@ sequenceDiagram
 
 **Notas:**
 - Passo 5: `DeliberateRequestUseCase` valida internamente (RN-F3.4-05): (a) authority `request.deliberate` × `Transition.requiresAuthority`, (b) guard do workflow satisfeito, (c) JTI não está na blacklist quando oriundo de deep-link. Qualquer falha → 422 sem executar TX (ver F3.4-ERRO-b).
-- Passos 6–10: transação atômica — `UPDATE estado`, `INSERT request_event`, `INSERT audit_log` e `INSERT outbox_event` gravados em uma única TX (padrão P4). Se o COMMIT falhar, nenhum evento é emitido.
+- Passos 6–10: transação atômica — `UPDATE estado`, `INSERT request_event`, `INSERT audit_log` e `OutboxEventPublisher.enqueue` em uma única TX (padrão P4). Se o COMMIT falhar, nenhum evento é emitido.
 - Passo 9: o `OutboxDispatcher` (a cada 5 s) consome `solicitacoes.deliberated` e dispara push/e-mail ao aluno. Fluxo completo → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md).
 - `RN-F3.4-07` — Solicitar ajustes: mesmo fluxo com `action=REQUEST_ADJUSTMENT`; `UPDATE request SET estado=EM_AJUSTE`; outbox `solicitacoes.adjustment_requested` → aluno recebe push para corrigir (DRY — não gera diagrama separado).
 - `RN-F3.4-08`: `request_event` e `audit_log` são imutáveis após COMMIT — sem UPDATE/DELETE permitidos nessas tabelas.
@@ -131,11 +131,11 @@ sequenceDiagram
 
 ---
 
-## F3.4-D03 — Deep-link por e-mail: professor não logado (preview → login → validar token)
+## F3.4-D03 — Deep-link por e-mail: `?ott=` → POST /auth/ott
 
-**Escopo:** professor acessa deep-link sem sessão ativa — modo preview, login e retorno com ações liberadas  
-**Atores:** Professor, WebApp, JwtFilter, RequestController, Postgres  
-**Pré-condições:** professor recebeu e-mail com URL `/solicitacoes/:id/deliberar?token=JWT`; JWT 1-uso com `audience=request-action`, `TTL=7d`, `JTI` único; professor não possui sessão ativa
+**Escopo:** professor abre o link do e-mail; SPA troca OTT por cookies e carrega a solicitação  
+**Atores:** Professor, WebApp, AuthController, ExchangeOttUseCase, RequestController  
+**Pré-condições:** e-mail com `/solicitacoes/{id}?ott=JWT`; audience `request:{uuid}`; JTI ainda não consumido
 
 ```mermaid
 sequenceDiagram
@@ -145,33 +145,25 @@ sequenceDiagram
         participant WebApp
     end
     box #fff8ee Servidor
-        participant JwtFilter
-        participant RequestController
-        participant Postgres
+        participant AC as AuthController
+        participant OttUC as ExchangeOttUseCase
+        participant RC as RequestController
     end
 
-    Professor->>WebApp: clica link do e-mail (/solicitacoes/:id/deliberar?token=JWT)
-    WebApp->>WebApp: detecta ausência de sessão → modo preview (sem chamada autenticada)
-    WebApp-->>Professor: tela preview read-only + DS/AlertBanner info "Faça login para deliberar esta solicitação."
-    Professor->>WebApp: clica "Fazer login" → /login?returnUrl=/solicitacoes/:id/deliberar?token=JWT
-    WebApp-->>Professor: fluxo login F0.1 (access token + refresh emitidos; ver F0.1-a)
-    Professor->>WebApp: retorna para /solicitacoes/:id/deliberar?token=JWT (sessão ativa)
-    WebApp->>JwtFilter: GET /requests/{id}?deepLinkToken=JWT (Bearer)
-    JwtFilter->>JwtFilter: valida session JWT + request.deliberate ✓
-    JwtFilter->>RequestController: repassa (professorId, deepLinkToken)
-    RequestController->>Postgres: SELECT jti_blacklist WHERE jti=tokenJTI
-    Postgres-->>RequestController: NOT FOUND (token válido; audience=request-action, sub=professorId)
-    RequestController->>Postgres: SELECT request, workflow_state WHERE id=requestId
-    Postgres-->>RequestController: RequestEntity + transições disponíveis
-    RequestController-->>WebApp: 200 {…}
-    WebApp-->>Professor: formulário deliberação com ações disponíveis (F3.4-D02 fluxo)
+    Professor->>WebApp: abre /solicitacoes/{id}?ott=JWT
+    WebApp->>AC: POST /auth/ott {token}
+    AC->>OttUC: execute(ExchangeOttCommand)
+    OttUC-->>AC: LoginResult (tokens só para Set-Cookie)
+    AC-->>WebApp: 200 Set-Cookie + {mustChangePassword, mustAcceptLgpd}
+    WebApp->>RC: GET /requests/{id} (cookie access_token)
+    RC-->>WebApp: 200 {estado, _links Map string}
+    WebApp-->>Professor: detalhe + ações do workflow
 ```
 
 **Notas:**
-- Passo 2: sem sessão ativa, o WebApp não faz chamada autenticada ao backend — o `requestId` e o `token` são lidos da query string para montar o preview local.
-- Passo 5: o fluxo de login é descrito em [`F0/US-F0-001-LOGIN.md`](../F0/US-F0-001-LOGIN.md) F0.1-a; a URL de retorno é preservada via `returnUrl` no state do React Router (ou query param).
-- Passos 10–11: o `RequestController` valida o `deepLinkToken`: `audience=request-action`, `sub=professorId` (professor correto), `exp` dentro do prazo, `JTI` não blacklisted. Token válido não é imediatamente blacklistado — só após a transição ser executada com sucesso (para permitir recarregar a página).
-- Após o passo 15, o professor preenche parecer e aplica ação → F3.4-D02 (o `JTI` é blacklistado na TX do `DeliberateRequestUseCase`).
+- As-built: e-mail usa `?ott=` (`RequestTransitionOutboxHandler`). Exchange em `POST /auth/ott` (`permitAll`, CSRF ignore, mesmo rate limit do login). Detalhe Redis/JTI: F0.1-g.
+- Sessão = cookies HttpOnly. **Não** há `GET /requests/{id}?deepLinkToken=` nem `/deliberar?token=`.
+- GET detalhe via `RequestQuery` (controller fino). Replay do OTT → F3.4-ERRO-a / F0.1-h.
 
 **Lacunas:** nenhuma.
 
@@ -206,7 +198,7 @@ sequenceDiagram
     ForwardUC->>Postgres: UPDATE request SET deliberatorId=targetUserId, estado=EM_DELIBERACAO
     ForwardUC->>Postgres: INSERT request_event + audit_log (ENCAMINHADA, actor_id, targetUserId)
     ForwardUC->>Postgres: INSERT deep_link_token (jti=UUID, sub=targetUserId, audience=request-action)
-    ForwardUC->>Postgres: INSERT outbox_event (type=solicitacoes.assigned_to_user, {requestId, targetUserId})
+    ForwardUC->>Outbox: OutboxEventPublisher.enqueue(solicitacoes.assigned_to_user)
     ForwardUC->>Postgres: COMMIT
     ForwardUC-->>RequestController: RequestDto (EM_DELIBERACAO)
     RequestController-->>WebApp: 200 {estado: EM_DELIBERACAO, _links: []}
@@ -215,18 +207,18 @@ sequenceDiagram
 
 **Notas:**
 - Passo 9: o novo JWT 1-uso é gravado na tabela `deep_link_token` (ou gerado on-the-fly pelo dispatcher no passo 10). A abordagem recomendada é gerar o JTI e armazená-lo na TX para garantir atomicidade com o outbox.
-- Passo 10: o `OutboxDispatcher` consome `solicitacoes.assigned_to_user`, renderiza o template `REQUEST_NEEDS_ACTION` com a URL `https://app/solicitacoes/{id}/deliberar?token={jwt}` e envia e-mail ao `targetUserId`. Fluxo completo → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md).
+- Passo 10: dispatcher consome o evento e envia e-mail com `/solicitacoes/{id}?ott=` — o destinatário troca em `POST /auth/ott` (10.1c / F0.1-g).
 - O professor originador não pode mais deliberar após o FORWARD — o `deliberatorId` mudou e o `canDeliberate` retorna `false` para ele.
 
 **Lacunas:** nenhuma.
 
 ---
 
-## F3.4-ERRO-a — Deep-link com JTI blacklisted (401 token_already_used)
+## F3.4-ERRO-a — OTT replay (JTI já consumido → 401)
 
-**Escopo:** professor tenta usar deep-link cujo JTI já foi consumido — CA-05, RN-F3.4-05  
-**Atores:** Professor, WebApp, JwtFilter, RequestController, Postgres  
-**Pré-condições:** professor logado (sessão válida); `deepLinkToken` na URL com JTI presente na blacklist
+**Escopo:** segundo `POST /auth/ott` com o mesmo JWT — CA-05  
+**Atores:** Professor, WebApp, AuthController, ExchangeOttUseCase  
+**Pré-condições:** JTI já revogado no Redis (F0.1-h)
 
 ```mermaid
 sequenceDiagram
@@ -236,24 +228,21 @@ sequenceDiagram
         participant WebApp
     end
     box #fff8ee Servidor
-        participant JwtFilter
-        participant RequestController
-        participant Postgres
+        participant AC as AuthController
+        participant OttUC as ExchangeOttUseCase
     end
 
-    Professor->>WebApp: acessa /solicitacoes/:id/deliberar?token=JWT (sessão ativa)
-    WebApp->>JwtFilter: GET /requests/{id}?deepLinkToken=JWT (Bearer)
-    JwtFilter->>JwtFilter: valida session JWT + request.deliberate ✓
-    JwtFilter->>RequestController: repassa (professorId, deepLinkToken)
-    RequestController->>Postgres: SELECT jti_blacklist WHERE jti=tokenJTI
-    Postgres-->>RequestController: FOUND (usedAt=timestamp — token já consumido)
-    RequestController-->>WebApp: 401 Problem Details (token_already_used)
-    WebApp-->>Professor: DS/EmptyState "Este link já foi utilizado." + botão "Ir para a fila"
+    Professor->>WebApp: reabre /solicitacoes/{id}?ott=JWT
+    WebApp->>AC: POST /auth/ott {token}
+    AC->>OttUC: execute(ExchangeOttCommand)
+    OttUC-->>AC: InvalidTokenException
+    AC-->>WebApp: 401 Problem Details (unauthorized)
+    WebApp-->>Professor: DS/AlertBanner — solicite um novo link
 ```
 
 **Notas:**
-- Passo 6: JTI encontrado na blacklist significa que uma transição já foi aplicada com esse token. A resposta é `401` (não `403`) pois o token em si é inválido, não a authority do usuário.
-- O professor pode acessar a solicitação normalmente via `/solicitacoes?to=me` (F3.3-D01) se ainda houver ações disponíveis para ele.
+- DRY → [`F0/US-F0-001-LOGIN.md`](../F0/US-F0-001-LOGIN.md) F0.1-h. Sem `GET ...?deepLinkToken=`.
+- Com sessão já válida (cookies), o professor usa `GET /requests/{id}` sem reenviar o OTT.
 
 **Lacunas:** nenhuma.
 

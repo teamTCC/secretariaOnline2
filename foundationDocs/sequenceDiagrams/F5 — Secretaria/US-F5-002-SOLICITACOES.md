@@ -120,7 +120,7 @@ sequenceDiagram
     JwtFilter->>RequestController: repassa (secretariaId, cursoIds[], request.internal_open ✓)
     RequestController->>Postgres: BEGIN TX
     RequestController->>Postgres: INSERT request(onBehalfOf=alunoId, estado=ABERTA, prazo_em)
-    RequestController->>Postgres: INSERT outbox_event(solicitacoes.opened)
+    RequestController->>Outbox: OutboxEventPublisher.enqueue(solicitacoes.opened)
     RequestController->>Postgres: COMMIT
     RequestController-->>WebApp: 201 {id, numero, estado=ABERTA, _links}
     WebApp-->>Secretaria: /solicitacoes/:id — titular=aluno (dispatch async → link 10.1b)
@@ -129,7 +129,7 @@ sequenceDiagram
 **Notas:**
 - Passo 4: busca com trigramas PostgreSQL (`pg_trgm`) para nome; `GRR` por igualdade exata; `AND curso_id IN cursoIds[]` restringe a alunos da competência da secretária (RN-F5-002-06 — validado também no POST, passo 9).
 - Passo 7: o wizard percorre os 3 passos de F1.8 (tipos elegíveis → formulário dinâmico → revisar); a diferença é o campo adicional `Combobox` de aluno (RN-F5-002-05). DRY → [`F1/US-F1-005-SOLICITACOES.md`](../F1/US-F1-005-SOLICITACOES.md) F1.8-D02, F1.8-D03 para as etapas de tipos e upload de anexo.
-- Passos 10–13: transação atômica — `INSERT request` + `INSERT outbox_event` em único COMMIT; se falhar, nenhum evento é enfileirado (padrão 10.1a). `numero_anual` gerado atomicamente (`ano-NNNN`).
+- Passos 10–13: transação atômica — `INSERT request` + `OutboxEventPublisher.enqueue` em único COMMIT; se falhar, nenhum evento é enfileirado (padrão 10.1a). `numero_anual` gerado atomicamente (`ano-NNNN`).
 - Passo 15: dispatch assíncrono notifica o aluno titular (in-app + push + email) via `OutboxDispatcher` → DRY [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1b.
 
 **Lacunas:** nenhuma.
@@ -166,7 +166,7 @@ sequenceDiagram
     JwtFilter->>RequestController: repassa (secretariaId, request.deliberate ✓)
     RequestController->>Postgres: BEGIN TX
     RequestController->>Postgres: UPDATE request SET estado=DEFERIDA; INSERT request_event
-    RequestController->>Postgres: INSERT outbox_event(solicitacoes.deliberated)
+    RequestController->>Outbox: OutboxEventPublisher.enqueue(solicitacoes.deliberated)
     RequestController->>Postgres: COMMIT
     RequestController-->>WebApp: 200 {request, estado=DEFERIDA, _links}
     WebApp-->>Secretaria: solicitação atualizada (notif. async → link 10.1b)
@@ -175,7 +175,7 @@ sequenceDiagram
 **Notas:**
 - Passos 2–6: `GET /requests/{id}` retorna `_links` com base nas `authorities[]` da secretária + estado atual da solicitação. O botão de ação no frontend é renderizado somente se o `rel` existir — garante que a secretária não vê ações além de sua capability (RN-F5-002-04, RN-F5-002-07).
 - Passo 7: fluxo sem JWT deep-link (diferença central em relação a F3.4). Secretária acessa diretamente pela fila; sem redirecionamento por email. Mesmo endpoint `PATCH /requests/{id}/deliberate` (RN-F5-002-07, DRY → `F3/US-F3-003-DELIBERAR-SOLICITACOES.md` F3.4-D01 quando gerado).
-- Passos 10–13: TX atômica — `UPDATE request`, `INSERT request_event`, `INSERT outbox_event` em COMMIT único (padrão 10.1a). `decisao` pode ser `DEFERIDA`, `INDEFERIDA` ou `COMPLEMENTACAO`.
+- Passos 10–13: TX atômica — `UPDATE request`, `INSERT request_event`, `OutboxEventPublisher.enqueue` em COMMIT único (padrão 10.1a). `decisao` pode ser `DEFERIDA`, `INDEFERIDA` ou `COMPLEMENTACAO`.
 - Passo 15: `OutboxDispatcher` notifica o aluno titular (in-app + push + email); DRY → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1b.
 
 **Lacunas:** nenhuma.

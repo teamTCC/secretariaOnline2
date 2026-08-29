@@ -57,9 +57,9 @@
 | **Prioridade** | P0 |
 | **Fonte** | `agents/security-engineer.md §JWT Token Lifecycle`; ADR-005; `.cursorrules §Security Baseline` |
 
-**Descrição:** O sistema deve emitir tokens de acesso JWT assinados com RS256 (chave privada RSA), com TTL de 15 minutos. O refresh token deve ser opaco (UUID armazenado em banco), com TTL de 7 dias, armazenado no cliente como cookie `httpOnly; Secure; SameSite=Lax`. O access token deve ser armazenado apenas em memória JavaScript (nunca em `localStorage`).
+**Descrição:** O sistema deve emitir tokens de acesso JWT (TTL 15 minutos, claim `sid`) e refresh token opaco (7 dias). Transporte HTTP: cookies HttpOnly `access_token` (Path=/) e `refresh_token` (Path=/auth). JSON de login/refresh/ott **não** contém `accessToken`/`refreshToken`. Sessão Redis `auth:session:<sid>` obrigatória. Fallback: `Authorization: Bearer`.
 
-**Métrica:** `exp(accessToken) - iat(accessToken) = 900s`; `expires_at(refreshToken) - created_at = 604800s`; presença de `Set-Cookie: refreshToken=…; HttpOnly; Secure; SameSite=Lax` na resposta de login/refresh.
+**Métrica:** `exp - iat` do access JWT = 900s; refresh 7 dias; `Set-Cookie: access_token=…; HttpOnly; Secure; SameSite=Lax; Path=/` e `Set-Cookie: refresh_token=…; Path=/auth` em login, refresh e `POST /auth/ott`.
 
 **Verificação:** Teste de integração verificando os campos `exp` e `iat` do payload JWT; teste de integração verificando os atributos do cookie no response header; pentest de extração de token da memória.
 
@@ -655,9 +655,9 @@
 | **Prioridade** | P0 |
 | **Fonte** | `agents/database-engineer.md §Flyway Migration Conventions`; ADR-009; `analise_arquitetural §17.3` |
 
-**Descrição:** Toda alteração de schema de banco de dados deve ser feita por arquivo Flyway `V###__descricao.sql` com número de versão incrementado. É proibido editar qualquer arquivo de migration já aplicado a qualquer ambiente. Correções devem ser novas migrations (ex.: `V012__fix_index_request.sql`). A validação Flyway (`spring.flyway.validate-on-migrate=true`) deve estar sempre ativa.
+**Descrição:** Toda alteração de schema de banco de dados deve ser feita por arquivo Flyway `V###__descricao.sql` com número de versão incrementado. É proibido editar qualquer arquivo de migration já aplicado a qualquer ambiente. Correções devem ser novas migrations (ex.: `V012__fix_index_request.sql`). Flyway deve estar **ligado** em `dev`, `test` e `prod`. `spring.jpa.hibernate.ddl-auto=validate` — **nunca** `ddl-auto: update` nem Flyway desligado no dev.
 
-**Métrica:** Zero modificações em arquivos `V###__*.sql` após primeiro commit (verificado por hash Flyway); `spring.flyway.validate-on-migrate=true` em todos os profiles; migrations aplicadas em ordem estrita em todos os ambientes.
+**Métrica:** Zero modificações em arquivos `V###__*.sql` após primeiro commit (verificado por hash Flyway); `spring.flyway.enabled=true` e `validate-on-migrate=true` em todos os profiles; `ddl-auto=validate`; migrations aplicadas em ordem estrita em todos os ambientes.
 
 **Verificação:** Flyway falha a aplicação se checksum do arquivo mudar; CI valida que nenhum arquivo de migration existente foi alterado via `git diff --name-only HEAD~1 | grep -E 'V[0-9]+'`.
 

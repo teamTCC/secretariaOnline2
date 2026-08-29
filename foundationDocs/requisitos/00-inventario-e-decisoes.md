@@ -17,6 +17,7 @@
 | 51 HUs individuais | `foundationDocs/HUs/<Fase>/US-*.md` | ✅ Verificado (51 arquivos via Glob) | Fonte primária de RF |
 | HUs.txt consolidado | `foundationDocs/HUs/HUs.txt` | ✅ Restaurado do git (estava deletado localmente) | Varredura consolidada |
 | Análise arquitetural | `foundationDocs/analysis/analise_arquitetural_secretariaonline2.md` | ✅ 1696 linhas | Contexto, ADRs §14, qualidade §17 |
+| As-built backend | `foundationDocs/analysis/as-built-backend.md` | ✅ 2026-08-29 | Contrato HTTP/persistência **como está no código**; vence a análise 2026-06 onde divergirem |
 | Fluxos por perfil | `foundationDocs/analysis/fluxos_por_perfil.md` | ✅ | Fluxos narrativos F0–F8 + transversais §10 |
 | Telas | `foundationDocs/analysis/telas.md` | ✅ | 48 rotas novas |
 | Diagramas de caso de uso | `foundationDocs/useCaseDiagrams/casos_de_uso.md` | ✅ 510 linhas | UCs por módulo |
@@ -182,7 +183,8 @@
 | 2026-06-23 | 1.1 | Etapa 11 — 8 RF-TR consolidados; mapa de consumo DRY; Q-004 resolvida (presença v4.1) | 11 |
 | 2026-06-23 | 1.2 | Etapa 12 — Revisão final; CONF-004 resolvido (RNF-SEC-04 → 5/min); checklist §7 completo; campanha encerrada | 12 |
 | 2026-08-09 | 1.3 | Revisão de classificação RNF×RF — 6 RNFs corrigidos (SEC-03/04, LGL-01/02, DIS-01/04); 4 RF-CAs corrigidos (F0-001, F0-003, TR-001/002/006); RF-F1-003-d criado (DEC-005); total RF: 71 → 72 | 13 |
+| 2026-08-29 | 1.4 | Alinhamento as-built: inventário inclui `as-built-backend.md`; cookies/OTT/HATEOAS strings/V019 | — |
 
 ---
 
-*Última atualização: 2026-08-09 — Revisão de classificação RNF×RF (DEC-005): RF-F1-003-d criado; campanha original encerrada na Etapa 12*
+*Última atualização: 2026-08-29 — as-built-backend.md no inventário*

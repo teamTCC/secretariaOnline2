@@ -129,7 +129,7 @@ Reset senha (link 1-uso, admin nunca vê a senha):
 POST {{baseUrl}}/usuarios/{{alunoId}}/reset-password
 ```
 
-Pegue o token no Mailhog / outbox → [T-F0-003](../F0-publico/T-F0-003-nova-senha.md).
+Pegue o token no payload do outbox (`GET /admin/outbox`) → [T-F0-003](../F0-publico/T-F0-003-nova-senha.md). Mailhog **não** está no compose operacional.
 
 ---
 
@@ -137,9 +137,12 @@ Pegue o token no Mailhog / outbox → [T-F0-003](../F0-publico/T-F0-003-nova-sen
 
 ```
 GET {{baseUrl}}/academico/cursos
+GET {{baseUrl}}/academico/disciplinas
 GET {{baseUrl}}/academico/cursos/{{cursoId}}/disciplinas
 GET {{baseUrl}}/academico/periodos/ativo
 ```
+
+O alias `GET /academico/disciplinas` (`idCurso` opcional) é o endpoint do `form_schema` `x-ui.endpoint`.
 
 CRUD coordenação: [T-F6](../F6-coordenacao/T-F6-coordenacao.md).
 

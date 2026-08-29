@@ -4,7 +4,9 @@
 > **Diagrama:** [`US-F1-005`](../../foundationDocs/sequenceDiagrams/F1%20—%20Aluno/US-F1-005-SOLICITACOES.md)  
 > **IDs:** `{{requestTypeId}}`, `{{cursoId}}`, `{{requestId}}`, `{{disciplinaId}}`, `{{storageKey}}`, `{{sha256}}`  
 
-Esta é a transação mais longa. Siga a ordem. Actions do workflow no **seed** são `ASSIGN`, `FORWARD_TO_DELIBERATOR`, `DEFER`, `DENY`, `REQUEST_ADJUSTMENT`, `RESUBMIT` — **não** `DEFERIR`. Confira sempre `_links` do detalhe.
+Esta é a transação mais longa. Siga a ordem. Actions do workflow no **seed** são `ASSIGN`, `FORWARD_TO_DELIBERATOR`, `DEFER`, `DENY`, `REQUEST_ADJUSTMENT`, `RESUBMIT` — **não** `DEFERIR`. Confira sempre `_links` do detalhe (mapa **rel → string URL**, não HAL `{ href }`).
+
+`GET /requests` e `GET /requests/{id}` passam por `RequestQuery`. Lookup de disciplinas no form: `GET /academico/disciplinas` (alias) além de `GET /academico/cursos/{{cursoId}}/disciplinas`.
 
 ---
 
@@ -78,11 +80,11 @@ Aluno com só `request.view_own`: o servidor **ignora** qualquer tentativa de ve
 GET {{baseUrl}}/requests/{{requestId}}
 ```
 
-**Esperado 200:** `estado`, `dados`, `prazoEm`, `_links`.
+**Esperado 200:** `estado`, `dados`, `prazoEm`, `formSchema` (snapshot **V019** `request_type_version`), `_links` objeto string-a-string (`self`, `events`, `attachments`, ações kebab-case).
 
-Como aluno em `ABERTA` você em geral vê só `self` (e talvez anexos). Como professor/secretaria com `request.deliberate` aparecem rels das transições (`assign`, `defer`, `deny`, …).
+Como aluno em `ABERTA` você em geral vê `self` / `events` / `attachments`. Como professor/secretaria com `request.deliberate` aparecem rels das transições (`assign`, `defer`, `deny`, …).
 
-Copie o `rel`/`href` que for testar.
+Copie o **path string** do `_links` (não um campo `href`).
 
 ---
 
@@ -346,11 +348,25 @@ Authorization: Bearer {{accessTokenSecretaria}}
 
 **Esperado 200** e estado `EM_AJUSTE`. 
 
-O outbox envia email com deep-link ao aluno:
+O outbox envia e-mail com deep-link ao aluno:
 - Link gerado: `https://secretariaonline.ufpr.br/solicitacoes/{{requestId}}?ott=<JWT>`
 - JWT TTL: 3 dias; audience: `request:{{requestId}}`
 
-### 11b — Aluno resubmete (via _links ou diretamente)
+### 11b — Trocar o OTT por sessão (obrigatório)
+
+Copie o JWT do payload do outbox → `{{ottJwt}}`. **Não** faça login com senha nesse link.
+
+```
+POST {{baseUrl}}/auth/ott
+```
+
+```json
+{ "token": "{{ottJwt}}" }
+```
+
+**Esperado 200** flags + cookies. **Segunda** chamada com o mesmo token → **401**. Detalhe: [T-F0-001 Passo 8](../F0-publico/T-F0-001-login.md).
+
+### 11c — Aluno resubmete (via `_links` ou diretamente)
 
 ```json
 { "action": "RESUBMIT", "parecer": null }

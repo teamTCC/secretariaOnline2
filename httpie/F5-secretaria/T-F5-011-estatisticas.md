@@ -3,7 +3,7 @@
 > **Transação:** [`T-F5-011`](../../transaçõesBackend/F5%20—%20Secretaria/T-F5-011-ESTATISTICAS.md)  
 > **Diagrama:** [`US-F5-011`](../../foundationDocs/sequenceDiagrams/F5%20—%20Secretaria/US-F5-011-ESTATISTICAS.md)
 
-Capability: `report.view_secretary`. Sem cache Redis específico.
+Capability: `report.view_secretary`. `ReportsController` → `ReportsQuery.secretary` + ports (não JPA no BFF; **não** existe `RelatoriosController`). Sem cache Redis específico.
 
 ---
 

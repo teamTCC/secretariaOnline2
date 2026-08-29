@@ -64,7 +64,7 @@ sequenceDiagram
 
     Professor->>WebApp: Navega para /comissoes/coe
     WebApp->>RQ: useQuery(['coe','dashboard'])
-    RQ->>CTRL: GET /commissions/coe/dashboard (Bearer, internship.review ✓)
+    RQ->>CTRL: GET /commissions/coe/dashboard (cookie access_token, internship.review ✓)
     CTRL->>UC: execute(userId, cursoIds)
     UC->>DB: SELECT internships WHERE (assignee IS NULL OR assignee=userId)
     DB-->>UC: internships[] com document_due_date por item
@@ -113,7 +113,7 @@ sequenceDiagram
     DB-->>UC: Internship {id, alunoId, ...} (disponível)
     UC->>DB: BEGIN TX
     UC->>DB: UPDATE internship SET assignee_id=self, assigned_at=now()
-    UC->>DB: INSERT outbox_event(type='estagios.assigned', payload={…})
+    UC->>Outbox: OutboxEventPublisher.enqueue(estagios.assigned)
     UC->>DB: COMMIT
     UC-->>CTRL: Internship updated + _links
     CTRL-->>WebApp: 200 {item, _links}
@@ -162,7 +162,8 @@ sequenceDiagram
     Professor->>WebApp: Seleciona orientador + clica "Confirmar"
     WebApp->>CTRL: POST /commissions/coe/assign {internshipId, assigneeId: orientador}
     CTRL->>AUC: execute(AssignCommand{internshipId, assigneeId=orientador})
-    AUC->>DB: BEGIN TX; UPDATE internship SET assignee_id=orientador; INSERT outbox
+    AUC->>DB: BEGIN TX; UPDATE internship SET assignee_id=orientador
+    AUC->>Outbox: OutboxEventPublisher.enqueue(estagios.assigned)
     AUC-->>CTRL: Internship updated
     CTRL-->>WebApp: 200 {item, _links}
     WebApp-->>Professor: Overlay fecha, badge da linha atualiza com nome do orientador

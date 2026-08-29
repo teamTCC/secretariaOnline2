@@ -71,10 +71,13 @@ Validação: horas `[0,1000]`, duração `15_SEMANAS|18_SEMANAS`, banca `1|2`, m
 ```
 GET  {{baseUrl}}/academico/cursos/{{cursoId}}
 PATCH {{baseUrl}}/academico/cursos/{{cursoId}}
+GET  {{baseUrl}}/academico/disciplinas
 POST {{baseUrl}}/academico/disciplinas
 GET  {{baseUrl}}/academico/periodos-letivos
 POST {{baseUrl}}/academico/periodos-letivos
 ```
+
+`GET /academico/disciplinas` é alias de leitura (`idCurso` opcional). `POST /academico/disciplinas` continua no CRUD de coordenação.
 
 Disciplina: 
 
@@ -131,7 +134,7 @@ GET {{baseUrl}}/reports/coordinator?periodo=2026-2&curso=TADS
 Authorization: Bearer {{accessTokenCoordenador}}
 ```
 
-Authority `report.view_coordinator`. Atalho institucional:
+Authority `report.view_coordinator`. `ReportsController` → `ReportsQuery.coordinator` + ports (não `RelatoriosController`). Atalho institucional:
 
 ```
 GET {{baseUrl}}/academico/relatorios/curso

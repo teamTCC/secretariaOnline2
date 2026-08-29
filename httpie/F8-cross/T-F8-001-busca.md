@@ -3,7 +3,7 @@
 > **Transação:** [`T-F8-001`](../../transaçõesBackend/F8%20—%20Cross-cutting/T-F8-001-BUSCA-GLOBAL.md)  
 > **Diagrama:** [`US-F8-001`](../../foundationDocs/sequenceDiagrams/F8%20—%20Cross-cutting/US-F8-001-BUSCA-GLOBAL.md)
 
-Qualquer autenticado. FGAC no use case: aluno **não** vê `USUARIO`; solicitações só as próprias. Timeout servidor 5 s → `{ timedOut: true }`.
+Qualquer autenticado. FGAC em `SearchQuery` (ports `IamBffReadPort`, `SolicitacaoBffReadPort`, `PresencaBffReadPort`, `AcademicoReadPort` — não JPA no BFF): aluno **não** vê `USUARIO`; solicitações só as próprias. Timeout servidor 5 s → `{ timedOut: true }`.
 
 Path real: `GET /search?q=&types=&page=&size=`  
 `types`: `USUARIO,EVENTO,REQUEST,CURSO` (vírgula). Sem `types` = todos.

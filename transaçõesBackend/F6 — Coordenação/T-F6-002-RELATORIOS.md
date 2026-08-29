@@ -9,7 +9,9 @@ Estatísticas da secretaria: [T-F5-011-ESTATISTICAS.md](../F5 — Secretaria/T-F
 
 ## Arquivo
 
-[`bff/ReportsController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/ReportsController.kt) — tag OpenAPI `BFF — Relatórios Analíticos`. Authorities seedadas em V016 (`report.view_coordinator`).
+[`bff/ReportsController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/ReportsController.kt) → [`ReportsQuery.coordinator`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/application/ReportsQuery.kt). Mesmos ports da secretaria (`IamDashboardPort`, `IamBffReadPort`, `SolicitacaoBffReadPort`, `TccDashboardPort`, `EstagioSummaryPort`, `FormativaBffReadPort`, `PresencaBffReadPort`, `AcademicoReadPort`). **Não** há `RelatoriosController`.
+
+Authorities seedadas em V016 (`report.view_coordinator`).
 
 ```
 GET /reports/coordinator?periodo=2025-2&curso=TADS
@@ -31,6 +33,6 @@ Atalho `GET /academico/relatorios/curso` continua institucional (totais simples)
 
 ## Checklist
 
-- [x] Recorte SQL por curso/período nas solicitações
+- [x] Recorte SQL por curso/período nas solicitações (`ReportsQuery` + ports)
 - [x] Série mensal, carga por deliberador, colações por ano
 - [x] 403 sem `report.view_coordinator`

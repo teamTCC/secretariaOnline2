@@ -40,7 +40,7 @@ Cookie: access_token=…   (hasAuthority('dashboard.view_secretary'))
 }
 ```
 
-KPIs usam `requestRepo.countByEstado("ABERTA"|"EM_DELIBERACAO")` — total real, não a primeira página.
+KPIs usam `SolicitacaoDashboardPort.countByEstado("ABERTA"|"EM_DELIBERACAO")` via `DashboardSecretariaQuery` — total real, não a primeira página. O controller **não** injeta JPA.
 
 ---
 
@@ -94,7 +94,8 @@ Content-Type: application/json
 | Endpoint | Status |
 |----------|--------|
 | `GET /academico/cursos` | ✅ `AcademicoController` |
-| `GET /academico/disciplinas` | ✅ `AcademicoController` |
+| `GET /academico/disciplinas` | ✅ alias em `AcademicoController` (`idCurso` opcional; `form_schema` `x-ui.endpoint`) |
+| `GET /academico/cursos/{id}/disciplinas` | ✅ mesmo query, filtrado por curso |
 | CRUD coordenação | ✅ ver [T-F6-001](../F6 — Coordenação/T-F6-001-CONFIGURAR-CURSO.md) |
 
 ---

@@ -11,8 +11,9 @@
 | OpenAPI | [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) | JSON grande |
 | Postgres | `localhost:5432` / `secretaria_dev` | `SELECT 1` |
 | Redis | `localhost:6379` | `redis-cli ping` → `PONG` (session store + cache BFF) |
-| Mailhog | [http://localhost:8025](http://localhost:8025) | UI vazia ou com e-mails |
 | MinIO | `http://localhost:9000` | console em `:9001` (se o compose subir) |
+
+Mailhog/Mailpit **não** estão em `ops/docker-compose.yml` (as-built 2026-08). Tokens de e-mail/OTT saem do payload em `GET /admin/outbox`. Um catcher SMTP em `:8025` é opcional e fora do compose operacional.
 
 Se a API não sobe, não avance nos tutoriais — todos os status codes abaixo assumem o backend local.
 
@@ -157,15 +158,15 @@ Fallback Bearer (Swagger / CLI): abra Cookies, copie o valor de `access_token` �
 
 ## 10. Como ler `_links` HATEOAS
 
-Respostas autenticadas trazem `_links`. **Só chame a ação se o link existir.**
+Respostas autenticadas trazem `_links` como **mapa rel → string** (path). **Não** é HAL `{ rel: { href } }`. **Só chame a ação se a chave existir.**
 
-Exemplo: aluno em `GET /requests/{id}` vê só `self`. Professor com `request.deliberate` vê `defer`, `deny`, etc.
+Exemplo: aluno em `GET /requests/{id}` vê `self`, `events`, `attachments`. Professor com `request.deliberate` vê `defer`, `deny`, etc. (valores = `/requests/{id}/transitions`).
 
 No HTTPie, depois de um GET de detalhe:
 
-1. Copie o `href` do `_links`.
+1. Copie a **URL string** do `_links` (não um campo `href`).
 2. Crie o próximo request com esse path.
-3. Se o rel tiver `type: POST`, o body está no mesmo tutorial (bloco JSON do passo).
+3. Rels de workflow são POST em `/transitions`; o body está no mesmo tutorial.
 
 Isso é o contrato FGAC: a UI (e o teste manual) é cega a papéis.
 

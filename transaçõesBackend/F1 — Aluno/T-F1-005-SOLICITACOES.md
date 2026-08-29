@@ -9,8 +9,10 @@
 
 | Papel | Arquivo |
 |-------|---------|
-| Controller principal | [`solicitacoes/api/RequestController.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/api/RequestController.kt) |
-| Controller de anexos (NOVO) | [`solicitacoes/api/RequestAttachmentController.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/api/RequestAttachmentController.kt) |
+| Controller principal | [`solicitacoes/api/RequestController.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/api/RequestController.kt) — GET → `RequestQuery`; POST/PATCH → `*UseCase` |
+| Query — list/detalhe/events/types | [`solicitacoes/application/RequestQuery.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/RequestQuery.kt) |
+| Query — catálogo admin | [`solicitacoes/application/RequestTypeQuery.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/RequestTypeQuery.kt) |
+| Controller de anexos | [`solicitacoes/api/RequestAttachmentController.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/api/RequestAttachmentController.kt) |
 | Use Case — Abrir (com anexos) | [`solicitacoes/application/OpenRequestUseCase.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/OpenRequestUseCase.kt) |
 | Use Case — Salvar Rascunho (NOVO) | [`solicitacoes/application/SaveDraftUseCase.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/SaveDraftUseCase.kt) |
 | Use Case — Submeter Rascunho (NOVO) | [`solicitacoes/application/SubmitDraftUseCase.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/SubmitDraftUseCase.kt) |
@@ -55,8 +57,10 @@ Authorization: Bearer eyJhbGci...
 
 ### FGAC — filtro automático por `request.view_own`
 
+`GET /requests` chama `RequestQuery.list(...)` (não JPA no controller).
+
 ```kotlin
-// RequestController.kt
+// RequestQuery.kt
 val idSolicitante = if (
     user.authorities.contains("request.view_own") &&
     !user.authorities.contains("request.view_curso") &&
@@ -101,7 +105,7 @@ Authorization: Bearer eyJhbGci...
 ]
 ```
 
-> O `formSchema` é um JSON Schema completo. O frontend usa o campo `formSchema` para renderizar dinamicamente o formulário de nova solicitação via `DS/DynamicForm`. **Não é necessário criar um componente React por tipo de solicitação** — este é o coração do princípio DRY do sistema.
+> O `formSchema` é um JSON Schema completo. Lookup de disciplinas no wizard: alias **`GET /academico/disciplinas`** (`AcademicoController.listDisciplinasAlias`, `idCurso` opcional) — não só `GET /academico/cursos/{id}/disciplinas`. **Não é necessário criar um componente React por tipo de solicitação** — este é o coração do princípio DRY do sistema.
 
 ---
 
@@ -193,7 +197,9 @@ GET /requests/550e8400-e29b-41d4-a716-446655440000
 Authorization: Bearer eyJhbGci...
 ```
 
-### JSON de saída — `EntityModel` com `_links`
+### JSON de saída — `_links` como `Map<String,String>`
+
+Não é HAL `EntityModel` (`{ rel, href }`). Rel = chave; valor = path string.
 
 ```json
 {
@@ -211,33 +217,28 @@ Authorization: Bearer eyJhbGci...
   "prazoEm": "2026-08-25T23:59:59Z",
   "concludedAt": null,
   "createdAt": "2026-07-15T10:30:00Z",
-  "_links": [
-    { "rel": "self",       "href": "/requests/550e8400-...", "type": null },
-    { "rel": "deferir",    "href": "/requests/550e8400-.../transitions", "type": "POST" },
-    { "rel": "indeferir",  "href": "/requests/550e8400-.../transitions", "type": "POST" },
-    { "rel": "solicitar-ajuste", "href": "/requests/550e8400-.../transitions", "type": "POST" }
-  ]
+  "idRequestTypeVersion": "…",
+  "formSchema": { "type": "object" },
+  "_links": {
+    "self": "/requests/550e8400-...",
+    "events": "/requests/550e8400-.../events",
+    "attachments": "/requests/550e8400-.../attachments",
+    "defer": "/requests/550e8400-.../transitions",
+    "deny": "/requests/550e8400-.../transitions",
+    "request-adjustment": "/requests/550e8400-.../transitions"
+  }
 }
 ```
 
-> Os `_links` disponíveis dependem de **dois fatores**: (1) o estado atual da solicitação e (2) as capabilities do usuário autenticado. Um aluno veria apenas `_links: [self]` enquanto um professor deliberador veria `deferir`, `indeferir` e `solicitar-ajuste`.
+> Os `_links` disponíveis dependem de **dois fatores**: (1) o estado atual da solicitação e (2) as capabilities do usuário autenticado. Um aluno em `ABERTA` vê `self` / `events` / `attachments` (e `upload-url` se dono); um deliberador ganha as ações do workflow em kebab-case. `formSchema` no GET detalhe vem do snapshot **`request_type_version`** (Flyway **V019**) da instância, não necessariamente do tipo “live”.
 
 ### Como o WorkflowEngine determina as ações disponíveis
 
 ```kotlin
-// RequestController.kt — getById
-val requestType = requestTypeRepo.findById(entity.idRequestType).orElseThrow()
-val workflowDef = objectMapper.convertValue(requestType.workflowJson, WorkflowDefinition::class.java)
-val engine = WorkflowEngine(workflowDef)
-val currentState = RequestState.valueOf(entity.estado)
+// RequestQuery.getById — não o controller
 val allowedTransitions = engine.allowedTransitions(currentState, user.authorities)
-
 allowedTransitions.forEach { transition ->
-    model.add(
-        Link.of("/requests/$id/transitions")
-            .withRel(transition.action.lowercase().replace('_', '-'))
-            .withType("POST")
-    )
+    links[transition.action.lowercase().replace('_', '-')] = "/requests/$id/transitions"
 }
 ```
 
@@ -440,17 +441,17 @@ fun execute(command: OpenRequestCommand): UUID {
         ))
     }
 
-    outboxRepo.save(OutboxEventEntity(
-        eventType    = "solicitacoes.aberta",
-        aggregateType = "Request",
-        aggregateId  = entity.id,
-        payload = mapOf(
-            "requestId"  to entity.id,
-            "tipoCode"   to requestType.code,
-            "estadoNovo" to "ABERTA",
-            "idSolicitante" to command.idSolicitante,
-        ),
-    ))
+        outboxPublisher.enqueue(
+            eventType = "solicitacoes.aberta",
+            aggregateType = "Request",
+            aggregateId = entity.id,
+            payload = mapOf(
+                "requestId" to entity.id,
+                "tipoCode" to requestType.code,
+                "estadoNovo" to "ABERTA",
+                "idSolicitante" to command.idSolicitante,
+            ),
+        )
 
     return entity.id
 }
@@ -580,4 +581,8 @@ PATCH /requests/bulk-deliberate
 - [x] `POST /requests/draft` → salva com `estado=RASCUNHO`, sem outbox
 - [x] `POST /requests/{id}/submit` → promove para `ABERTA`, atribui `numeroAnual`, enfileira outbox
 - [x] `GET /requests/{id}/protocol` → `{protocolo, tipo, estado, _links.public}` (dono ou staff)
+- [x] `GET /requests` / `GET /requests/{id}` / events / types → `RequestQuery` (controller sem JPA)
+- [x] `_links` = `Map<String,String>` (não HAL `EntityModel`)
+- [x] GET detalhe usa `form_schema` da `request_type_version` (V019)
+- [x] Outbox via `OutboxEventPublisher.enqueue` (`OpenRequestUseCase`, `TransitionRequestUseCase`)
 - [x] `PATCH /requests/bulk-deliberate` → 200 ou 409 (rollback)

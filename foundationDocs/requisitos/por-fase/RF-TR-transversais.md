@@ -10,6 +10,10 @@
 
 ---
 
+> **Contrato as-built (2026-08-29):** ver `foundationDocs/analysis/as-built-backend.md`. Auth = cookies HttpOnly (`access_token`, `refresh_token`) + `POST /auth/ott`; `_links` / `_link` são **strings** (não HAL `EntityModel`); Flyway **ligado** em `dev`/`test`/`prod` com `ddl-auto: validate` (nunca `update` / Flyway off). Outbox via `OutboxEventPublisher`. Cache BFF Redis **60 s**.
+
+---
+
 ## Resumo transversal
 
 | RF | Nome | Módulo(s) | Prioridade | HU(s) âncora | ADR |
@@ -57,7 +61,7 @@
 
 **Descrição:** O sistema deve executar o ciclo de vida de **todos os tipos de solicitação** (meta: 19 tipos) a partir de configuração `RequestType` (`form_schema` JSON Schema + `workflow_json` state machine), sem duplicar código por tipo — núcleo ADR-003.
 
-**Pré-condições:** `RequestType` publicado (`PUBLISHED`); solicitante/deliberador com authority exigida pela transição.
+**Pré-condições:** `RequestType` publicado (`ativo=true`); solicitante/deliberador com authority exigida pela transição. Tipos rascunho usam `ativo=false` (sem enum DRAFT/PUBLISHED).
 
 **Pós-condições:** Estado atualizado; `request_event` append-only; `outbox_event` enfileirado quando workflow define notificação.
 
@@ -65,7 +69,7 @@
 
 *Modelo e configuração*
 1. Entidades: `RequestType`, `Request`, `RequestEvent`, `RequestAttachment` (UUIDv7, `dados` JSONB, `numero` protocolo único).
-2. Admin configura via RF-F7-003; tipos `DRAFT` ocultos do wizard; versão imutável por publicação — solicitações abertas mantêm versão original.
+2. Admin configura via RF-F7-003; tipos `ativo=false` ocultos do wizard; versão imutável por publicação (`request_type_version`, V019) — solicitações abertas mantêm `id_request_type_version` original.
 3. Seed MVP: ≥ 2–3 tipos reais (`ADIANTAMENTO_PERIODO`, `APROVEITAMENTO_DISCIPLINA`, `TRANCAMENTO_DISCIPLINA`).
 
 *Engine de workflow*
@@ -76,7 +80,7 @@
 *API e UI genéricas*
 7. Três rotas front: `/solicitacoes`, `/solicitacoes/nova` (wizard 3 passos + `DynamicForm`), `/solicitacoes/:id` (timeline + `useActions`).
 8. Anexos: URL pré-assinada MinIO/S3 → PUT → `confirm` com SHA-256.
-9. Deliberação: transições expõem `_links` condicionais (`deliberar`, `solicitar-ajuste`, etc.).
+9. Deliberação: transições expõem `_links` como `Map<String,String>` (rel → URL), **não** HAL `{ href }`.
 
 *Escopo MVP v2*
 10. Aluno: abrir, listar próprias, detalhe, reenviar após ajuste.
@@ -119,7 +123,7 @@
 7. Eventos `SENT` retidos 7 dias antes de arquivamento.
 
 *Integração*
-8. Use cases de deliberação, colação, atendimento enfileiram eventos tipados (`solicitacoes.deliberated`, etc.).
+8. Use cases de deliberação, colação, atendimento enfileiram via `OutboxEventPublisher.enqueue(...)` (não `OutboxEventJpaRepository` no use case).
 9. Templates referenciados por nome no `workflow_json` (RF-F7-004).
 
 **Dependências:** RF-TR-007, RF-F7-005, RNF-CON-01, RNF-DES-05
@@ -206,21 +210,21 @@
 | **Nome** | Autorização FGAC + UI orientada a HATEOAS `_links` |
 | **Prioridade** | P0 |
 | **Ator(es)** | Todos |
-| **Módulo** | `iam/` + assemblers em cada módulo API |
+| **Módulo** | `iam/` + DTOs com `_links` / `_link` string em cada módulo API |
 | **Rastreio HU** | — (transversal; ADR-002) |
 | **Rastreio UC** | — |
 | **Tela** | Todas as telas autenticadas |
-| **API** | `_links` em respostas HAL/JSON; `@PreAuthorize` |
+| **API** | `_links` como `Map<String,String>` (não HAL EntityModel); `@PreAuthorize` |
 | **Legado** | Matriz 10 perfis hardcoded — **substituída** |
 
-**Descrição:** O sistema deve autorizar por **capabilities** granulares (authorities dot-notation) e expor ações disponíveis via `_links` HATEOAS — a UI é **cega a perfis** e renderiza botões somente quando o link existe.
+**Descrição:** O sistema deve autorizar por **capabilities** granulares (authorities dot-notation) e expor ações disponíveis via `_links` — a UI é **cega a perfis** e renderiza botões somente quando o link existe. Rel = **string URL**, não `{ href }` de Spring HATEOAS `EntityModel`. Pasta `assembler/` **não** é obrigatória.
 
 **Critérios de aceitação:**
 
 *Backend*
 1. JWT contém authorities derivadas de roles×matriz FGAC (RF-F7-002-b).
 2. `@PreAuthorize("hasAuthority('request.deliberate')")` em endpoints mutáveis.
-3. Assemblers adicionam `_links` condicionais por capability + estado do recurso (ex.: `retry`, `deliberar`, `reset-password`).
+3. Controllers/Queries adicionam `_links` condicionais por capability + estado do recurso (ex.: `retry`, `deliberar`, `reset-password`) como strings.
 4. HTTP 403 retorna RFC 7807 sem vazar existência de recurso quando política exigir.
 
 *Frontend*
@@ -256,10 +260,10 @@
 1. Endpoints dedicados por perfil principal; contrato estável documentado em OpenAPI.
 2. Agregação paralela interna; falha parcial retorna blocos disponíveis + indicador de erro no bloco falho (RN-F1.1-01).
 3. KPIs, pendências (máx. 3), últimas solicitações (5), próximos eventos (3) conforme HU do perfil.
-4. QuickTiles e CTAs derivados exclusivamente de `_links` do BFF (RN-F1.1-07 a RN-F1.1-09).
-5. Cache Redis 30 s para dados não real-time (RN-F1.1-10); invalidação em mutações relevantes.
+4. QuickTiles e CTAs derivados exclusivamente de `_links` do BFF (strings; pendências usam `_link` singular) (RN-F1.1-07 a RN-F1.1-09).
+5. Cache Redis **60 s** (`bff-dashboard`) para dados não real-time (RN-F1.1-10); invalidação em mutações relevantes. Sem Redis: cache Spring `simple`.
 6. FCP conforme RNF-DES-04 (< 1,5 s); mobile pull-to-refresh revalida TanStack Query.
-7. MVP v2: cards de solicitações leem tabelas reais de `solicitacoes/` (não mock).
+7. Agregação via **ports** (`SolicitacaoDashboardPort`, etc.) — BFF **não** executa SQL cru nem injeta `*JpaRepository` de outro módulo.
 
 **Dependências:** RF-TR-001, RF-TR-005, RF-TR-008, RNF-DES-04, RNF-UX-04
 
@@ -375,4 +379,4 @@
 
 ---
 
-*Última atualização: 2026-08-09 — Revisão de classificação: RF-TR-001 CA-4 (restrição arquitetural referenciada via RNF-MAN-05); RF-TR-002 CA-6 (métrica de latência referenciada via RNF-DES-05); RF-TR-006 CA-6 (métrica FCP referenciada via RNF-DES-04)*
+*Última atualização: 2026-08-29 — as-built: cookies, OTT, `_links` strings, Flyway sempre on, cache BFF 60s, OutboxEventPublisher*

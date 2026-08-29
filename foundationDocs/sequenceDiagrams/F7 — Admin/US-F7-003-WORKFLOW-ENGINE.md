@@ -6,7 +6,7 @@
 | **Tela** | F7.4 — Tipos de Solicitação |
 | **Capability** | `request_type.manage` |
 | **API primária** | `GET /request-types` · `POST /request-types` · `PATCH /request-types/:id` · `POST /request-types/:id/publish` · `DELETE /request-types/:id` |
-| **Fonte** | `fluxos_por_perfil.md` §8.2 · `US-F7-003-WORKFLOW-ENGINE.md` · ADR-003 |
+| **Fonte** | `fluxos_por_perfil.md` §8.2 · `US-F7-003-WORKFLOW-ENGINE.md` · ADR-003 · `as-built-backend.md` §4 (ativo boolean, V019 snapshot) |
 
 > ⚠️ **ADR-003 — Coração DRY:** cada `RequestType` publicado aqui substitui múltiplos arquivos de código. Diagramas desta HU cobrem apenas a gestão do catálogo; a execução do workflow (transições de solicitações) está em US-F1-005, US-F3-003, US-F5-002.
 
@@ -18,7 +18,7 @@
 |-------------|----------------|--------|--------|
 | F7.4-D01 | CA-01 · RN-01 · RN-02 · RN-11 | SEQUENCIA | gerado |
 | F7.4-D02 | CA-07 · RN-08 · RN-10 | SEQUENCIA | gerado |
-| F7.4-D03 | CA-02 (persistir draft) · RN-03 · RN-04 · RN-10 | SEQUENCIA | gerado |
+| F7.4-D03 | CA-02 (persistir rascunho ativo=false) · RN-03 · RN-04 · RN-10 | SEQUENCIA | gerado |
 | F7.4-D04 | CA-04 · RN-07 · RN-08 · RN-10 | SEQUENCIA | gerado |
 | F7.4-ERRO-01 | CA-01 (403 FGAC) | ERRO | gerado |
 | F7.4-ERRO-02 | CA-03 (server-side) · RN-03 | ERRO | gerado |
@@ -36,7 +36,7 @@
 
 | Ref | Destino | Motivo |
 |-----|---------|--------|
-| CA-05 versionamento isolamento | F7.4-D04 (este arquivo) | Solicitações existentes mantêm `request_type_version_id` da versão anterior — lógica do `COMMIT` em D04 |
+| CA-05 versionamento isolamento | F7.4-D04 (este arquivo) | Solicitações existentes mantêm `id_request_type_version` da abertura — snapshot no publish (V019) |
 | F7.4-ERRO-01 (403 padrão) | [`F7/US-F7-001-IAM-USUARIOS.md` F7.1-ERRO-01](US-F7-001-IAM-USUARIOS.md) | Mesmo padrão `@PreAuthorize` — capability `request_type.manage` |
 | Execução de transições de workflow | `F1/US-F1-005`, `F3/US-F3-003`, `F5/US-F5-002` | Esta HU cobre o **editor** do catálogo; as transições em runtime (ABERTA → EM_ANALISE → DELIBERADA) estão nas HUs de solicitações |
 
@@ -57,79 +57,82 @@
 ## F7.4-D01 — Listar tipos e carregar editor de três painéis
 
 **Escopo:** happy path — admin acessa `/admin/tipos-solicitacao`; lista é carregada e o tipo selecionado popula os painéis central e direito  
-**Atores:** Admin, WebApp, RTController, ListRTUseCase, GetRTUseCase, Postgres  
+**Atores:** Admin, WebApp, AdminRequestTypeController, RequestTypeQuery, Postgres  
 **Pré-condições:** admin com `request_type.manage`
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Admin
-    participant WebApp
-    participant RTController as RequestTypeController
-    participant ListRTUC as ListRequestTypesUseCase
-    participant GetRTUC as GetRequestTypeUseCase
-    participant Postgres
+    box #e8f4fc Cliente
+        participant Admin
+        participant WebApp
+    end
+    box #fff8ee Servidor
+        participant RTController as AdminRequestTypeController
+        participant Query as RequestTypeQuery
+        participant Postgres
+    end
 
     Admin->>WebApp: Acessa /admin/tipos-solicitacao
-    WebApp->>RTController: GET /request-types?status=&page=0 (Bearer, request_type.manage ✓)
-    RTController->>ListRTUC: execute(query, Pageable)
-    ListRTUC->>Postgres: SELECT request_type {id, nome, status, version}
-    Postgres-->>ListRTUC: Page<RequestTypeEntity>
-    ListRTUC-->>RTController: Page<RequestTypeDto> + _links
-    RTController-->>WebApp: 200 [{id, nome, status, version, _links}]
-    Admin->>WebApp: Seleciona "Trancamento" no painel esquerdo
-    WebApp->>RTController: GET /request-types/:id (Bearer, request_type.manage ✓)
-    RTController->>GetRTUC: execute(id)
-    GetRTUC->>Postgres: SELECT request_type BY id (form_schema, workflow_json, status, version)
-    Postgres-->>GetRTUC: RequestTypeEntity
-    GetRTUC-->>RTController: RequestTypeDto + _links
-    RTController-->>WebApp: 200 {form_schema, workflow_json, status, version, _links}
-    WebApp-->>Admin: Três painéis carregados (lista · JSON editors · preview FormSchema + WorkflowStateMachine)
+    WebApp->>RTController: GET /request-types (cookie, request_type.manage ✓)
+    RTController->>Query: list()
+    Query->>Postgres: SELECT request_type {id, code, descricao, ativo}
+    Postgres-->>Query: List<RequestTypeEntity>
+    Query-->>RTController: [{ativo, formSchema, workflowJson, _links}]
+    RTController-->>WebApp: 200 [{code, ativo, _links strings}]
+    Admin->>WebApp: Seleciona tipo no painel esquerdo
+    WebApp->>RTController: GET /request-types/:id (cookie, request_type.manage ✓)
+    RTController->>Query: getById(id)
+    Query->>Postgres: SELECT request_type BY id
+    Postgres-->>Query: RequestTypeEntity
+    Query-->>RTController: RequestTypeDetailResponse
+    RTController-->>WebApp: 200 {formSchema, workflowJson, ativo, _links}
+    WebApp-->>Admin: Três painéis (lista · JSON editors · preview)
 ```
 
 **Notas:**
-- Painel esquerdo: lista com badges `DRAFT` / `PUBLISHED` e contagem dos 19 tipos (RN-11)
-- Painel central: dois `DS/JsonSchemaEditor` com os conteúdos `form_schema` e `workflow_json` do tipo selecionado
-- Painel direito: `DS/FormSchemaPreview` + `DS/WorkflowStateMachineEditor` populados client-side a partir da resposta 200
-- `_links` inclui: `publish` (se DRAFT + válido), `save-draft`, `delete` (se DRAFT sem histórico)
+- Sem enum `DRAFT`/`PUBLISHED` — coluna `ativo` (boolean). Lista admin inclui rascunhos (`ativo=false`).
+- GET **não** pagina nem filtra `?status=` — `RequestTypeQuery.list()` retorna todos.
+- `_links` no DTO admin pode estar vazio no as-built (`RequestTypeQuery.toResponse` não monta HAL).
+- Wizard do aluno usa `GET /requests/types` (só `ativo=true`), não este path.
 
 **Lacunas:** nenhuma
 
 ---
 
-## F7.4-D02 — Criar novo RequestType (POST → status DRAFT)
+## F7.4-D02 — Criar novo RequestType (POST → ativo=false)
 
-**Escopo:** happy path — admin cria novo tipo "Monitoria" com schemas iniciais; sistema persiste como DRAFT  
-**Atores:** Admin, WebApp, RTController, CreateRTUseCase, Postgres  
+**Escopo:** happy path — admin cria novo tipo; sistema persiste como rascunho (`ativo=false`)  
+**Atores:** Admin, WebApp, AdminRequestTypeController, ManageRequestTypeUseCase, Postgres  
 **Pré-condições:** admin com `request_type.manage`
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Admin
-    participant WebApp
-    participant RTController as RequestTypeController
-    participant CreateRTUC as CreateRequestTypeUseCase
-    participant Postgres
+    box #e8f4fc Cliente
+        participant Admin
+        participant WebApp
+    end
+    box #fff8ee Servidor
+        participant RTController as AdminRequestTypeController
+        participant UC as ManageRequestTypeUseCase
+        participant Postgres
+    end
 
-    Admin->>WebApp: Clica "Novo" → preenche nome e schemas iniciais
-    WebApp->>RTController: POST /request-types (Bearer, request_type.manage ✓) {nome, form_schema, workflow_json}
-    RTController->>CreateRTUC: execute(CreateRequestTypeCommand)
-    CreateRTUC->>CreateRTUC: validate(form_schema JSON Schema draft-07)
-    CreateRTUC->>Postgres: BEGIN TX
-    CreateRTUC->>Postgres: INSERT request_type {nome, form_schema, workflow_json, status='DRAFT'}
-    CreateRTUC->>Postgres: INSERT audit_log {acao='CREATE_REQUEST_TYPE', operadorId}
-    CreateRTUC->>Postgres: COMMIT
-    CreateRTUC-->>RTController: RequestTypeDto + _links
-    RTController-->>WebApp: 201 {id, nome, status='DRAFT', version=1, _links}
-    WebApp-->>Admin: Tipo aparece no painel esquerdo com badge "DRAFT"
+    Admin->>WebApp: Clica "Novo" → preenche code, descricao e schemas
+    WebApp->>RTController: POST /request-types {code, descricao, formSchema, workflowJson}
+    RTController->>UC: create(...)
+    UC->>Postgres: INSERT request_type {ativo=false}
+    UC-->>RTController: id
+    RTController->>RTController: RequestTypeQuery.getById(id)
+    RTController-->>WebApp: 201 {code, ativo:false, _links}
+    WebApp-->>Admin: Tipo no painel esquerdo com badge inativo
 ```
 
 **Notas:**
-- Schema inválido na criação → self-call retorna 422 antes da TX (ver F7.4-ERRO-02 para publish; mesma lógica)
-- `audit_log` registra payload completo de `form_schema` e `workflow_json` (RN-10)
-- Tipo `DRAFT` não aparece no wizard de nova solicitação (F1.8/F5.3) — RN-08
-- Diagrama relacionado: F7.4-D04 (publicar após edição)
+- Create **não** publica — `ativo=false` até `POST /{id}/publish`.
+- Tipo inativo não aparece em `GET /requests/types` (wizard F1.8).
+- Diagrama relacionado: F7.4-D04 (publicar + snapshot V019).
 
 **Lacunas:** nenhuma
 
@@ -137,78 +140,76 @@ sequenceDiagram
 
 ## F7.4-D03 — Salvar rascunho (PATCH form_schema + workflow_json)
 
-**Escopo:** happy path — admin edita schemas de um tipo DRAFT e persiste o rascunho sem publicar  
-**Atores:** Admin, WebApp, RTController, SaveDraftUseCase, Postgres  
-**Pré-condições:** tipo alvo em `status='DRAFT'`; admin com `request_type.manage`
+**Escopo:** happy path — admin edita schemas e persiste sem publicar  
+**Atores:** Admin, WebApp, AdminRequestTypeController, ManageRequestTypeUseCase, Postgres  
+**Pré-condições:** tipo existente; admin com `request_type.manage`
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Admin
-    participant WebApp
-    participant RTController as RequestTypeController
-    participant SaveDraftUC as SaveDraftUseCase
-    participant Postgres
+    box #e8f4fc Cliente
+        participant Admin
+        participant WebApp
+    end
+    box #fff8ee Servidor
+        participant RTController as AdminRequestTypeController
+        participant UC as ManageRequestTypeUseCase
+        participant Postgres
+    end
 
-    Admin->>WebApp: Edita form_schema / workflow_json → clica "Salvar rascunho"
-    WebApp->>RTController: PATCH /request-types/:id (Bearer, request_type.manage ✓) {form_schema, workflow_json}
-    RTController->>SaveDraftUC: execute(id, delta, operadorId)
-    SaveDraftUC->>SaveDraftUC: validate(form_schema JSON Schema draft-07)
-    SaveDraftUC->>Postgres: BEGIN TX
-    SaveDraftUC->>Postgres: UPDATE request_type SET form_schema, workflow_json WHERE id=:id AND status='DRAFT'
-    SaveDraftUC->>Postgres: INSERT audit_log {acao='SAVE_DRAFT', operadorId, payload}
-    SaveDraftUC->>Postgres: COMMIT
-    SaveDraftUC-->>RTController: RequestTypeDto + _links
-    RTController-->>WebApp: 200 {form_schema, workflow_json, status='DRAFT', _links}
-    WebApp-->>Admin: Rascunho salvo; preview e grafo atualizados no painel direito
+    Admin->>WebApp: Edita form_schema / workflow_json → "Salvar"
+    WebApp->>RTController: PATCH /request-types/:id {descricao, formSchema, workflowJson}
+    RTController->>UC: update(id, ...)
+    UC->>Postgres: UPDATE request_type SET form_schema, workflow_json
+    UC->>UC: AuditPublisher request_type.update
+    RTController-->>WebApp: 200 {formSchema, workflowJson, ativo, _links}
+    WebApp-->>Admin: Rascunho salvo; preview atualizado
 ```
 
 **Notas:**
-- PATCH só possível enquanto `status='DRAFT'` — tipos `PUBLISHED` não são editados in-place (nova publicação cria versão)
-- `audit_log` inclui payload completo dos schemas para rastreabilidade de versionamento (RN-10)
-- `validate()` no UseCase: schema inválido → 422 antes da TX (F7.4-ERRO-02)
-- Após COMMIT, client-side atualiza `DS/FormSchemaPreview` e `DS/WorkflowStateMachineEditor` a partir da resposta 200
+- As-built **não** exige `ativo=false` no UPDATE — o UseCase atualiza o registro corrente. Publicar (D04) é o que gera snapshot imutável.
+- Sem `status='DRAFT'`. `AuditPublisher` (não INSERT audit_log no UseCase).
+- Preview client-side a partir da resposta 200.
 
 **Lacunas:** nenhuma
 
 ---
 
-## F7.4-D04 — Publicar versão (POST /publish + versionamento atômico)
+## F7.4-D04 — Publicar versão (POST /publish + snapshot V019)
 
-**Escopo:** happy path — admin publica um RequestType DRAFT; nova versão imutável é criada; solicitações existentes mantêm a versão anterior  
-**Atores:** Admin, WebApp, RTController, PublishRequestTypeUseCase, Postgres  
-**Pré-condições:** tipo em `status='DRAFT'`; `form_schema` e `workflow_json` válidos; admin com `request_type.manage`
+**Escopo:** happy path — admin publica; `ativo=true` + INSERT `request_type_version`  
+**Atores:** Admin, WebApp, AdminRequestTypeController, ManageRequestTypeUseCase, Postgres  
+**Pré-condições:** `form_schema` e `workflow_json` válidos; admin com `request_type.manage`
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Admin
-    participant WebApp
-    participant RTController as RequestTypeController
-    participant PublishRTUC as PublishRequestTypeUseCase
-    participant Postgres
+    box #e8f4fc Cliente
+        participant Admin
+        participant WebApp
+    end
+    box #fff8ee Servidor
+        participant RTController as AdminRequestTypeController
+        participant UC as ManageRequestTypeUseCase
+        participant Postgres
+    end
 
     Admin->>WebApp: Schemas válidos → clica "Publicar"
-    WebApp->>RTController: POST /request-types/:id/publish (Bearer, request_type.manage ✓)
-    RTController->>PublishRTUC: execute(id, operadorId)
-    PublishRTUC->>Postgres: SELECT request_type BY id (status, form_schema, workflow_json)
-    Postgres-->>PublishRTUC: RequestTypeEntity {status='DRAFT', version=N}
-    PublishRTUC->>PublishRTUC: validate(form_schema + workflow_json)
-    PublishRTUC->>Postgres: BEGIN TX
-    PublishRTUC->>Postgres: INSERT request_type_version {snapshot, version=N+1} (immutable)
-    PublishRTUC->>Postgres: UPDATE request_type SET status='PUBLISHED', currentVersion=N+1
-    PublishRTUC->>Postgres: INSERT audit_log {acao='PUBLISH', operadorId, version=N+1}
-    PublishRTUC->>Postgres: COMMIT
-    PublishRTUC-->>RTController: RequestTypeDto {status='PUBLISHED', version=N+1}
-    RTController-->>WebApp: 200 {id, nome, status='PUBLISHED', version=N+1, _links}
-    WebApp-->>Admin: Badge "PUBLISHED"; wizard F1.8/F5.3 usa versão N+1
+    WebApp->>RTController: POST /request-types/:id/publish (cookie, request_type.manage ✓)
+    RTController->>UC: publish(id)
+    UC->>Postgres: SELECT request_type BY id
+    Postgres-->>UC: RequestTypeEntity {ativo}
+    UC->>UC: validate form_schema + workflow_json
+    UC->>Postgres: UPDATE request_type SET ativo=true
+    UC->>Postgres: INSERT request_type_version (snapshot V019)
+    RTController-->>WebApp: 200 {id, code, ativo:true, _links}
+    WebApp-->>Admin: Badge ativo; wizard GET /requests/types vê o tipo
 ```
 
 **Notas:**
-- `request_type_version` é imutável — snapshot completo de `form_schema` + `workflow_json` na versão N+1 (RN-07)
-- Solicitações abertas mantêm `request_type_version_id = N` (CA-05 → DRY — FK preservada na criação da solicitação)
-- A partir deste `COMMIT`, o wizard de nova solicitação (F1.8/F5.3) resolve `currentVersion = N+1`
-- Schema inválido no momento do publish → 422 antes da TX (F7.4-ERRO-02)
+- `RequestTypeVersionStore.snapshot` grava `form_schema` + `workflow_json` imutáveis (V019).
+- Solicitações já abertas mantêm `id_request_type_version` da criação (OpenRequestUseCase) — não migram no publish.
+- Sem `status='PUBLISHED'` — só `ativo=true`. `AuditPublisher` `request_type.publish`.
 
 **Lacunas:** nenhuma
 
@@ -225,10 +226,10 @@ sequenceDiagram
     autonumber
     participant Admin
     participant WebApp
-    participant RTController as RequestTypeController
+    participant RTController as AdminRequestTypeController
 
     Admin->>WebApp: Acessa /admin/tipos-solicitacao
-    WebApp->>RTController: GET /request-types (Bearer, request_type.manage ✗)
+    WebApp->>RTController: GET /request-types (cookie, request_type.manage ✗)
     RTController->>RTController: verify JWT + check request_type.manage → denied
     RTController-->>WebApp: 403 Problem Details (access_denied)
     WebApp-->>Admin: Redirect /erro/403
@@ -247,24 +248,24 @@ sequenceDiagram
 
 **Escopo:** erro — admin tenta publicar `RequestType` com `form_schema` malformado; API rejeita antes da TX  
 **Atores:** Admin, WebApp, RTController, PublishRequestTypeUseCase, Postgres  
-**Pré-condições:** tipo em `status='DRAFT'`; `form_schema` com JSON inválido (ex.: chave sem fechar)
+**Pré-condições:** tipo `ativo=false` (rascunho) **ou** publicado; `form_schema` com JSON inválido (ex.: chave sem fechar)
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Admin
     participant WebApp
-    participant RTController as RequestTypeController
-    participant PublishRTUC as PublishRequestTypeUseCase
+    participant RTController as AdminRequestTypeController
+    participant UC as ManageRequestTypeUseCase
     participant Postgres
 
     Admin->>WebApp: Clica "Publicar" (client-side não detectou erro de sintaxe)
-    WebApp->>RTController: POST /request-types/:id/publish (Bearer, request_type.manage ✓)
-    RTController->>PublishRTUC: execute(id)
-    PublishRTUC->>Postgres: SELECT request_type BY id (form_schema, workflow_json)
-    Postgres-->>PublishRTUC: RequestTypeEntity {status='DRAFT'}
-    PublishRTUC->>PublishRTUC: validate(form_schema) → inválido (linha N, campo X)
-    PublishRTUC-->>RTController: 422 invalid_schema (detalhe)
+    WebApp->>RTController: POST /request-types/:id/publish (cookie, request_type.manage ✓)
+    RTController->>UC: publish(id)
+    UC->>Postgres: SELECT request_type BY id (form_schema, workflow_json)
+    Postgres-->>UC: RequestTypeEntity {ativo}
+    UC->>UC: validate(form_schema) → inválido
+    UC-->>RTController: 422 invalid_schema
     RTController-->>WebApp: 422 Problem Details (invalid_schema)
     WebApp-->>Admin: Borda danger no editor + "JSON inválido na linha N"
 ```
@@ -282,32 +283,31 @@ sequenceDiagram
 ## F7.4-ERRO-03 — 422 Excluir RequestType com histórico
 
 **Escopo:** erro — admin tenta excluir um `RequestType` que possui solicitações ou versões históricas; API rejeita com 422  
-**Atores:** Admin, WebApp, RTController, DeleteRequestTypeUseCase, Postgres  
-**Pré-condições:** admin com `request_type.manage`; tipo alvo com solicitações ou versões existentes
+**Atores:** Admin, WebApp, AdminRequestTypeController, ManageRequestTypeUseCase, Postgres  
+**Pré-condições:** admin com `request_type.manage`; tipo alvo com solicitações no histórico
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Admin
     participant WebApp
-    participant RTController as RequestTypeController
-    participant DeleteRTUC as DeleteRequestTypeUseCase
+    participant RTController as AdminRequestTypeController
+    participant UC as ManageRequestTypeUseCase
     participant Postgres
 
-    Admin->>WebApp: Clica "Excluir" no tipo "Aproveitamento"
-    WebApp->>RTController: DELETE /request-types/:id (Bearer, request_type.manage ✓)
-    RTController->>DeleteRTUC: execute(id)
-    DeleteRTUC->>Postgres: SELECT count(solicitacoes + request_type_versions) WHERE request_type_id=:id
-    Postgres-->>DeleteRTUC: count=5 (histórico existente)
-    DeleteRTUC-->>RTController: 422 UnprocessableEntity (request_type_in_use)
-    RTController-->>WebApp: 422 Problem Details (request_type_in_use, count=5)
+    Admin->>WebApp: Clica "Excluir" no tipo
+    WebApp->>RTController: DELETE /request-types/:id (cookie, request_type.manage ✓)
+    RTController->>UC: delete(id)
+    UC->>Postgres: SELECT count(request) WHERE id_request_type=:id
+    Postgres-->>UC: count>0 (histórico existente)
+    UC-->>RTController: IllegalArgumentException (tipo em uso)
+    RTController-->>WebApp: 422 Problem Details (request_type_in_use)
     WebApp-->>Admin: "Tipo com histórico — não pode ser excluído"
 ```
 
 **Notas:**
-- RFC 7807: `type: request_type_in_use`, `status: 422`, `detail: "5 solicitações vinculadas"` — corpo completo em **Notas**
-- Apenas tipos em `status='DRAFT'` sem nenhuma `request_type_version` e sem solicitações podem ser excluídos (RN-09)
-- `_links` omite `delete` para tipos PUBLISHED → botão ausente via HATEOAS (capturado em F7.4-D01)
-- Padrão idêntico a F7.2-ERRO-01 (excluir perfil com usuários ativos)
+- Delete as-built: **hard DELETE** só se `count(request)=0`. Não é `UPDATE ativo=false`.
+- Rascunho não publicado = `ativo=false` (nunca `status=DRAFT`). Tipos em uso não podem ser apagados — desativar no catálogo do wizard é deixar de republicar / não há soft-delete neste UseCase.
+- RFC 7807: mensagem "Não é possível excluir tipo com N solicitações no histórico."
 
 **Lacunas:** nenhuma

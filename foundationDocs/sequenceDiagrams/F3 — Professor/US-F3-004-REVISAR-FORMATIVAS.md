@@ -63,7 +63,7 @@ sequenceDiagram
     end
 
     Professor->>WebApp: acessa /formativas?to=me
-    WebApp->>JwtFilter: GET /formative-entries?canReview=true (Bearer)
+    WebApp->>JwtFilter: GET /formative-entries?canReview=true (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + formative.review ✓
     JwtFilter->>FormativeController: repassa (professorId, cursoIds[])
     FormativeController->>Postgres: SELECT formative_entries WHERE estado=SUBMETIDA AND cursoId IN cursoIds[]
@@ -108,7 +108,7 @@ sequenceDiagram
     ApproveUC->>Postgres: BEGIN TX
     ApproveUC->>Postgres: UPDATE formative_entry SET estado=APROVADA, horasValidadas=N
     ApproveUC->>Postgres: INSERT formative_event_log (APROVADA, horasValidadas, actor_id=professorId)
-    ApproveUC->>Postgres: INSERT outbox_event (type=formativas.approved, {entryId, alunoId})
+    ApproveUC->>Outbox: OutboxEventPublisher.enqueue(formativas.approved)
     ApproveUC->>Postgres: COMMIT
     ApproveUC-->>FormativeController: FormativeEntryDto (APROVADA)
     FormativeController-->>WebApp: 200 {estado: APROVADA, horasValidadas: N, _links: []}
@@ -116,7 +116,7 @@ sequenceDiagram
 ```
 
 **Notas:**
-- Passos 6–10: TX atômica — `UPDATE estado`, `INSERT event_log` e `INSERT outbox_event` gravados juntos (RN-F3.5-06). Se o COMMIT falhar, nenhum certificado é emitido.
+- Passos 6–10: TX atômica — `UPDATE estado`, `INSERT event_log` e `OutboxEventPublisher.enqueue` na mesma TX (RN-F3.5-06). Se o COMMIT falhar, nenhum certificado é emitido.
 - Passo 9: o `OutboxDispatcher` (a cada 5 s) consome `formativas.approved` e aciona o `CertificateIssuerUseCase` para o aluno. O fluxo completo de emissão (Gotenberg PDF + SHA-256 + ED25519 + MinIO) está em → [`transversal/10.4-certificado-emissao.md`](../transversal/10.4-certificado-emissao.md).
 - `horasValidadas` pode diferir das horas declaradas pelo aluno (RN-F3.5-04). O certificado usará o valor validado.
 - Notificação push/e-mail ao aluno após despacho do outbox → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md).
@@ -153,7 +153,7 @@ sequenceDiagram
     BatchApproveUC->>Postgres: BEGIN TX
     BatchApproveUC->>Postgres: UPDATE formative_entries (N) SET estado=APROVADA WHERE id IN ids[]
     BatchApproveUC->>Postgres: INSERT formative_event_log N linhas (APROVADA, actor_id=professorId)
-    BatchApproveUC->>Postgres: INSERT outbox_event N linhas (type=formativas.approved, {entryId} each)
+    BatchApproveUC->>Outbox: OutboxEventPublisher.enqueue(formativas.approved) xN
     BatchApproveUC->>Postgres: COMMIT
     BatchApproveUC-->>FormativeController: BatchResult{aprovadas: N, erros: 0}
     FormativeController-->>WebApp: 200 {aprovadas: N, erros: 0}
@@ -197,7 +197,7 @@ sequenceDiagram
     RejectUC->>Postgres: BEGIN TX
     RejectUC->>Postgres: UPDATE formative_entry SET estado=REJEITADA
     RejectUC->>Postgres: INSERT formative_event_log (REJEITADA, parecer, actor_id)
-    RejectUC->>Postgres: INSERT outbox_event (type=formativas.rejected, {entryId, parecer})
+    RejectUC->>Outbox: OutboxEventPublisher.enqueue(formativas.rejected)
     RejectUC->>Postgres: COMMIT
     RejectUC-->>FormativeController: FormativeEntryDto (REJEITADA)
     FormativeController-->>WebApp: 200 {estado: REJEITADA, _links: []}

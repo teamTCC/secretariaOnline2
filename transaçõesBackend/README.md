@@ -1,6 +1,7 @@
 # transaçõesBackend — Guia de Implementação das Transações
 
 > **Objetivo:** Documentar como cada transação dos diagramas de sequência (`foundationDocs/sequenceDiagrams/`) está implementada no backend, com links diretos aos arquivos de código, exemplos de JSON, DTOs e notas de cobertura.  
+> **Contrato as-built:** [`foundationDocs/analysis/as-built-backend.md`](../foundationDocs/analysis/as-built-backend.md) — o que o código faz hoje (Flyway **V001–V019**, 41 controllers). Onde este guia e a análise de 2026-06 divergirem, o as-built vence.  
 > **Use como:** tutorial de aprendizado + checklist de verificação do funcionamento real do app.
 
 ---
@@ -9,10 +10,10 @@
 
 | Módulo | Status | Cobertura |
 |--------|--------|-----------|
-| IAM — Autenticação (F0.1 a F0.3) | ✅ **Implementado** | Login, Refresh, Forgot/Reset/FirstAccess, Rate Limit, Audit, CSRF Double Submit |
+| IAM — Autenticação (F0.1 a F0.3) | ✅ **Implementado** | Login, Refresh, **POST /auth/ott**, Forgot/Reset/FirstAccess, Rate Limit, Audit, CSRF Double Submit |
 | Perfil do Usuário (F1.3) | ✅ **Implementado** | GET/PATCH /me, avatar MinIO, senha, notificações, FCM token |
-| BFF — Dashboard Aluno/Professor/Secretaria/Egresso | ✅ **Implementado** | 4 controllers slim + 5 queries (inclui `AcademicoSummaryQuery`); cache Redis; read ports em 7 módulos (Clean Architecture); `alumni.view_own` no egresso |
-| Solicitações — Motor de Workflow (F1.5, F3.3, F5.2) | ✅ **Implementado** | Open+Outbox, Transition+Outbox, HATEOAS, WorkflowEngine |
+| BFF — Dashboard Aluno/Professor/Secretaria/Egresso | ✅ **Implementado** | Controllers slim → `Dashboard*Query` / `ReportsQuery` / `SearchQuery` via **ports** (nunca JPA de outro módulo); cache Redis TTL 60s; `alumni.view_own` no egresso |
+| Solicitações — Motor de Workflow (F1.5, F3.3, F5.2) | ✅ **Implementado** | GET → `RequestQuery` / `RequestTypeQuery`; POST/PATCH → `*UseCase`; `_links` strings; publish → `request_type_version` (V019) |
 | Horas Formativas (F1.6, F3.4) | ✅ **Implementado** | Submit, comprovante MinIO, Review+certificado PDF, Resumo KPI |
 | Presença em Eventos (F1.9, F3.2) | ✅ **Implementado** | Criar evento, Confirmar entrada/saída+Outbox (SECRET e QR) |
 | Hub de Comunicação (F1.4, F3.7) | ✅ **Implementado** | Inbox, marcar lido, publicar, contador de não-lidos |
@@ -38,7 +39,7 @@
 | Kanban secretaria (F5.12) | ✅ **Implementado** | `/tasks` |
 | Relatório coordenação (F6.2) | ✅ **Implementado** | `GET /reports/coordinator` |
 | Admin roles (F7.2) | ✅ **Implementado** | `/admin/roles`, autoridades, `PUT /admin/usuarios/{id}/roles` |
-| Editor RequestType (F7.3) | ✅ **Implementado** | `/request-types` CRUD + publish |
+| Editor RequestType (F7.3) | ✅ **Implementado** | `/request-types` CRUD + publish (snapshot `request_type_version` V019) |
 | Templates comunicação (F7.4) | ✅ **Implementado** | Catálogo versionado + TemplateEngine no dispatcher |
 
 ---
@@ -48,26 +49,37 @@
 ```
 HTTP Request
     ↓
-RateLimitFilter (Bucket4j — login, forgot-password, consultas públicas, contato)
+RateLimitFilter (Bucket4j — login, POST /auth/ott, forgot-password, consultas públicas, contato)
     ↓
 CsrfFilter (Double Submit: cookie XSRF-TOKEN + header X-XSRF-TOKEN)
     ↓
 JwtAuthenticationFilter (cookie `access_token` primário; Bearer fallback → Redis session `sid` fail-closed → SecurityContext)
     ↓
-Spring Security (verificação de authority com @PreAuthorize)
+Spring Security (@PreAuthorize)
     ↓
-Controller (valida DTO com @Valid, constrói Command)
+Controller fino (DTO in/out) — NÃO injeta JPA
     ↓
-UseCase (@Transactional, regras de negócio, Argon2, JWT)
-    ↓  ↘
-Repository  OutboxEventJpaRepository (atomic TX)
-(JPA → Postgres)     ↓
-                OutboxDispatcher (@Scheduled 5s)
-    ↓               ↓
-AuditPublisher  OutboxEventHandler (email, FCM, etc.)
+GET  → *Query.execute(...)     |  POST/PATCH → *UseCase.execute(Command) @Transactional
+    ↓                              ↓
+Intra-módulo: *JpaRepository       OutboxEventPublisher.enqueue(...)  (port shared)
+Cross-módulo / BFF: Port + Adapter (nunca JPA do vizinho)
     ↓
-JSON Response (RFC 7807 para erros, HATEOAS _links onde aplicável)
+OutboxDispatcher (@Scheduled 5s) → OutboxEventHandler (email, FCM, …)
+    ↓
+JSON: RFC 7807 nos erros; `_links` como Map<String,String> (não HAL EntityModel)
 ```
+
+**Camadas as-built (não documentar o contrário):**
+
+| Camada | Código real |
+|--------|-------------|
+| Leitura | `*Query` (`RequestQuery`, `DashboardAlunoQuery`, `ReportsQuery`, `SearchQuery`, …) |
+| Escrita | `*UseCase` + `OutboxEventPublisher` (não `OutboxEventJpaRepository` no use case) |
+| Auth HTTP | Cookies HttpOnly; JSON **sem** `accessToken`/`refreshToken` |
+| Schema | Flyway **V001–V019** ligado; `ddl-auto: validate` — sem `request_line_item`; sem enum DRAFT/PUBLISHED em `request_type` (usa `ativo`) |
+| HATEOAS | `_links` strings (`self`, `submit`, ações kebab-case) — não `{ rel, href }` |
+
+**SMTP de desenvolvimento:** `ops/docker-compose.yml` **não** inclui Mailhog/Mailpit nesta passagem as-built. E-mails de reset/OTT são observados em `outbox_event` / `GET /admin/outbox`. Um catcher SMTP local é opcional e fora do compose operacional.
 
 ---
 
@@ -76,7 +88,7 @@ JSON Response (RFC 7807 para erros, HATEOAS _links onde aplicável)
 ### F0 — Público (sem autenticação)
 | Arquivo | Diagrama | Status Backend |
 |---------|----------|----------------|
-| [T-F0-001-LOGIN.md](F0 — Público/T-F0-001-LOGIN.md) | US-F0-001 | ✅ Implementado |
+| [T-F0-001-LOGIN.md](F0 — Público/T-F0-001-LOGIN.md) | US-F0-001 | ✅ Login / refresh / logout / **POST /auth/ott** |
 | [T-F0-002-RECUPERAR-SENHA.md](F0 — Público/T-F0-002-RECUPERAR-SENHA.md) | US-F0-002 | ✅ Outbox + Rate Limit 3/h + retryAfterSeconds |
 | [T-F0-003-NOVA-SENHA.md](F0 — Público/T-F0-003-NOVA-SENHA.md) | US-F0-003 | ✅ Implementado |
 | [T-F0-004-CONTATO.md](F0 — Público/T-F0-004-CONTATO.md) | US-F0-004 | ✅ GET/POST `/publico/contato` |

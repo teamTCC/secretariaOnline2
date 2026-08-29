@@ -174,26 +174,24 @@ Content-Type: application/problem+json
 
 ## Canal de Envio — Padrão Outbox (10.1a + 10.1b)
 
-O use case **não** chama SMTP. Ele grava `outbox_event` na mesma `@Transactional`:
+O use case **não** chama SMTP. Ele enfileira via `OutboxEventPublisher.enqueue` na mesma `@Transactional`:
 
 ```kotlin
-outboxRepo.save(
-    OutboxEventEntity(
-        eventType = OutboxEventTypes.PASSWORD_RESET_REQUESTED, // iam.password_reset_requested
-        aggregateType = "Usuario",
-        aggregateId = usuario.id,
-        payload = mapOf(
-            "email" to usuario.email.value,
-            "nome" to usuario.nome,
-            "token" to token,
-        ),
+outboxPublisher.enqueue(
+    eventType = OutboxEventTypes.PASSWORD_RESET_REQUESTED, // iam.password_reset_requested
+    aggregateType = "Usuario",
+    aggregateId = usuario.id,
+    payload = mapOf(
+        "email" to usuario.email.value,
+        "nome" to usuario.nome,
+        "token" to token,
     ),
 )
 ```
 
 O `OutboxDispatcher` (`@Scheduled(fixedDelay = 5000)`) busca linhas `PENDING`, roteia para `PasswordResetOutboxHandler`, que chama `MailService.sendPasswordResetEmail`. Se o SMTP falhar, a linha permanece `PENDING` com backoff (30s → 5min → 1h); após 8 tentativas vira `DEAD`.
 
-**Por que isso importa:** o `202` não depende do SMTP. Restart do processo não perde o e-mail. Falha transitória de Mailhog/Mailgun é retentada.
+**Por que isso importa:** o `202` não depende do SMTP. Restart do processo não perde o e-mail. Falha transitória de SMTP (Mailgun ou catcher local opcional) é retentada. Mailhog/Mailpit **não** estão em `ops/docker-compose.yml`.
 
 ---
 

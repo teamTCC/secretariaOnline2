@@ -40,7 +40,8 @@ Identificador de login aceita: e-mail UFPR, e-mail pessoal **ou GRR numérico** 
 | `serviceRecordId` | `POST /service-records` ou `GET /me/service-records` |
 | `deliveryId` | `GET /communications/me` → `deliveryId` |
 | `outboxId` | `GET /admin/outbox` → `id` |
-| `resetToken` | Mailhog: link `/nova-senha?token=` **ou** payload do outbox `iam.password_reset_requested` |
+| `resetToken` | payload do outbox `iam.password_reset_requested` (`GET /admin/outbox`) — Mailhog opcional, **não** no compose operacional |
+| `ottJwt` | payload do outbox da transição com `generateOneTimeToken` → `POST /auth/ott` |
 
 ---
 
@@ -115,7 +116,7 @@ LIMIT 5;
 | JWKS | [http://localhost:8080/.well-known/jwks.json](http://localhost:8080/.well-known/jwks.json) |
 | Verificar certificado (troque o hash) | `http://localhost:8080/publico/verificar-certificado/{{certificateHash}}` |
 | Verificar protocolo | `http://localhost:8080/publico/solicitacoes/{{requestAno}}/{{requestNumero}}` |
-| Mailhog | [http://localhost:8025](http://localhost:8025) |
+| Outbox (tokens de e-mail / OTT) | `GET /admin/outbox` — Mailhog **não** está no compose operacional |
 | Transações (implementação) | [`transaçõesBackend/README.md`](../transaçõesBackend/README.md) |
 | Diagramas | [`foundationDocs/sequenceDiagrams/README.md`](../foundationDocs/sequenceDiagrams/README.md) |
 
