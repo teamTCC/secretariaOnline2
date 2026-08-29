@@ -11,7 +11,7 @@
 |--------|--------|-----------|
 | IAM — Autenticação (F0.1 a F0.3) | ✅ **Implementado** | Login, Refresh, Forgot/Reset/FirstAccess, Rate Limit, Audit, CSRF Double Submit |
 | Perfil do Usuário (F1.3) | ✅ **Implementado** | GET/PATCH /me, avatar MinIO, senha, notificações, FCM token |
-| BFF — Dashboard Aluno/Professor/Secretaria/Egresso | ✅ **Implementado** | Agregador de dados, `_links` HATEOAS, graceful degradation |
+| BFF — Dashboard Aluno/Professor/Secretaria/Egresso | ✅ **Implementado** | 4 controllers slim + 5 queries (inclui `AcademicoSummaryQuery`); cache Redis; read ports em 7 módulos (Clean Architecture); `alumni.view_own` no egresso |
 | Solicitações — Motor de Workflow (F1.5, F3.3, F5.2) | ✅ **Implementado** | Open+Outbox, Transition+Outbox, HATEOAS, WorkflowEngine |
 | Horas Formativas (F1.6, F3.4) | ✅ **Implementado** | Submit, comprovante MinIO, Review+certificado PDF, Resumo KPI |
 | Presença em Eventos (F1.9, F3.2) | ✅ **Implementado** | Criar evento, Confirmar entrada/saída+Outbox (SECRET e QR) |
@@ -52,7 +52,7 @@ RateLimitFilter (Bucket4j — login, forgot-password, consultas públicas, conta
     ↓
 CsrfFilter (Double Submit: cookie XSRF-TOKEN + header X-XSRF-TOKEN)
     ↓
-JwtAuthenticationFilter (extrai Bearer → popula SecurityContext)
+JwtAuthenticationFilter (cookie `access_token` primário; Bearer fallback → Redis session `sid` fail-closed → SecurityContext)
     ↓
 Spring Security (verificação de authority com @PreAuthorize)
     ↓
@@ -149,7 +149,7 @@ JSON Response (RFC 7807 para erros, HATEOAS _links onde aplicável)
 | [T-10.4-CERTIFICADO.md](transversal/T-10.4-CERTIFICADO.md) | 10.4a | ✅ PDF + Ed25519 + MinIO + JWKS |
 | [T-10.5-PUSH-FCM.md](transversal/T-10.5-PUSH-FCM.md) | FCM | ✅ Firebase Admin SDK real + fallback gracioso |
 | [T-10.6-ADMIN-OUTBOX.md](transversal/T-10.6-ADMIN-OUTBOX.md) | Admin | ✅ List/retry-DEAD/delete |
-| [T-10.7-REDIS-BFF.md](transversal/T-10.7-REDIS-BFF.md) | Redis | ✅ Cache-aside TTL 60s nos 4 dashboards BFF |
+| [T-10.7-REDIS-BFF.md](transversal/T-10.7-REDIS-BFF.md) | Redis | ✅ Session store (`sid`, fail-closed) + cache BFF TTL 60s nas 5 queries + read ports Clean Architecture |
 
 ---
 

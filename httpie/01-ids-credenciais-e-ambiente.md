@@ -24,7 +24,7 @@ Identificador de login aceita: e-mail UFPR, e-mail pessoal **ou GRR numérico** 
 
 | Variável | Onde nasce |
 |----------|------------|
-| `accessToken` | `POST /auth/login` → `accessToken` |
+| `accessToken` | Cookie `access_token` após `POST /auth/login` (não vem no JSON). Opcional — cookie jar costuma bastar |
 | `xsrfToken` | `GET /auth/csrf` → `token` (ou cookie `XSRF-TOKEN`) |
 | `userId` / `alunoId` | `GET /me` → `id` |
 | `cursoId` | `GET /academico/cursos` → item `sigla=TADS` → `id` |
@@ -134,9 +134,9 @@ O JWT claim `authorities` é a lista FGAC. Sem a authority, o endpoint responde 
 | CAAF | `formative.review` |
 | COE | `internship.review` |
 | ADMIN | `system.admin`, `iam.manage_roles`, `user.manage_all`, `audit.read`, `request_type.manage` |
-| EGRESSO | `alumni.view_own` (sem `request.open`) |
+| EGRESSO | `alumni.view_own`, `certificate.view_own`, `communication.read` (sem `request.open`) — seed V016 |
 
-A matriz real está em [`V010__seed_authorities_roles.sql`](../backend/app/src/main/resources/db/migration/V010__seed_authorities_roles.sql). Para inspecionar no token: cole o JWT em [https://jwt.io](https://jwt.io) (só em máquina local; o token é RS256).
+A matriz real está em [`V010__seed_authorities_roles.sql`](../backend/app/src/main/resources/db/migration/V010__seed_authorities_roles.sql) + [`V016__egresso_and_report_authorities.sql`](../backend/app/src/main/resources/db/migration/V016__egresso_and_report_authorities.sql). Para inspecionar no token: cole o JWT em [https://jwt.io](https://jwt.io) (só em máquina local; o token é RS256). Claim `sid` = sessão Redis `auth:session:<sid>`.
 
 ---
 

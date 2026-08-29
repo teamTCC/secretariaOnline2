@@ -18,11 +18,12 @@ Tutoriais específicos:
 
 ## F5.1 — Dashboard da Secretaria
 
+> **Arquivos:** [`DashboardSecretariaController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/DashboardSecretariaController.kt) + [`DashboardSecretariaQuery.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/application/DashboardSecretariaQuery.kt)  
 > **Ver também:** [T-F1-001-DASHBOARD](../F1 — Aluno/T-F1-001-DASHBOARD.md)
 
 ```
 GET /bff/dashboard/secretaria
-Authorization: Bearer …  (hasAuthority('dashboard.view_secretary'))
+Cookie: access_token=…   (hasAuthority('dashboard.view_secretary'))
 ```
 
 ```json

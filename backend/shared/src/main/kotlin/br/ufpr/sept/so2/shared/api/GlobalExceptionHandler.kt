@@ -77,7 +77,7 @@ class GlobalExceptionHandler {
         ).also { it.setProperty("incidentId", incidentId) }
     }
 
-    private fun problemDetail(
+    internal fun problemDetail(
         status: HttpStatus,
         title: String,
         detail: String,

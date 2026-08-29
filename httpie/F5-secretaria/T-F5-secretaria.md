@@ -17,6 +17,8 @@ Tutoriais irmãos: [005 diplomas](T-F5-005-egressos-diplomas.md) · [009 import]
 
 ## F5.1 — Dashboard
 
+Cookie da session **ou** Bearer. Código: `DashboardSecretariaController` + `DashboardSecretariaQuery`. Cache key `secretaria:static`.
+
 ```
 GET {{baseUrl}}/bff/dashboard/secretaria
 Authorization: Bearer {{accessTokenSecretaria}}
@@ -66,6 +68,36 @@ X-XSRF-TOKEN: {{xsrfToken}}
 **Esperado 200** ou **409** (rollback all-or-nothing). Action seed: `DEFER`.
 
 Transição unitária: [T-F1-005](../F1-aluno/T-F1-005-solicitacoes.md) Passo 7.
+
+---
+
+## F5.2b — Abrir em nome do aluno (`onBehalfOf`)
+
+Exige `request.open_on_behalf`. Sem essa authority → **400** (`IllegalArgumentException`).
+
+Copie o `id` do aluno (`GET /usuarios?email=ana.aluno@ufpr.br`) → `{{alunoId}}`. Use um tipo publicado (`GET /requests/types`).
+
+Cole no Body:
+
+```json
+{
+  "idRequestType": "{{requestTypeId}}",
+  "idCurso": "{{cursoId}}",
+  "idSolicitanteOnBehalf": "{{alunoId}}",
+  "dados": {
+    "finalidade": "BOLSA",
+    "observacoes": "Aberta pelo balcão da secretaria (HTTPie)."
+  }
+}
+```
+
+```
+POST {{baseUrl}}/requests
+Authorization: Bearer {{accessTokenSecretaria}}
+X-XSRF-TOKEN: {{xsrfToken}}
+```
+
+**Esperado 201.** `GET /requests/{id}` deve ter `idSolicitante` = `{{alunoId}}` (não o da secretaria).
 
 ---
 

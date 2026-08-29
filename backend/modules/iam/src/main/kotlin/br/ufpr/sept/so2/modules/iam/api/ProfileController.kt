@@ -1,12 +1,18 @@
 package br.ufpr.sept.so2.modules.iam.api
 
-import br.ufpr.sept.so2.modules.arquivos.MinioStorageService
+import br.ufpr.sept.so2.modules.iam.api.dto.AvatarUploadResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.DataExportStartedResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.DataExportStatusResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.NotificationPrefResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.ProfileResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.ProfileUpdatedResponse
+import br.ufpr.sept.so2.modules.iam.application.ChangePasswordCommand
 import br.ufpr.sept.so2.modules.iam.application.DataExportUseCase
+import br.ufpr.sept.so2.modules.iam.application.ProfileQuery
 import br.ufpr.sept.so2.modules.iam.application.RequestDataExportCommand
-import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.NotificationPrefEntity
-import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.NotificationPrefJpaRepository
-import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.UsuarioJpaRepository
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.Argon2PasswordService
+import br.ufpr.sept.so2.modules.iam.application.UpdateNotificationsCommand
+import br.ufpr.sept.so2.modules.iam.application.UpdateProfileCommand
+import br.ufpr.sept.so2.modules.iam.application.UpdateProfileUseCase
 import br.ufpr.sept.so2.shared.security.currentUserId
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.responses.ApiResponse
@@ -15,8 +21,6 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
-import org.springframework.hateoas.EntityModel
-import org.springframework.hateoas.Link
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -49,65 +53,32 @@ data class UpdateNotificationsDto(
 @Tag(name = "Perfil", description = "Gerenciamento do perfil do usuário autenticado")
 class ProfileController(
     private val dataExportUseCase: DataExportUseCase,
-    private val usuarioJpaRepository: UsuarioJpaRepository,
-    private val argon2PasswordService: Argon2PasswordService,
-    private val notificationPrefRepo: NotificationPrefJpaRepository,
-    private val minioStorageService: MinioStorageService,
+    private val profileQuery: ProfileQuery,
+    private val updateProfileUseCase: UpdateProfileUseCase,
 ) {
-
     @GetMapping
     @PreAuthorize("hasAuthority('user.update_own_profile')")
     @Operation(
         summary = "Perfil do usuário autenticado",
         description = "Retorna dados pessoais, roles e links HATEOAS disponíveis.",
     )
-    fun getProfile(): EntityModel<Map<String, Any?>> {
-        val userId = currentUserId()
-        val usuario =
-            usuarioJpaRepository
-                .findByIdWithRoles(userId)
-                .orElseThrow { NoSuchElementException("Usuário não encontrado: $userId") }
-
-        val roles = usuario.usuarioRoles.map { it.role.code }
-
-        val body: Map<String, Any?> =
-            mapOf(
-                "id" to usuario.id,
-                "nome" to usuario.nome,
-                "email" to usuario.email,
-                "grr" to usuario.grr,
-                "ativo" to usuario.ativo,
-                "metadata" to usuario.metadata,
-                "roles" to roles,
-            )
-
-        val model = EntityModel.of(body)
-        model.add(Link.of("/me").withSelfRel())
-        model.add(Link.of("/me").withRel("update-profile").withType("PATCH"))
-        model.add(Link.of("/me/password").withRel("change-password").withType("POST"))
-        model.add(Link.of("/me/notifications").withRel("notifications").withType("PATCH"))
-        model.add(Link.of("/me/data-export").withRel("data-export").withType("POST"))
-
-        return model
-    }
+    fun getProfile(): ProfileResponse = profileQuery.getProfile(currentUserId())
 
     @PatchMapping
     @PreAuthorize("hasAuthority('user.update_own_profile')")
     @Operation(summary = "Atualizar dados pessoais (nome, metadata)")
     fun updateProfile(
         @RequestBody dto: UpdateProfileDto,
-    ): ResponseEntity<Map<String, Any?>> {
-        val userId = currentUserId()
-        val usuario =
-            usuarioJpaRepository
-                .findById(userId)
-                .orElseThrow { NoSuchElementException("Usuário não encontrado: $userId") }
-
-        dto.nome?.let { usuario.nome = it }
-        dto.metadata?.let { usuario.metadata = it.toMutableMap() }
-        val saved = usuarioJpaRepository.save(usuario)
-
-        return ResponseEntity.ok(mapOf("id" to saved.id, "nome" to saved.nome))
+    ): ResponseEntity<ProfileUpdatedResponse> {
+        val saved =
+            updateProfileUseCase.updateProfile(
+                UpdateProfileCommand(
+                    userId = currentUserId(),
+                    nome = dto.nome,
+                    metadata = dto.metadata,
+                ),
+            )
+        return ResponseEntity.ok(saved)
     }
 
     @PostMapping("/password")
@@ -118,19 +89,13 @@ class ProfileController(
     fun changePassword(
         @Valid @RequestBody dto: ChangePasswordDto,
     ): ResponseEntity<Void> {
-        val userId = currentUserId()
-        val usuario =
-            usuarioJpaRepository
-                .findById(userId)
-                .orElseThrow { NoSuchElementException("Usuário não encontrado: $userId") }
-
-        require(argon2PasswordService.verify(dto.senhaAtual, usuario.senhaHash)) {
-            "Senha atual incorreta."
-        }
-
-        val newHash = argon2PasswordService.hash(dto.novaSenha)
-        usuarioJpaRepository.updatePassword(userId, newHash)
-
+        updateProfileUseCase.changePassword(
+            ChangePasswordCommand(
+                userId = currentUserId(),
+                senhaAtual = dto.senhaAtual,
+                novaSenha = dto.novaSenha,
+            ),
+        )
         return ResponseEntity.noContent().build()
     }
 
@@ -139,25 +104,17 @@ class ProfileController(
     @Operation(summary = "Atualizar preferências de notificação")
     fun updateNotifications(
         @RequestBody dto: UpdateNotificationsDto,
-    ): ResponseEntity<Map<String, Any?>> {
-        val userId = currentUserId()
-        val pref =
-            notificationPrefRepo.findByIdUsuario(userId).orElseGet {
-                NotificationPrefEntity(idUsuario = userId)
-            }
-
-        dto.emailEnabled?.let { pref.emailEnabled = it }
-        dto.pushEnabled?.let { pref.pushEnabled = it }
-        dto.inAppEnabled?.let { pref.inAppEnabled = it }
-        val saved = notificationPrefRepo.save(pref)
-
-        return ResponseEntity.ok(
-            mapOf(
-                "emailEnabled" to saved.emailEnabled,
-                "pushEnabled" to saved.pushEnabled,
-                "inAppEnabled" to saved.inAppEnabled,
-            ),
-        )
+    ): ResponseEntity<NotificationPrefResponse> {
+        val saved =
+            updateProfileUseCase.updateNotifications(
+                UpdateNotificationsCommand(
+                    userId = currentUserId(),
+                    emailEnabled = dto.emailEnabled,
+                    pushEnabled = dto.pushEnabled,
+                    inAppEnabled = dto.inAppEnabled,
+                ),
+            )
+        return ResponseEntity.ok(saved)
     }
 
     @PostMapping("/avatar")
@@ -166,20 +123,9 @@ class ProfileController(
         summary = "Obter URL pré-assinada para upload de avatar",
         description = "Retorna URL PUT válida por 15 minutos para envio direto ao MinIO.",
     )
-    fun requestAvatarUpload(): ResponseEntity<Map<String, String>> {
-        val userId = currentUserId()
-        val storageKey = "avatars/$userId.jpg"
-        val uploadUrl = minioStorageService.generateUploadUrl(storageKey, "image/jpeg", 15)
+    fun requestAvatarUpload(): ResponseEntity<AvatarUploadResponse> =
+        ResponseEntity.ok(updateProfileUseCase.requestAvatarUpload(currentUserId()))
 
-        return ResponseEntity.ok(
-            mapOf(
-                "uploadUrl" to uploadUrl,
-                "storageKey" to storageKey,
-            ),
-        )
-    }
-
-    // RF-F1-003-d — Solicitar exportação de dados pessoais (LGPD Art. 18, III)
     @PostMapping("/data-export")
     @PreAuthorize("hasAuthority('user.export_own_data')")
     @Operation(
@@ -190,7 +136,7 @@ class ProfileController(
         """,
     )
     @ApiResponse(responseCode = "202", description = "Exportação gerada — use downloadUrl para baixar o arquivo")
-    fun requestDataExport(httpRequest: HttpServletRequest): ResponseEntity<Map<String, Any?>> {
+    fun requestDataExport(httpRequest: HttpServletRequest): ResponseEntity<DataExportStartedResponse> {
         val result =
             dataExportUseCase.requestExport(
                 RequestDataExportCommand(
@@ -201,15 +147,9 @@ class ProfileController(
             )
         return ResponseEntity
             .status(HttpStatus.ACCEPTED)
-            .body(
-                mapOf(
-                    "jobId" to result.jobId.toString(),
-                    "downloadUrl" to result.downloadUrl,
-                ),
-            )
+            .body(DataExportStartedResponse(jobId = result.jobId.toString(), downloadUrl = result.downloadUrl))
     }
 
-    // RF-F1-003-d — Verificar status do job de exportação
     @GetMapping("/data-export/{jobId}")
     @PreAuthorize("hasAuthority('user.export_own_data')")
     @Operation(
@@ -220,18 +160,18 @@ class ProfileController(
     @ApiResponse(responseCode = "404", description = "Job não encontrado ou pertence a outro usuário")
     fun getDataExportStatus(
         @PathVariable jobId: String,
-    ): ResponseEntity<Map<String, Any?>> {
+    ): ResponseEntity<DataExportStatusResponse> {
         val result =
             dataExportUseCase.getExportStatus(
                 usuarioId = currentUserId(),
                 jobId = jobId,
             )
         return ResponseEntity.ok(
-            mapOf(
-                "jobId" to result.jobId.toString(),
-                "status" to result.status.name,
-                "downloadUrl" to result.downloadUrl,
-                "expiresAt" to result.expiresAt?.toString(),
+            DataExportStatusResponse(
+                jobId = result.jobId.toString(),
+                status = result.status.name,
+                downloadUrl = result.downloadUrl,
+                expiresAt = result.expiresAt?.toString(),
             ),
         )
     }

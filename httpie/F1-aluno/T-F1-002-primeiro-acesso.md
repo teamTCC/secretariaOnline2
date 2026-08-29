@@ -20,7 +20,7 @@ Cole no Body:
 
 Troque a senha pela temporária do Mailhog.
 
-**Esperado:** `mustChangePassword: true`. Copie esse `accessToken` (é o único que autoriza o next).
+**Esperado:** `mustChangePassword: true`. Cookies `access_token` e `refresh_token` são definidos normalmente. Use a session (ou copie o cookie → Bearer) no passo 2.
 
 ---
 

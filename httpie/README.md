@@ -128,6 +128,7 @@ Cada tutorial aponta de volta para:
 | T-10.1 | [Outbox (observar no banco)](transversal/T-10.1-outbox.md)   | [T-10.1](../transaçõesBackend/transversal/T-10.1-OUTBOX.md)       | [10.1](../foundationDocs/sequenceDiagrams/transversal/10.1-outbox-notificacao.md)       |
 | T-10.4 | [Certificado anti-fraude](transversal/T-10.4-certificado.md) | [T-10.4](../transaçõesBackend/transversal/T-10.4-CERTIFICADO.md)  | [10.4](../foundationDocs/sequenceDiagrams/transversal/10.4-certificado-emissao.md)      |
 | T-10.6 | [Admin outbox](transversal/T-10.6-admin-outbox.md)           | [T-10.6](../transaçõesBackend/transversal/T-10.6-ADMIN-OUTBOX.md) | [US-F7-005](../foundationDocs/sequenceDiagrams/F7%20—%20Admin/US-F7-005-JOBS-OUTBOX.md) |
+| T-10.7 | [Redis session + cache BFF](F0-publico/T-F0-001-login.md) + [dashboard](F1-aluno/T-F1-001-dashboard.md) | [T-10.7](../transaçõesBackend/transversal/T-10.7-REDIS-BFF.md) | — |
 
 ---
 
@@ -136,9 +137,9 @@ Cada tutorial aponta de volta para:
 ```
 1. GET  /actuator/health
 2. GET  /auth/csrf                          → cookie XSRF-TOKEN
-3. POST /auth/login                         → accessToken + cookie refresh_token
-4. GET  /me                                 → confirma JWT
-5. GET  /bff/dashboard/aluno                (com token de aluno)
+3. POST /auth/login                         → cookies access_token + refresh_token (sem JWT no JSON)
+4. GET  /me                                 → confirma sessão (cookie ou Bearer fallback)
+5. GET  /bff/dashboard/aluno                (session do aluno)
 6. GET  /requests/types                     → copie idRequestType e idCurso
 7. POST /requests                           → copie requestId
 8. GET  /requests/{id}                      → leia _links HATEOAS

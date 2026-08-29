@@ -1,0 +1,58 @@
+# Perfil de teste — ativado por @ActiveProfiles("test") em Testcontainers
+# A datasource URL é substituída dinamicamente via @DynamicPropertySource.
+
+spring:
+  flyway:
+    enabled: true   # garantir que as migrations rodem no PostgreSQL do container
+    locations: classpath:db/migration
+
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Flyway é a fonte de verdade; JPA só valida
+    show-sql: false
+
+  cache:
+    type: simple  # sem Redis em testes
+
+  mail:
+    host: localhost
+    port: 3025
+
+# Chaves JWT placeholder — never parsed in workflow tests (lazy init in JwtTokenService)
+security:
+  jwt:
+    private-key: "PLACEHOLDER_TEST_PRIVATE_KEY"
+    public-key: "PLACEHOLDER_TEST_PUBLIC_KEY"
+    access-token-ttl-seconds: 900
+    issuer: secretaria-online-2
+
+# MinIO — valor ignorado pois MinioStorageService é @MockBean nos testes
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: secretaria-docs-test
+
+app:
+  base-url: http://localhost:8080
+  cors:
+    allowed-origins:
+      - http://localhost:3000
+    allowed-origin-patterns:
+      - ""
+  security:
+    cookie:
+      secure: false
+      same-site: Lax
+  certificate:
+    private-key: ""
+    public-key: ""
+  firebase:
+    service-account-json: ""
+    project-id: ""
+
+logging:
+  level:
+    root: WARN
+    br.ufpr.sept.so2: INFO
+    org.hibernate.SQL: WARN

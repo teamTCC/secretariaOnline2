@@ -1,19 +1,22 @@
 package br.ufpr.sept.so2.modules.iam.application
 
+import br.ufpr.sept.so2.modules.iam.application.ports.out.PasswordHasherPort
 import br.ufpr.sept.so2.modules.iam.application.ports.out.RefreshTokenRepository
+import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenRevocationPort
+import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenServicePort
 import br.ufpr.sept.so2.modules.iam.application.ports.out.UsuarioRepository
 import br.ufpr.sept.so2.modules.iam.domain.RefreshToken
 import br.ufpr.sept.so2.modules.iam.domain.Usuario
 import br.ufpr.sept.so2.modules.iam.domain.exceptions.AccountBlockedException
 import br.ufpr.sept.so2.modules.iam.domain.exceptions.InvalidCredentialsException
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.Argon2PasswordService
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.JwtTokenService
 import br.ufpr.sept.so2.shared.audit.AuditPayload
 import br.ufpr.sept.so2.shared.audit.AuditPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Duration
 import java.time.OffsetDateTime
+import java.util.UUID
 
 data class LoginCommand(
     val identificador: String,
@@ -33,8 +36,9 @@ data class LoginResult(
 class LoginUseCase(
     private val usuarioRepository: UsuarioRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
-    private val jwtTokenService: JwtTokenService,
-    private val passwordService: Argon2PasswordService,
+    private val tokenService: TokenServicePort,
+    private val passwordService: PasswordHasherPort,
+    private val tokenRevocationPort: TokenRevocationPort,
     private val auditPublisher: AuditPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -81,7 +85,11 @@ class LoginUseCase(
             usuarioRepository.updateFailedAttempts(usuario.id, 0, null)
         }
 
-        val accessToken = jwtTokenService.issueAccessToken(usuario)
+        val sid = UUID.randomUUID().toString()
+        val accessToken = tokenService.issueAccessToken(usuario, sid)
+        val sessionTtl = Duration.ofSeconds(tokenService.accessTtlSeconds + 60)
+        tokenRevocationPort.createSession(sid, usuario.id, sessionTtl)
+
         val refreshToken = RefreshToken.issue(usuario.id)
         refreshTokenRepository.save(refreshToken)
 

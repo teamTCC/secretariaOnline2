@@ -1,11 +1,16 @@
 package br.ufpr.sept.so2.modules.iam.api
 
+import br.ufpr.sept.so2.modules.iam.api.dto.CsrfResponse
 import br.ufpr.sept.so2.modules.iam.api.dto.FirstAccessRequest
 import br.ufpr.sept.so2.modules.iam.api.dto.ForgotPasswordRequest
 import br.ufpr.sept.so2.modules.iam.api.dto.LoginRequest
 import br.ufpr.sept.so2.modules.iam.api.dto.LoginResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.MessageResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.OttExchangeRequest
 import br.ufpr.sept.so2.modules.iam.api.dto.RefreshResponse
 import br.ufpr.sept.so2.modules.iam.api.dto.ResetPasswordRequest
+import br.ufpr.sept.so2.modules.iam.application.ExchangeOttCommand
+import br.ufpr.sept.so2.modules.iam.application.ExchangeOttUseCase
 import br.ufpr.sept.so2.modules.iam.application.FirstAccessCommand
 import br.ufpr.sept.so2.modules.iam.application.FirstAccessUseCase
 import br.ufpr.sept.so2.modules.iam.application.ForgotPasswordCommand
@@ -21,7 +26,6 @@ import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenRevocationPort
 import br.ufpr.sept.so2.modules.iam.domain.exceptions.InvalidTokenException
 import br.ufpr.sept.so2.modules.iam.infrastructure.services.JwtTokenService
 import br.ufpr.sept.so2.shared.security.currentUserId
-import io.jsonwebtoken.JwtException
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.security.SecurityRequirements
@@ -42,12 +46,16 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/auth")
-@Tag(name = "Autenticação", description = "Login/refresh/logout via HttpOnly cookies. Todos os tokens trafegam apenas em cookies — nunca no corpo JSON.")
+@Tag(
+    name = "Autenticação",
+    description = "Login/refresh/logout via HttpOnly cookies. Todos os tokens trafegam apenas em cookies — nunca no corpo JSON.",
+)
 class AuthController(
     private val loginUseCase: LoginUseCase,
     private val refreshTokenUseCase: RefreshTokenUseCase,
     private val forgotPasswordUseCase: ForgotPasswordUseCase,
     private val resetPasswordUseCase: ResetPasswordUseCase,
+    private val exchangeOttUseCase: ExchangeOttUseCase,
     private val firstAccessUseCase: FirstAccessUseCase,
     private val refreshTokenRepository: RefreshTokenRepository,
     private val jwtTokenService: JwtTokenService,
@@ -58,11 +66,11 @@ class AuthController(
     @GetMapping("/csrf")
     @SecurityRequirements
     @Operation(summary = "Emitir cookie XSRF-TOKEN (Double Submit) e devolver o valor do token")
-    fun csrf(csrfToken: CsrfToken): Map<String, String> =
-        mapOf(
-            "token" to csrfToken.token,
-            "headerName" to csrfToken.headerName,
-            "parameterName" to csrfToken.parameterName,
+    fun csrf(csrfToken: CsrfToken): CsrfResponse =
+        CsrfResponse(
+            token = csrfToken.token,
+            headerName = csrfToken.headerName,
+            parameterName = csrfToken.parameterName,
         )
 
     @PostMapping("/login")
@@ -140,6 +148,37 @@ class AuthController(
         return ResponseEntity.ok(RefreshResponse())
     }
 
+    @PostMapping("/ott")
+    @SecurityRequirements
+    @Operation(
+        summary = "Trocar token one-time (deep-link ?ott=) por sessão",
+        description = "Consome o JWT de uso único emitido no e-mail da solicitação e define cookies de sessão.",
+    )
+    @ApiResponse(responseCode = "200", description = "Sessão criada")
+    @ApiResponse(responseCode = "401", description = "Token inválido, expirado ou já utilizado")
+    fun exchangeOtt(
+        @Valid @RequestBody request: OttExchangeRequest,
+        httpRequest: HttpServletRequest,
+        httpResponse: HttpServletResponse,
+    ): ResponseEntity<LoginResponse> {
+        val result =
+            exchangeOttUseCase.execute(
+                ExchangeOttCommand(
+                    token = request.token,
+                    ip = httpRequest.remoteAddr,
+                    userAgent = httpRequest.getHeader("User-Agent"),
+                ),
+            )
+        httpResponse.addCookie(accessTokenCookie(result.accessToken))
+        httpResponse.addCookie(refreshTokenCookie(result.refreshToken))
+        return ResponseEntity.ok(
+            LoginResponse(
+                mustChangePassword = result.mustChangePassword,
+                mustAcceptLgpd = result.mustAcceptLgpd,
+            ),
+        )
+    }
+
     @PostMapping("/forgot-password")
     @SecurityRequirements
     @Operation(
@@ -151,7 +190,7 @@ class AuthController(
     fun forgotPassword(
         @Valid @RequestBody request: ForgotPasswordRequest,
         httpRequest: HttpServletRequest,
-    ): ResponseEntity<Map<String, String>> {
+    ): ResponseEntity<MessageResponse> {
         forgotPasswordUseCase.execute(
             ForgotPasswordCommand(
                 email = request.email,
@@ -160,7 +199,7 @@ class AuthController(
         )
         return ResponseEntity
             .status(HttpStatus.ACCEPTED)
-            .body(mapOf("mensagem" to "Se este email existir, enviaremos um link válido por 24h."))
+            .body(MessageResponse("Se este email existir, enviaremos um link válido por 24h."))
     }
 
     @PostMapping("/reset-password")
@@ -169,7 +208,7 @@ class AuthController(
     fun resetPassword(
         @Valid @RequestBody request: ResetPasswordRequest,
         httpRequest: HttpServletRequest,
-    ): ResponseEntity<Map<String, String>> {
+    ): ResponseEntity<MessageResponse> {
         resetPasswordUseCase.execute(
             ResetPasswordCommand(
                 token = request.token,
@@ -177,7 +216,7 @@ class AuthController(
                 ip = httpRequest.remoteAddr,
             ),
         )
-        return ResponseEntity.ok(mapOf("mensagem" to "Senha redefinida com sucesso. Faça login novamente."))
+        return ResponseEntity.ok(MessageResponse("Senha redefinida com sucesso. Faça login novamente."))
     }
 
     @PostMapping("/first-access")
@@ -188,7 +227,7 @@ class AuthController(
     fun firstAccess(
         @Valid @RequestBody request: FirstAccessRequest,
         httpRequest: HttpServletRequest,
-    ): ResponseEntity<Map<String, String>> {
+    ): ResponseEntity<MessageResponse> {
         firstAccessUseCase.execute(
             FirstAccessCommand(
                 usuarioId = currentUserId(),
@@ -197,23 +236,22 @@ class AuthController(
                 ip = httpRequest.remoteAddr,
             ),
         )
-        return ResponseEntity.ok(mapOf("mensagem" to "Primeiro acesso concluído com sucesso."))
+        return ResponseEntity.ok(MessageResponse("Primeiro acesso concluído com sucesso."))
     }
 
     @PostMapping("/logout")
     @Operation(
         summary = "Encerrar sessão",
         description = """
+            Deleta a sessão Redis (auth:session:<sid>) — invalida o access token imediatamente.
             Revoga todos os refresh tokens do usuário no banco.
-            Adiciona o JTI do access token atual na lista de revogação do Redis (blacklist).
             Apaga os cookies access_token e refresh_token.
         """,
     )
     fun logout(
         httpRequest: HttpServletRequest,
         httpResponse: HttpServletResponse,
-    ): ResponseEntity<Map<String, String>> {
-        // Blacklist the current access token by JTI (Redis, fail-open)
+    ): ResponseEntity<MessageResponse> {
         val tokenValue =
             httpRequest.cookies?.firstOrNull { it.name == "access_token" }?.value?.takeIf { it.isNotBlank() }
                 ?: httpRequest.getHeader("Authorization")
@@ -224,22 +262,27 @@ class AuthController(
                 .getOrNull()
                 ?.payload
                 ?.let { claims ->
-                    val jti = claims.id
-                    val exp = claims.expiration
-                    if (jti != null && exp != null) {
-                        tokenRevocationPort.revokeAccessToken(jti, exp)
+                    val sid = claims["sid"] as? String
+                    if (sid != null) {
+                        // Session-based logout: delete Redis key → instant revocation
+                        tokenRevocationPort.deleteSession(sid)
+                    } else {
+                        // Legacy fallback for tokens without sid
+                        val jti = claims.id
+                        val exp = claims.expiration
+                        if (jti != null && exp != null) {
+                            tokenRevocationPort.revokeAccessToken(jti, exp)
+                        }
                     }
                 }
         }
 
-        // Revoke all refresh tokens in the database
         refreshTokenRepository.revokeAllForUser(currentUserId())
 
-        // Clear both cookies
         httpResponse.addCookie(clearCookie("access_token", "/"))
         httpResponse.addCookie(clearCookie("refresh_token", "/auth"))
 
-        return ResponseEntity.ok(mapOf("mensagem" to "Sessão encerrada com sucesso."))
+        return ResponseEntity.ok(MessageResponse("Sessão encerrada com sucesso."))
     }
 
     // ── Cookie helpers ────────────────────────────────────────────────────────

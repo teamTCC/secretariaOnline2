@@ -1,10 +1,11 @@
 package br.ufpr.sept.so2.modules.solicitacoes.application
 
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventEntity
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository
-import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestEntity
+import br.ufpr.sept.so2.modules.solicitacoes.domain.AttachmentPolicy
+import br.ufpr.sept.so2.modules.solicitacoes.domain.FormSchemaValidator
+import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestAttachmentJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestTypeJpaRepository
+import br.ufpr.sept.so2.shared.outbox.OutboxEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
@@ -15,14 +16,21 @@ data class SubmitDraftCommand(
     val idSolicitante: UUID,
 )
 
+data class SubmitDraftResult(
+    val id: UUID,
+    val ano: Short,
+    val numeroAnual: Int,
+)
+
 @Service
 class SubmitDraftUseCase(
     private val requestRepo: RequestJpaRepository,
     private val requestTypeRepo: RequestTypeJpaRepository,
-    private val outboxRepo: OutboxEventJpaRepository,
+    private val outboxPublisher: OutboxEventPublisher,
+    private val attachmentRepo: RequestAttachmentJpaRepository,
 ) {
     @Transactional
-    fun execute(command: SubmitDraftCommand): RequestEntity {
+    fun execute(command: SubmitDraftCommand): SubmitDraftResult {
         val entity =
             requestRepo.findById(command.requestId)
                 .orElseThrow { NoSuchElementException("Solicitação não encontrada: ${command.requestId}") }
@@ -35,6 +43,13 @@ class SubmitDraftUseCase(
 
         val requestType = requestTypeRepo.findById(entity.idRequestType).orElseThrow()
 
+        // APP-02: Re-validate dados against form_schema when submitting a draft
+        FormSchemaValidator.validate(entity.dados, requestType.formSchema)
+        AttachmentPolicy.assertRequiredAttachments(
+            requestType.formSchema,
+            attachmentRepo.findAllByIdRequest(entity.id).map { it.categoria },
+        )
+
         val ultimoNumero = requestRepo.findMaxNumeroAnual(entity.ano, entity.idCurso) ?: 0
         entity.numeroAnual = ultimoNumero + 1
         entity.estado = "ABERTA"
@@ -42,22 +57,20 @@ class SubmitDraftUseCase(
 
         val saved = requestRepo.save(entity)
 
-        outboxRepo.save(
-            OutboxEventEntity(
-                eventType = "solicitacoes.aberta",
-                aggregateType = "Request",
-                aggregateId = saved.id,
-                payload =
-                    mapOf(
-                        "requestId" to saved.id.toString(),
-                        "tipoCode" to requestType.code,
-                        "idSolicitante" to command.idSolicitante.toString(),
-                        "idCurso" to entity.idCurso.toString(),
-                        "estadoNovo" to "ABERTA",
-                    ),
-            ),
+        outboxPublisher.enqueue(
+            eventType = "solicitacoes.aberta",
+            aggregateType = "Request",
+            aggregateId = saved.id,
+            payload =
+                mapOf(
+                    "requestId" to saved.id.toString(),
+                    "tipoCode" to requestType.code,
+                    "idSolicitante" to command.idSolicitante.toString(),
+                    "idCurso" to entity.idCurso.toString(),
+                    "estadoNovo" to "ABERTA",
+                ),
         )
 
-        return saved
+        return SubmitDraftResult(id = saved.id, ano = saved.ano, numeroAnual = saved.numeroAnual)
     }
 }

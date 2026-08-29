@@ -1,5 +1,7 @@
 package br.ufpr.sept.so2.modules.iam.infrastructure.services
 
+import br.ufpr.sept.so2.modules.iam.application.ports.out.ParsedToken
+import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenServicePort
 import br.ufpr.sept.so2.modules.iam.domain.Usuario
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jws
@@ -20,18 +22,27 @@ import java.util.UUID
 class JwtTokenService(
     @Value("\${security.jwt.private-key}") private val privateKeyPem: String,
     @Value("\${security.jwt.public-key}") private val publicKeyPem: String,
-    @Value("\${security.jwt.access-token-ttl-seconds:900}") private val accessTtlSeconds: Long,
+    @Value("\${security.jwt.access-token-ttl-seconds:900}") override val accessTtlSeconds: Long,
     @Value("\${security.jwt.issuer:secretaria-online-2}") private val issuer: String,
-) {
+) : TokenServicePort {
     private val privateKey: RSAPrivateKey by lazy { parsePrivateKey(privateKeyPem) }
     val publicKey: RSAPublicKey by lazy { parsePublicKey(publicKeyPem) }
 
-    fun issueAccessToken(usuario: Usuario): String =
+    /**
+     * Issues an RS256 access token bound to [sid] (session ID).
+     *
+     * The [sid] claim links this token to a Redis session entry (`auth:session:<sid>`).
+     * The [JwtAuthenticationFilter] verifies the session exists in Redis on every request
+     * (fail-closed). Deleting the Redis key instantly invalidates any access token that
+     * carries this [sid], regardless of JWT expiry — enabling true instantaneous logout.
+     */
+    override fun issueAccessToken(usuario: Usuario, sid: String): String =
         Jwts
             .builder()
             .id(UUID.randomUUID().toString())
             .issuer(issuer)
             .subject(usuario.id.toString())
+            .claim("sid", sid)
             .claim("authorities", usuario.authorities().toList())
             .claim("nome", usuario.nome)
             .issuedAt(Date())
@@ -39,7 +50,7 @@ class JwtTokenService(
             .signWith(privateKey, Jwts.SIG.RS256)
             .compact()
 
-    fun issueOneTimeToken(
+    override fun issueOneTimeToken(
         subject: UUID,
         audience: String,
         ttl: Duration,
@@ -56,6 +67,17 @@ class JwtTokenService(
             .expiration(Date(System.currentTimeMillis() + ttl.toMillis()))
             .signWith(privateKey, Jwts.SIG.RS256)
             .compact()
+    }
+
+    override fun parse(token: String): ParsedToken {
+        val payload = verify(token).payload
+        return ParsedToken(
+            subject = UUID.fromString(payload.subject),
+            jti = payload.id,
+            audience = payload.audience ?: emptySet(),
+            expiresAt = payload.expiration,
+            issuedAt = payload.issuedAt,
+        )
     }
 
     fun verify(token: String): Jws<Claims> =

@@ -3,6 +3,18 @@ package br.ufpr.sept.so2.modules.presenca.domain
 import java.time.OffsetDateTime
 import java.util.UUID
 
+class EventNotFoundException(
+    eventId: UUID,
+) : NoSuchElementException("Evento não encontrado: $eventId")
+
+class AttendanceException(
+    message: String,
+) : IllegalStateException(message)
+
+class InvalidAttendanceTokenException(
+    message: String,
+) : IllegalArgumentException(message)
+
 enum class AttendanceMode {
     QR_SINGLE,
     QR_DUAL,

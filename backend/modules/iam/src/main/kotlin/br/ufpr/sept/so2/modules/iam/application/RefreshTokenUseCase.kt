@@ -2,16 +2,17 @@ package br.ufpr.sept.so2.modules.iam.application
 
 import br.ufpr.sept.so2.modules.iam.application.ports.out.RefreshTokenRepository
 import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenRevocationPort
+import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenServicePort
 import br.ufpr.sept.so2.modules.iam.application.ports.out.UsuarioRepository
 import br.ufpr.sept.so2.modules.iam.domain.RefreshToken
 import br.ufpr.sept.so2.modules.iam.domain.exceptions.InvalidTokenException
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.JwtTokenService
 import br.ufpr.sept.so2.shared.audit.AuditPayload
 import br.ufpr.sept.so2.shared.audit.AuditPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
+import java.util.UUID
 
 data class RefreshTokenCommand(
     val refreshTokenValue: String,
@@ -27,7 +28,7 @@ data class TokenPair(
 class RefreshTokenUseCase(
     private val refreshTokenRepository: RefreshTokenRepository,
     private val usuarioRepository: UsuarioRepository,
-    private val jwtTokenService: JwtTokenService,
+    private val tokenService: TokenServicePort,
     private val auditPublisher: AuditPublisher,
     private val tokenRevocationPort: TokenRevocationPort,
 ) {
@@ -50,7 +51,7 @@ class RefreshTokenUseCase(
             refreshTokenRepository.revokeAllForUser(stored.usuarioId)
             tokenRevocationPort.forceLogoutUser(
                 userId = stored.usuarioId,
-                ttl = Duration.ofSeconds(jwtTokenService.accessTtlSeconds),
+                ttl = Duration.ofSeconds(tokenService.accessTtlSeconds),
             )
             auditPublisher.publish(
                 AuditPayload(
@@ -77,7 +78,10 @@ class RefreshTokenUseCase(
         val newRefreshToken = RefreshToken.issue(usuario.id)
         refreshTokenRepository.save(newRefreshToken)
 
-        val newAccessToken = jwtTokenService.issueAccessToken(usuario)
+        val sid = UUID.randomUUID().toString()
+        val sessionTtl = Duration.ofSeconds(tokenService.accessTtlSeconds + 60)
+        tokenRevocationPort.createSession(sid, usuario.id, sessionTtl)
+        val newAccessToken = tokenService.issueAccessToken(usuario, sid)
 
         return TokenPair(
             accessToken = newAccessToken,

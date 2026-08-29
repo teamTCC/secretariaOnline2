@@ -37,12 +37,12 @@ Marque cada caixa **depois da verificação manual** (HTTPie e/ou leitura de có
 
 ## Setup (antes das transações)
 
-**Links:** [httpie/00-setup](httpie/00-setup-httpie-desktop.md) · [httpie/01-ids](httpie/01-ids-credenciais-e-ambiente.md) · [httpie/02-bootstrap](httpie/02-bootstrap-usuarios-demo.md) · [httpie/ambiente/local.json](httpie/ambiente/local.json) · [V011 seed](backend/app/src/main/resources/db/migration/V011__seed_demo_data.sql) · [V010 roles](backend/app/src/main/resources/db/migration/V010__seed_authorities_roles.sql)
+**Links:** [httpie/00-setup](httpie/00-setup-httpie-desktop.md) · [httpie/01-ids](httpie/01-ids-credenciais-e-ambiente.md) · [httpie/02-bootstrap](httpie/02-bootstrap-usuarios-demo.md) · [httpie/ambiente/local.json](httpie/ambiente/local.json) · [V011 seed](backend/app/src/main/resources/db/migration/V011__seed_demo_data.sql) · [V010 roles](backend/app/src/main/resources/db/migration/V010__seed_authorities_roles.sql) · [V016 egresso/reports](backend/app/src/main/resources/db/migration/V016__egresso_and_report_authorities.sql)
 
 - [ ] **HTTPie** — `GET {{baseUrl}}/actuator/health` → `{ "status": "UP" }`.
 - [ ] **HTTPie** — Environment `local.json` colado; cookie jar ligado.
 - [ ] **HTTPie** — `GET /auth/csrf` → cookie `XSRF-TOKEN` copiado para `{{xsrfToken}}`.
-- [ ] **HTTPie** — Login admin; `{{accessToken}}` preenchido.
+- [ ] **HTTPie** — Login admin; cookies `access_token` + `refresh_token` no jar (tokens **não** vêm no JSON). Bearer fallback: copiar o valor do cookie se o Desktop não reenviar cookie em todos os paths.
 - [ ] **HTTPie** — Bootstrap: aluno, professor, secretaria, coordenador criados; `{{cursoId}}` TADS no env.
 - [ ] **Código** — Confirmar hash Argon2id do admin (se 401, senha seed placeholder). Ver `UsuariosController` + outbox `iam.usuario_criado` (`payload.senhaTemporaria`).
 
@@ -54,19 +54,19 @@ Marque cada caixa **depois da verificação manual** (HTTPie e/ou leitura de có
 
 **IDs diagrama:** F0.1-a … F0.1-f  
 **Links:** [T-F0-001](transaçõesBackend/F0%20—%20Público/T-F0-001-LOGIN.md) · [US-F0-001](foundationDocs/sequenceDiagrams/F0%20—%20Público/US-F0-001-LOGIN.md) · [HTTPie](httpie/F0-publico/T-F0-001-login.md)
-**Código:** [AuthController.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/api/AuthController.kt) · [LoginUseCase.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/LoginUseCase.kt) · [RefreshTokenUseCase.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/RefreshTokenUseCase.kt) · [RateLimitFilter.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/security/RateLimitFilter.kt) · [JwtTokenService.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/services/JwtTokenService.kt) · [SecurityConfig.kt](backend/app/src/main/kotlin/br/ufpr/sept/so2/config/SecurityConfig.kt)
+**Código:** [AuthController.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/api/AuthController.kt) · [LoginUseCase.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/LoginUseCase.kt) · [RefreshTokenUseCase.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/RefreshTokenUseCase.kt) · [RateLimitFilter.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/security/RateLimitFilter.kt) · [JwtTokenService.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/services/JwtTokenService.kt) · [JwtAuthenticationFilter.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/security/JwtAuthenticationFilter.kt) · [RedisTokenRevocationAdapter.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/adapters/RedisTokenRevocationAdapter.kt) · [SecurityConfig.kt](backend/app/src/main/kotlin/br/ufpr/sept/so2/config/SecurityConfig.kt)
 
 - [ ] **Transação completa** (todas as subcaixas abaixo)
 
 ### F0.1-a — Login happy path
 
-- [ ] **HTTPie** — `POST /auth/login` com e-mail admin → **200**, `accessToken` RS256, `tokenType: Bearer`, `mustChangePassword`/`mustAcceptLgpd` booleanos; cookie `refresh_token` HttpOnly (`Path=/auth`).
+- [ ] **HTTPie** — `POST /auth/login` com e-mail admin → **200**, body só `mustChangePassword`/`mustAcceptLgpd` (sem `accessToken` no JSON); cookies HttpOnly `access_token` (`Path=/`, Max-Age=900) e `refresh_token` (`Path=/auth`).
 - [ ] **HTTPie** — Login aluno por e-mail e por GRR (bodies no tutorial T-F0-001); identificador aceita lowercase após trim.
-- [ ] **Código** — `LoginUseCase` normaliza identificador, verifica Argon2id, emite JWT (`sub`, `authorities`, `nome`, TTL 15 min), grava `refresh_token` + audit `LOGIN_SUCCESS`.
+- [ ] **Código** — `LoginUseCase` gera `sid`, `createSession` no Redis (`auth:session:<sid>`), JWT com claim `sid` + JTI; tokens só via cookies.
 
 ### F0.1-b — `mustChangePassword`
 
-- [ ] **HTTPie** — Login de usuário recém-criado (senha temporária) → `mustChangePassword: true` (e possivelmente `mustAcceptLgpd: true`); o token **ainda** autentica `POST /auth/first-access`.
+- [ ] **HTTPie** — Login de usuário recém-criado (senha temporária) → `mustChangePassword: true` (e possivelmente `mustAcceptLgpd: true`); o cookie `access_token` **ainda** autentica `POST /auth/first-access`.
 - [ ] **Código** — Flag vem de `usuario.senha_alterada == false`; aceite LGPD de `metadata.aceite_lgpd_em`.
 
 ### F0.1-c — 401 anti-enumeração
@@ -86,15 +86,15 @@ Marque cada caixa **depois da verificação manual** (HTTPie e/ou leitura de có
 
 ### F0.1-f — Refresh + reuso
 
-- [ ] **HTTPie** — `POST /auth/refresh` (cookie ou body no tutorial) → **200** novo `accessToken`; cookie rotacionado.
-- [ ] **HTTPie** — Reenviar o refresh **antigo** → **401** e sessões revogadas; precisa logar de novo.
-- [ ] **Código** — `RefreshTokenUseCase`: used/revoked → `revokeAllForUser` + audit `SUSPICIOUS_TOKEN_REUSE`.
+- [ ] **HTTPie** — `POST /auth/refresh` (cookie `refresh_token`, sem body) → **200** `{ mensagem }`; cookies `access_token` e `refresh_token` rotacionados (novo `sid` no Redis).
+- [ ] **HTTPie** — Reenviar o refresh **antigo** → **401** e sessões revogadas (`SUSPICIOUS_TOKEN_REUSE` + `forceLogoutUser`); precisa logar de novo.
+- [ ] **Código** — `RefreshTokenUseCase`: used/revoked → `revokeAllForUser` + `forceLogoutUser` + audit `SUSPICIOUS_TOKEN_REUSE`; happy path cria nova sessão Redis.
 
 ### CSRF + logout (T-F0-001 extra)
 
 - [ ] **HTTPie** — `GET /auth/csrf` → `{ token, headerName: X-XSRF-TOKEN }`; login/refresh/forgot/reset **isentos** do header.
-- [ ] **HTTPie** — `POST /auth/logout` com Bearer + `X-XSRF-TOKEN` → refresh inválido na sequência.
-- [ ] **Código** — Double Submit em `SecurityConfig` (`CookieCsrfTokenRepository.withHttpOnlyFalse`).
+- [ ] **HTTPie** — `POST /auth/logout` com cookie (ou Bearer) + `X-XSRF-TOKEN` → `DEL auth:session:<sid>`; `GET /me` imediatamente **401**.
+- [ ] **Código** — `deleteSession(sid)` (fail-open); fallback JTI se token legado sem `sid`; Double Submit em `SecurityConfig`.
 
 ---
 
@@ -205,13 +205,13 @@ Marque cada caixa **depois da verificação manual** (HTTPie e/ou leitura de có
 
 **IDs:** F1.1-D01 … D04  
 **Links:** [T-F1-001](transaçõesBackend/F1%20—%20Aluno/T-F1-001-DASHBOARD.md) · [US-F1-001](foundationDocs/sequenceDiagrams/F1%20—%20Aluno/US-F1-001-DASHBOARD.md) · [HTTPie](httpie/F1-aluno/T-F1-001-dashboard.md) · Redis [T-10.7](transaçõesBackend/transversal/T-10.7-REDIS-BFF.md)  
-**Código:** [DashboardAlunoController.kt](backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/DashboardAlunoController.kt)
+**Código:** [DashboardAlunoController.kt](backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/DashboardAlunoController.kt) · [DashboardAlunoQuery.kt](backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/application/DashboardAlunoQuery.kt) · [SolicitacaoDashboardPort.kt](backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/application/ports/out/SolicitacaoDashboardPort.kt) · [PresencaDashboardPort.kt](backend/modules/presenca/src/main/kotlin/br/ufpr/sept/so2/modules/presenca/application/ports/out/PresencaDashboardPort.kt) · [FormativaDashboardPort.kt](backend/modules/formativas/src/main/kotlin/br/ufpr/sept/so2/modules/formativas/application/ports/out/FormativaDashboardPort.kt) · [IamDashboardPort.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/ports/out/IamDashboardPort.kt)
 
 - [ ] **Transação completa**
-- [ ] **HTTPie** — Token aluno: `GET /bff/dashboard/aluno` → **200** com `kpis`, `pendencias` (máx. 3, `EM_AJUSTE`), `eventos` (máx. 3, `EM_ANDAMENTO`), `ultimasSolicitacoes`, `_links` (`novaSolicitacao` só se `request.open`).
+- [ ] **HTTPie** — Token aluno (cookie ou Bearer): `GET /bff/dashboard/aluno` → **200** com `kpis`, `pendencias` (máx. 3, `EM_AJUSTE`), `eventos` (máx. 3, `EM_ANDAMENTO`), `ultimasSolicitacoes`, `_links` (`novaSolicitacao` só se `request.open`).
 - [ ] **HTTPie** — Token sem `dashboard.view_own` → **403**.
 - [ ] **HTTPie** — Segundo GET <60 s (Redis ligado) mais rápido (F1.1-D02). Resposta com `_degraded: true` **não** deve cachear (F1.1-D03).
-- [ ] **Código** — `alunoId` só do JWT; `try/catch` por bloco; cache key `aluno:{uuid}`; `@PreAuthorize("hasAuthority('dashboard.view_own')")`.
+- [ ] **Código** — Controller slim; `alunoId` só do JWT; query injeta ports (não JPA direto); `try/catch` por bloco; cache key `aluno:{uuid}`; `@PreAuthorize("hasAuthority('dashboard.view_own')")`.
 
 ---
 
@@ -390,13 +390,13 @@ Marque cada caixa **depois da verificação manual** (HTTPie e/ou leitura de có
 
 **IDs:** F2.1-D01…D04  
 **Links:** [T-F2-001](transaçõesBackend/F2%20—%20Egresso/T-F2-001-DASHBOARD-EGRESSO.md) · [US-F2-001](foundationDocs/sequenceDiagrams/F2%20—%20Egresso/US-F2-001-DASHBOARD-EGRESSO.md) · [HTTPie](httpie/F2-egresso/T-F2-001-dashboard-egresso.md)  
-**Código:** [DashboardAlunoController.kt](backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/DashboardAlunoController.kt) (`GET /bff/dashboard/egresso`) · [GraduationController.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/api/GraduationController.kt)
+**Código:** [DashboardEgressoController.kt](backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/DashboardEgressoController.kt) · [DashboardEgressoQuery.kt](backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/application/DashboardEgressoQuery.kt) · [IamDashboardPort.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/application/ports/out/IamDashboardPort.kt) · [TccDashboardPort.kt](backend/modules/tcc/src/main/kotlin/br/ufpr/sept/so2/modules/tcc/application/ports/out/TccDashboardPort.kt) · [PresencaDashboardPort.kt](backend/modules/presenca/src/main/kotlin/br/ufpr/sept/so2/modules/presenca/application/ports/out/PresencaDashboardPort.kt) · [ComunicacaoDashboardPort.kt](backend/modules/comunicacao/src/main/kotlin/br/ufpr/sept/so2/modules/comunicacao/application/ports/out/ComunicacaoDashboardPort.kt) · [V016](backend/app/src/main/resources/db/migration/V016__egresso_and_report_authorities.sql) · [GraduationController.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/api/GraduationController.kt)
 
 - [ ] **Transação completa**
 - [ ] **HTTPie** — Token EGRESSO: `GET /bff/dashboard/egresso` → **200**, sem `_links.novaSolicitacao`.
 - [ ] **HTTPie** — Egresso em `GET /bff/dashboard/aluno` → **403**; aluno no dashboard egresso → **403** (F2.1-D04).
 - [ ] **HTTPie** — Após colação: `GET /graduations/{{id}}/diploma-url` (staff) ou link do BFF; certificados em `GET /certificates/mine` (mesmo hash, sem reemitir artefato novo).
-- [ ] **Código** — Diagrama cita `/alumni/me`; implementação canônica é o BFF. Confirmar no Swagger se `/alumni/me` existe. Cache `egresso:{uuid}`.
+- [ ] **Código** — `@PreAuthorize("hasAuthority('alumni.view_own')")` (não `isAuthenticated()`). Diagrama cita `/alumni/me`; implementação canônica do dashboard é o BFF. Cache `egresso:{uuid}`.
 
 ---
 
@@ -410,7 +410,7 @@ Marque cada caixa **depois da verificação manual** (HTTPie e/ou leitura de có
 
 - [ ] **HTTPie** — `GET /bff/dashboard/professor` → `meusEventos`, `solicitacoesPendentes`, `_links.novoEvento`.
 - [ ] **HTTPie** — Sem `dashboard.view_self_professor` → **403**.
-- [ ] **Código** — Degradação por bloco (F3.1-D02); cache `professor:{uuid}`.
+- [ ] **Código** — `DashboardProfessorController` + `DashboardProfessorQuery`; degradação por bloco (F3.1-D02); cache `professor:{uuid}`.
 
 ## US-F3-002 — Eventos (host)
 
@@ -497,7 +497,7 @@ Marque cada caixa **depois da verificação manual** (HTTPie e/ou leitura de có
 
 - [ ] **HTTPie** — `GET /bff/dashboard/secretaria` → KPIs `emTriagem`/`emDeliberacao` (contagem real, não página).
 - [ ] **HTTPie** — Sem `dashboard.view_secretary` → **403** (F5.1-D03).
-- [ ] **Código** — Cache `secretaria:static`; counts `ABERTA` / `EM_DELIBERACAO`.
+- [ ] **Código** — `DashboardSecretariaController` + `DashboardSecretariaQuery`; cache `secretaria:static`; counts `ABERTA` / `EM_DELIBERACAO`.
 
 ## US-F5-002 — Fila de solicitações
 
@@ -775,13 +775,15 @@ Ver [T-10.6](#t-106--admin-outbox) abaixo. Diagrama: [US-F7-005](foundationDocs/
 - [ ] **HTTPie** — `POST /{id}/retry` DEAD→PENDING; `DELETE /{id}`.
 - [ ] **HTTPie** — Sem admin → **403**.
 
-## T-10.7 — Redis BFF
+## T-10.7 — Redis: session store + cache BFF + read ports
 
-**Links:** [T-10.7](transaçõesBackend/transversal/T-10.7-REDIS-BFF.md) · [HTTPie dashboard](httpie/F1-aluno/T-F1-001-dashboard.md)  
-**Código:** [CacheConfig.kt](backend/app/src/main/kotlin/br/ufpr/sept/so2/config/CacheConfig.kt)
+**Links:** [T-10.7](transaçõesBackend/transversal/T-10.7-REDIS-BFF.md) · [HTTPie login](httpie/F0-publico/T-F0-001-login.md) · [HTTPie dashboard](httpie/F1-aluno/T-F1-001-dashboard.md)  
+**Código:** [RedisTokenRevocationAdapter.kt](backend/modules/iam/src/main/kotlin/br/ufpr/sept/so2/modules/iam/infrastructure/adapters/RedisTokenRevocationAdapter.kt) · [CacheConfig.kt](backend/app/src/main/kotlin/br/ufpr/sept/so2/config/CacheConfig.kt) · queries em `bff/application/` · ports em `<módulo>/application/ports/out/`
 
+- [ ] **HTTPie** — Login → Redis `auth:session:<sid>`; logout → `GET /me` **401** imediato (não espera TTL do JWT).
 - [ ] **HTTPie** — Com `CACHE_TYPE=redis`: 2× `GET /bff/dashboard/aluno` — segundo mais rápido; `_degraded` não cacheia.
-- [ ] **Código** — Chaves `aluno:{uuid}`, `professor:{uuid}`, `egresso:{uuid}`, `secretaria:static`; TTL 60 s; `@ConditionalOnProperty CACHE_TYPE=redis`.
+- [ ] **Código** — Session check fail-closed no filtro; chaves `aluno:{uuid}`, `professor:{uuid}`, `egresso:{uuid}`, `secretaria:static`, `academico:summary`; TTL cache 60 s; Redis AOF + `noeviction` no compose.
+- [ ] **Código** — Queries BFF injetam ports (`SolicitacaoDashboardPort`, `PresencaDashboardPort`, etc.); **nenhum import** de `*.infrastructure.persistence.*` de outro módulo em `bff/`.
 
 ---
 
@@ -798,7 +800,7 @@ Ver [T-10.6](#t-106--admin-outbox) abaixo. Diagrama: [US-F7-005](foundationDocs/
 | JWKS | http://localhost:8080/.well-known/jwks.json |
 | Mailhog | http://localhost:8025 |
 | Seed admin | [V011__seed_demo_data.sql](backend/app/src/main/resources/db/migration/V011__seed_demo_data.sql) |
-| Authorities/roles | [V010__seed_authorities_roles.sql](backend/app/src/main/resources/db/migration/V010__seed_authorities_roles.sql) |
+| Authorities/roles | [V010](backend/app/src/main/resources/db/migration/V010__seed_authorities_roles.sql) + [V016](backend/app/src/main/resources/db/migration/V016__egresso_and_report_authorities.sql) (`alumni.view_own`, `report.view_*`) |
 | Security FGAC | [agents/security-engineer.md](agents/security-engineer.md) (autoridades canônicas) |
 
 **Divergências diagrama × código (marcar se conferiu):**

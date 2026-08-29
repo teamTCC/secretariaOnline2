@@ -17,12 +17,14 @@ Os endpoints são os **mesmos** do aluno, com authorities diferentes. Este tutor
 
 ## F3.1 — Dashboard
 
+Cookie da session **ou** Bearer. Código: `DashboardProfessorController` + `DashboardProfessorQuery`.
+
 ```
 GET {{baseUrl}}/bff/dashboard/professor
 Authorization: Bearer {{accessTokenProfessor}}
 ```
 
-**Esperado 200:** `meusEventos`, `solicitacoesPendentes`, `_links.novoEvento` (`/events`), `_links.meuEventos`.
+**Esperado 200:** `meusEventos`, `solicitacoesPendentes`, `_links.novoEvento` (`/events`), `_links.meusEventos`.
 
 Sem `dashboard.view_self_professor` → **403**.
 

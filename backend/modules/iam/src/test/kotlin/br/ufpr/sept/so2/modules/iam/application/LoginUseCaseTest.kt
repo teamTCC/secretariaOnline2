@@ -1,14 +1,15 @@
 package br.ufpr.sept.so2.modules.iam.application
 
+import br.ufpr.sept.so2.modules.iam.application.ports.out.PasswordHasherPort
 import br.ufpr.sept.so2.modules.iam.application.ports.out.RefreshTokenRepository
+import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenRevocationPort
+import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenServicePort
 import br.ufpr.sept.so2.modules.iam.application.ports.out.UsuarioRepository
 import br.ufpr.sept.so2.modules.iam.domain.Role
 import br.ufpr.sept.so2.modules.iam.domain.Usuario
 import br.ufpr.sept.so2.modules.iam.domain.UsuarioRole
 import br.ufpr.sept.so2.modules.iam.domain.exceptions.AccountBlockedException
 import br.ufpr.sept.so2.modules.iam.domain.exceptions.InvalidCredentialsException
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.Argon2PasswordService
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.JwtTokenService
 import br.ufpr.sept.so2.shared.audit.AuditPublisher
 import br.ufpr.sept.so2.shared.domain.valueobject.Email
 import io.kotest.assertions.throwables.shouldThrow
@@ -27,16 +28,18 @@ class LoginUseCaseTest :
 
         val usuarioRepository = mockk<UsuarioRepository>()
         val refreshTokenRepository = mockk<RefreshTokenRepository>()
-        val jwtTokenService = mockk<JwtTokenService>()
-        val passwordService = mockk<Argon2PasswordService>()
+        val tokenService = mockk<TokenServicePort>()
+        val passwordService = mockk<PasswordHasherPort>()
+        val tokenRevocationPort = mockk<TokenRevocationPort>()
         val auditPublisher = mockk<AuditPublisher>(relaxed = true)
 
         val useCase =
             LoginUseCase(
                 usuarioRepository,
                 refreshTokenRepository,
-                jwtTokenService,
+                tokenService,
                 passwordService,
+                tokenRevocationPort,
                 auditPublisher,
             )
 
@@ -80,15 +83,20 @@ class LoginUseCaseTest :
                 userAgent = "TestAgent/1.0",
             )
 
+        fun stubSuccessfulLogin(user: Usuario) {
+            every { usuarioRepository.findByIdentificador("test@ufpr.br") } returns user
+            every { passwordService.verify(command.senha, user.senhaHash) } returns true
+            every { tokenService.issueAccessToken(user, any()) } returns "access_token_mock"
+            every { tokenService.accessTtlSeconds } returns 900
+            justRun { tokenRevocationPort.createSession(any(), user.id, any()) }
+            every { refreshTokenRepository.save(any()) } answers { firstArg() }
+        }
+
         Given("LoginUseCase") {
 
             When("valid credentials are provided") {
                 val user = buildActiveUser()
-                every { usuarioRepository.findByIdentificador("test@ufpr.br") } returns user
-                every { passwordService.verify(command.senha, user.senhaHash) } returns true
-                every { jwtTokenService.issueAccessToken(user) } returns "access_token_mock"
-                every { refreshTokenRepository.save(any()) } answers { firstArg() }
-                justRun { auditPublisher.publish(any()) }
+                stubSuccessfulLogin(user)
 
                 val result = useCase.execute(command)
 
@@ -108,10 +116,7 @@ class LoginUseCaseTest :
 
             When("user has never changed password") {
                 val user = buildActiveUser(senhaAlterada = false)
-                every { usuarioRepository.findByIdentificador("test@ufpr.br") } returns user
-                every { passwordService.verify(command.senha, user.senhaHash) } returns true
-                every { jwtTokenService.issueAccessToken(user) } returns "access_token_mock"
-                every { refreshTokenRepository.save(any()) } answers { firstArg() }
+                stubSuccessfulLogin(user)
 
                 val result = useCase.execute(command)
 
@@ -122,10 +127,7 @@ class LoginUseCaseTest :
 
             When("user has not accepted LGPD") {
                 val user = buildActiveUser(metadata = emptyMap())
-                every { usuarioRepository.findByIdentificador("test@ufpr.br") } returns user
-                every { passwordService.verify(command.senha, user.senhaHash) } returns true
-                every { jwtTokenService.issueAccessToken(user) } returns "access_token_mock"
-                every { refreshTokenRepository.save(any()) } answers { firstArg() }
+                stubSuccessfulLogin(user)
 
                 val result = useCase.execute(command)
 
@@ -189,10 +191,7 @@ class LoginUseCaseTest :
 
             When("successful login after previous failures") {
                 val user = buildActiveUser(tentativasFalhas = 3)
-                every { usuarioRepository.findByIdentificador("test@ufpr.br") } returns user
-                every { passwordService.verify(command.senha, user.senhaHash) } returns true
-                every { jwtTokenService.issueAccessToken(user) } returns "token"
-                every { refreshTokenRepository.save(any()) } answers { firstArg() }
+                stubSuccessfulLogin(user)
                 every { usuarioRepository.updateFailedAttempts(user.id, 0, null) } returns Unit
 
                 useCase.execute(command)

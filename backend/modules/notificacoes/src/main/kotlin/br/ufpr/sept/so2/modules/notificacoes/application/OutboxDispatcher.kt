@@ -1,5 +1,6 @@
-package br.ufpr.sept.so2.modules.notificacoes
+package br.ufpr.sept.so2.modules.notificacoes.application
 
+import br.ufpr.sept.so2.modules.notificacoes.OutboxEventHandler
 import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.NotificationLogEntity
 import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.NotificationLogJpaRepository
 import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository

@@ -1,6 +1,6 @@
 package br.ufpr.sept.so2.modules.iam.infrastructure.persistence
 
-import br.ufpr.sept.so2.modules.iam.application.ports.out.JtiBlacklistRepository
+import br.ufpr.sept.so2.modules.iam.application.ports.out.EmailOneTimeTokenStore
 import br.ufpr.sept.so2.modules.iam.application.ports.out.PasswordHistoryRepository
 import br.ufpr.sept.so2.modules.iam.application.ports.out.RefreshTokenRepository
 import br.ufpr.sept.so2.modules.iam.domain.RefreshToken
@@ -55,7 +55,7 @@ class RefreshTokenPersistenceAdapter(
 @Repository
 class JtiBlacklistPersistenceAdapter(
     private val jpaRepository: JtiBlacklistJpaRepository,
-) : JtiBlacklistRepository {
+) : EmailOneTimeTokenStore {
     override fun add(
         jti: String,
         expiresAt: OffsetDateTime,

@@ -1,15 +1,14 @@
 package br.ufpr.sept.so2.modules.iam.application
 
+import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenServicePort
 import br.ufpr.sept.so2.modules.iam.application.ports.out.UsuarioRepository
 import br.ufpr.sept.so2.modules.iam.domain.Role
 import br.ufpr.sept.so2.modules.iam.domain.Usuario
 import br.ufpr.sept.so2.modules.iam.domain.UsuarioRole
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.JwtTokenService
 import br.ufpr.sept.so2.modules.notificacoes.OutboxEventTypes
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventEntity
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository
 import br.ufpr.sept.so2.shared.audit.AuditPublisher
 import br.ufpr.sept.so2.shared.domain.valueobject.Email
+import br.ufpr.sept.so2.shared.outbox.OutboxEventPublisher
 import io.kotest.core.spec.style.BehaviorSpec
 import io.mockk.clearMocks
 import io.mockk.every
@@ -23,15 +22,15 @@ class ForgotPasswordUseCaseTest :
     BehaviorSpec({
 
         val usuarioRepository = mockk<UsuarioRepository>()
-        val jwtTokenService = mockk<JwtTokenService>()
-        val outboxRepo = mockk<OutboxEventJpaRepository>()
+        val tokenService = mockk<TokenServicePort>()
+        val outboxPublisher = mockk<OutboxEventPublisher>()
         val auditPublisher = mockk<AuditPublisher>(relaxed = true)
 
         val useCase =
             ForgotPasswordUseCase(
                 usuarioRepository,
-                jwtTokenService,
-                outboxRepo,
+                tokenService,
+                outboxPublisher,
                 auditPublisher,
             )
 
@@ -66,7 +65,7 @@ class ForgotPasswordUseCaseTest :
         val command = ForgotPasswordCommand(email = "ana@ufpr.br", ip = "127.0.0.1")
 
         beforeTest {
-            clearMocks(usuarioRepository, jwtTokenService, outboxRepo, auditPublisher)
+            clearMocks(usuarioRepository, tokenService, outboxPublisher, auditPublisher)
         }
 
         Given("ForgotPasswordUseCase") {
@@ -75,25 +74,26 @@ class ForgotPasswordUseCaseTest :
                 Then("enqueues iam.password_reset_requested in the outbox") {
                     val user = buildActiveUser()
                     every { usuarioRepository.findByEmail("ana@ufpr.br") } returns user
-                    every { jwtTokenService.issueOneTimeToken(user.id, "password-reset", any()) } returns "reset.jwt.token"
-                    every { outboxRepo.save(any()) } answers { firstArg() }
+                    every { tokenService.issueOneTimeToken(user.id, "password-reset", any()) } returns "reset.jwt.token"
+                    justRun { outboxPublisher.enqueue(any(), any(), any(), any()) }
                     justRun { auditPublisher.publish(any()) }
 
                     useCase.execute(command)
 
                     verify {
-                        outboxRepo.save(
-                            match<OutboxEventEntity> { event ->
-                                event.eventType == OutboxEventTypes.PASSWORD_RESET_REQUESTED &&
-                                    event.aggregateType == "Usuario" &&
-                                    event.aggregateId == user.id &&
-                                    event.payload["email"] == "ana@ufpr.br" &&
-                                    event.payload["token"] == "reset.jwt.token" &&
-                                    event.payload["nome"] == "Ana Silva"
-                            },
+                        outboxPublisher.enqueue(
+                            eventType = OutboxEventTypes.PASSWORD_RESET_REQUESTED,
+                            aggregateType = "Usuario",
+                            aggregateId = user.id,
+                            payload =
+                                match { payload ->
+                                    payload["email"] == "ana@ufpr.br" &&
+                                        payload["token"] == "reset.jwt.token" &&
+                                        payload["nome"] == "Ana Silva"
+                                },
                         )
                     }
-                    verify(exactly = 1) { outboxRepo.save(any()) }
+                    verify(exactly = 1) { outboxPublisher.enqueue(any(), any(), any(), any()) }
                 }
             }
 
@@ -103,8 +103,8 @@ class ForgotPasswordUseCaseTest :
 
                     useCase.execute(command)
 
-                    verify(exactly = 0) { jwtTokenService.issueOneTimeToken(any(), any(), any()) }
-                    verify(exactly = 0) { outboxRepo.save(any()) }
+                    verify(exactly = 0) { tokenService.issueOneTimeToken(any(), any(), any()) }
+                    verify(exactly = 0) { outboxPublisher.enqueue(any(), any(), any(), any()) }
                 }
             }
 
@@ -115,7 +115,7 @@ class ForgotPasswordUseCaseTest :
 
                     useCase.execute(command)
 
-                    verify(exactly = 0) { outboxRepo.save(any()) }
+                    verify(exactly = 0) { outboxPublisher.enqueue(any(), any(), any(), any()) }
                 }
             }
         }

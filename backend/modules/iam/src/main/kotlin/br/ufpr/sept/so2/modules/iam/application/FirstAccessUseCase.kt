@@ -1,9 +1,9 @@
 package br.ufpr.sept.so2.modules.iam.application
 
+import br.ufpr.sept.so2.modules.iam.application.ports.out.PasswordHasherPort
 import br.ufpr.sept.so2.modules.iam.application.ports.out.PasswordHistoryRepository
 import br.ufpr.sept.so2.modules.iam.application.ports.out.UsuarioRepository
 import br.ufpr.sept.so2.modules.iam.domain.exceptions.WeakPasswordException
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.Argon2PasswordService
 import br.ufpr.sept.so2.shared.audit.AuditPayload
 import br.ufpr.sept.so2.shared.audit.AuditPublisher
 import org.slf4j.LoggerFactory
@@ -23,7 +23,7 @@ data class FirstAccessCommand(
 class FirstAccessUseCase(
     private val usuarioRepository: UsuarioRepository,
     private val passwordHistoryRepository: PasswordHistoryRepository,
-    private val passwordService: Argon2PasswordService,
+    private val passwordService: PasswordHasherPort,
     private val auditPublisher: AuditPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)

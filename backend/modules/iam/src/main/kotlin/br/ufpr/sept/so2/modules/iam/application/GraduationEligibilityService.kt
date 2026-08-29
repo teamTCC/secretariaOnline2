@@ -109,16 +109,20 @@ class GraduationEligibilityService(
         val cursoId = courseIdOf(usuario)
         val minimo =
             if (cursoId != null) {
-                (em.createNativeQuery(
-                    "SELECT COALESCE(horas_formativas_minimas, 120) FROM curso WHERE id = :id",
-                ).setParameter("id", cursoId).resultList.firstOrNull() as? Number)?.toDouble() ?: 120.0
+                (
+                    em.createNativeQuery(
+                        "SELECT COALESCE(horas_formativas_minimas, 120) FROM curso WHERE id = :id",
+                    ).setParameter("id", cursoId).resultList.firstOrNull() as? Number
+                )?.toDouble() ?: 120.0
             } else {
                 120.0
             }
         val horas =
-            (em.createNativeQuery(
-                "SELECT COALESCE(SUM(horas_aprovadas), 0) FROM formative_entry WHERE id_aluno = :id",
-            ).setParameter("id", usuario.id).singleResult as Number).toDouble()
+            (
+                em.createNativeQuery(
+                    "SELECT COALESCE(SUM(horas_aprovadas), 0) FROM formative_entry WHERE id_aluno = :id",
+                ).setParameter("id", usuario.id).singleResult as Number
+            ).toDouble()
         if (horas < minimo) {
             return EligibilityBlock("HORAS_FORMATIVAS", "Horas formativas $horas < mínimo $minimo.")
         }

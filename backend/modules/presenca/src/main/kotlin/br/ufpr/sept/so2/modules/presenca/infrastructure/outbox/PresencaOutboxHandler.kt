@@ -49,7 +49,7 @@ class PresencaOutboxHandler(
         val (subject, html) =
             when (phase) {
                 "ENTRY" ->
-                    "Entrada confirmada no evento: ${eventoTitulo}" to
+                    "Entrada confirmada no evento: $eventoTitulo" to
                         """
                         <html><body>
                         <h2>Presença confirmada</h2>
@@ -61,7 +61,7 @@ class PresencaOutboxHandler(
 
                 "EXIT" -> {
                     val chCreditadas = payload["chCreditadas"]?.toString() ?: "0"
-                    "Saída confirmada em ${eventoTitulo}" to
+                    "Saída confirmada em $eventoTitulo" to
                         """
                         <html><body>
                         <h2>Saída confirmada</h2>

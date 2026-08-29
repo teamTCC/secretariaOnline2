@@ -1,15 +1,15 @@
 package br.ufpr.sept.so2.modules.solicitacoes.application
 
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventEntity
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.domain.Request
 import br.ufpr.sept.so2.modules.solicitacoes.domain.RequestState
+import br.ufpr.sept.so2.modules.solicitacoes.domain.RequestTransitionResult
 import br.ufpr.sept.so2.modules.solicitacoes.domain.WorkflowDefinition
 import br.ufpr.sept.so2.modules.solicitacoes.domain.WorkflowEngine
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestEventEntity
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestEventJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestTypeJpaRepository
+import br.ufpr.sept.so2.shared.outbox.OutboxEventPublisher
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -28,11 +28,11 @@ class TransitionRequestUseCase(
     private val requestRepo: RequestJpaRepository,
     private val requestTypeRepo: RequestTypeJpaRepository,
     private val requestEventRepo: RequestEventJpaRepository,
-    private val outboxRepo: OutboxEventJpaRepository,
+    private val outboxPublisher: OutboxEventPublisher,
     private val objectMapper: ObjectMapper,
 ) {
     @Transactional
-    fun execute(command: TransitionCommand) {
+    fun execute(command: TransitionCommand): RequestTransitionResult {
         val entity =
             requestRepo
                 .findById(command.requestId)
@@ -92,25 +92,25 @@ class TransitionRequestUseCase(
             ),
         )
 
-        // Enqueue outbox event so the OutboxDispatcher can send email/push
-        // notifications to the applicant asynchronously — same transaction ensures
-        // at-least-once delivery without needing a message broker.
-        outboxRepo.save(
-            OutboxEventEntity(
-                eventType = "solicitacoes.${command.action.lowercase()}",
-                aggregateType = "Request",
-                aggregateId = command.requestId,
-                payload =
-                    mapOf(
-                        "requestId" to command.requestId.toString(),
-                        "action" to command.action,
-                        "estadoAnterior" to domainRequest.estado.name,
-                        "estadoNovo" to result.newState.name,
-                        "idSolicitante" to entity.idSolicitante.toString(),
-                        "tipoCode" to entity.requestTypeCode,
-                        "parecer" to (command.parecer ?: ""),
-                    ),
-            ),
+        outboxPublisher.enqueue(
+            eventType = "solicitacoes.${command.action.lowercase()}",
+            aggregateType = "Request",
+            aggregateId = command.requestId,
+            payload = buildMap {
+                put("requestId", command.requestId.toString())
+                put("action", command.action)
+                put("estadoAnterior", domainRequest.estado.name)
+                put("estadoNovo", result.newState.name)
+                put("idSolicitante", entity.idSolicitante.toString())
+                put("tipoCode", entity.requestTypeCode)
+                put("parecer", command.parecer ?: "")
+                put("notifyTemplate", result.notifyTemplate ?: "")
+                if (result.generateOneTimeToken) {
+                    put("generateOneTimeToken", "true")
+                }
+            },
         )
+
+        return result
     }
 }

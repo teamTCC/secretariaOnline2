@@ -73,6 +73,29 @@ class RequestEntity(
     var concludedAt: OffsetDateTime? = null,
     @Column(name = "deleted_at")
     var deletedAt: OffsetDateTime? = null,
+    @Column(name = "id_request_type_version")
+    var idRequestTypeVersion: UUID? = null,
+) : BaseEntity(id)
+
+@Entity
+@Table(
+    name = "request_type_version",
+    indexes = [Index(name = "idx_request_type_version_type", columnList = "id_request_type")],
+)
+class RequestTypeVersionEntity(
+    id: UUID = UUID.randomUUID(),
+    @Column(name = "id_request_type", nullable = false)
+    val idRequestType: UUID,
+    @Column(nullable = false)
+    val version: Int,
+    @Column(name = "form_schema", columnDefinition = "jsonb", nullable = false)
+    @Type(JsonType::class)
+    val formSchema: Map<String, Any> = emptyMap(),
+    @Column(name = "workflow_json", columnDefinition = "jsonb", nullable = false)
+    @Type(JsonType::class)
+    val workflowJson: Map<String, Any> = emptyMap(),
+    @Column(name = "published_at", nullable = false)
+    val publishedAt: OffsetDateTime = OffsetDateTime.now(),
 ) : BaseEntity(id)
 
 @Entity

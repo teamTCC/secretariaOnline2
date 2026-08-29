@@ -1,5 +1,6 @@
 package br.ufpr.sept.so2.modules.solicitacoes.application
 
+import br.ufpr.sept.so2.modules.solicitacoes.domain.AttachmentPolicy
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestAttachmentEntity
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestAttachmentJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestEntity
@@ -23,6 +24,8 @@ class SaveDraftUseCase(
     private val requestRepo: RequestJpaRepository,
     private val requestTypeRepo: RequestTypeJpaRepository,
     private val attachmentRepo: RequestAttachmentJpaRepository,
+    private val storageGuard: AttachmentStorageGuard,
+    private val versionStore: RequestTypeVersionStore,
 ) {
     @Transactional
     fun execute(command: SaveDraftCommand): UUID {
@@ -31,6 +34,12 @@ class SaveDraftUseCase(
                 .findById(command.idRequestType)
                 .orElseThrow { NoSuchElementException("Tipo de solicitação não encontrado: ${command.idRequestType}") }
         require(requestType.ativo) { "Tipo de solicitação inativo: ${requestType.code}" }
+
+        // Rascunho não valida form_schema nem anexos obrigatórios — só metadados/MinIO se houver arquivo.
+        command.attachments.forEach { att ->
+            AttachmentPolicy.assertUploadMetadata(att.contentType, att.tamanhoBytes)
+            storageGuard.assertObjectMatches(att.storageKey, att.sha256, att.tamanhoBytes, requestId = null)
+        }
 
         val entity =
             RequestEntity(
@@ -42,6 +51,7 @@ class SaveDraftUseCase(
                 idCurso = command.idCurso,
                 estado = "RASCUNHO",
                 dados = command.dados,
+                idRequestTypeVersion = versionStore.latestId(requestType.id),
             )
         val saved = requestRepo.save(entity)
 

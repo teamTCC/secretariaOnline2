@@ -9,7 +9,7 @@ Estatísticas da secretaria: [T-F5-011-ESTATISTICAS.md](../F5 — Secretaria/T-F
 
 ## Arquivo
 
-[`bff/ReportsController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/ReportsController.kt)
+[`bff/ReportsController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/ReportsController.kt) — tag OpenAPI `BFF — Relatórios Analíticos`. Authorities seedadas em V016 (`report.view_coordinator`).
 
 ```
 GET /reports/coordinator?periodo=2025-2&curso=TADS
@@ -25,7 +25,7 @@ Authorization: Bearer …  (report.view_coordinator)
 | `evasaoPorPeriodo` | colações por ano em `graduation_record` (proxy de formatura; não é evasão SIGA) |
 | `cargaPorDeliberador` | `request_event` com `estado_novo` DEFERIDA/INDEFERIDA/DELIBERADA |
 
-Atalho `GET /academico/relatorios/curso` continua institucional (totais simples).
+Atalho `GET /academico/relatorios/curso` continua institucional (totais simples) em [`AcademicoSummaryController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/AcademicoSummaryController.kt) (tag `BFF — Sumário Acadêmico`, distinto dos relatórios analíticos).
 
 ---
 

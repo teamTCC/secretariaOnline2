@@ -12,6 +12,7 @@ dependencies {
     implementation(project(":modules:comunicacao"))
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("com.networknt:json-schema-validator:1.5.4")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.mockk:mockk:1.13.13")

@@ -23,7 +23,7 @@ Cole no Body:
 POST {{baseUrl}}/auth/login
 ```
 
-Copie `accessToken` → `{{accessToken}}`.
+**Não há `accessToken` no body.** Confirme o cookie `access_token` no jar (ou copie o valor do cookie → `{{accessToken}}` se for usar Bearer).
 
 Se `401`: o hash do seed não confere. Opções:
 
@@ -146,7 +146,7 @@ Se o dispatcher ainda não rodou (`status=PENDING`), espere ~5 s (`OutboxDispatc
 
 1. `POST /auth/login` com e-mail + senha temporária.
 2. Resposta: `mustChangePassword: true` (e talvez `mustAcceptLgpd: true`).
-3. Com **esse** accessToken: `POST /auth/first-access` — body 
+3. Com a session (cookie `access_token`) ou Bearer fallback: `POST /auth/first-access` — body 
 
 ```json
 {

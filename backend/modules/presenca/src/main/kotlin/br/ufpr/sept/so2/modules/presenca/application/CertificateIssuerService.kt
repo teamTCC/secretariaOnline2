@@ -2,13 +2,12 @@ package br.ufpr.sept.so2.modules.presenca.application
 
 import br.ufpr.sept.so2.modules.arquivos.MinioStorageService
 import br.ufpr.sept.so2.modules.notificacoes.OutboxEventTypes
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventEntity
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository
 import br.ufpr.sept.so2.modules.presenca.config.CertificateProperties
 import br.ufpr.sept.so2.modules.presenca.infrastructure.persistence.AttendanceSessionJpaRepository
 import br.ufpr.sept.so2.modules.presenca.infrastructure.persistence.CertificateEntity
 import br.ufpr.sept.so2.modules.presenca.infrastructure.persistence.CertificateJpaRepository
 import br.ufpr.sept.so2.modules.presenca.infrastructure.persistence.EventAttendanceJpaRepository
+import br.ufpr.sept.so2.shared.outbox.OutboxEventPublisher
 import com.lowagie.text.Document
 import com.lowagie.text.Element
 import com.lowagie.text.FontFactory
@@ -36,7 +35,7 @@ class CertificateIssuerService(
     private val certRepo: CertificateJpaRepository,
     private val minioStorageService: MinioStorageService,
     private val certProperties: CertificateProperties,
-    private val outboxRepo: OutboxEventJpaRepository,
+    private val outboxPublisher: OutboxEventPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -129,22 +128,20 @@ class CertificateIssuerService(
                     issuedAt = issuedAt,
                 ),
             )
-        outboxRepo.save(
-            OutboxEventEntity(
-                eventType = OutboxEventTypes.CERTIFICATE_ISSUED,
-                aggregateType = "Certificate",
-                aggregateId = saved.id,
-                payload =
-                    mapOf(
-                        "certificateId" to saved.id.toString(),
-                        "alunoId" to alunoId.toString(),
-                        "eventoId" to (idEvento?.toString() ?: ""),
-                        "activityId" to (idActivity?.toString() ?: ""),
-                        "origem" to origem,
-                        "eventoTitulo" to titulo,
-                        "hashSha256" to hashHex,
-                    ),
-            ),
+        outboxPublisher.enqueue(
+            eventType = OutboxEventTypes.CERTIFICATE_ISSUED,
+            aggregateType = "Certificate",
+            aggregateId = saved.id,
+            payload =
+                mapOf(
+                    "certificateId" to saved.id.toString(),
+                    "alunoId" to alunoId.toString(),
+                    "eventoId" to (idEvento?.toString() ?: ""),
+                    "activityId" to (idActivity?.toString() ?: ""),
+                    "origem" to origem,
+                    "eventoTitulo" to titulo,
+                    "hashSha256" to hashHex,
+                ),
         )
         log.info("Certificado {} emitido aluno={} hash={}", origem, alunoId, hashHex.take(16))
         return saved

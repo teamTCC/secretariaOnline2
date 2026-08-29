@@ -7,9 +7,10 @@
 | Serviço | URL | Como saber que está up |
 |---------|-----|------------------------|
 | API Spring Boot | `http://localhost:8080` | `GET /actuator/health` → `{ "status": "UP" }` |
-| Swagger UI | [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) | lista de tags (IAM, Solicitações, …) |
+| Swagger UI | [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) | lista de tags (IAM, BFF — Dashboard, …) |
 | OpenAPI | [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) | JSON grande |
 | Postgres | `localhost:5432` / `secretaria_dev` | `SELECT 1` |
+| Redis | `localhost:6379` | `redis-cli ping` → `PONG` (session store + cache BFF) |
 | Mailhog | [http://localhost:8025](http://localhost:8025) | UI vazia ou com e-mails |
 | MinIO | `http://localhost:9000` | console em `:9001` (se o compose subir) |
 
@@ -34,9 +35,9 @@ Variáveis que você vai atualizar o tempo todo:
 | Variável | Origem |
 |----------|--------|
 | `{{baseUrl}}` | fixo `http://localhost:8080` |
-| `{{accessToken}}` | campo `accessToken` do `POST /auth/login` |
+| `{{accessToken}}` | **opcional** — valor do cookie `access_token` (login **não** devolve JWT no JSON). Use só para Bearer fallback |
 | `{{xsrfToken}}` | cookie `XSRF-TOKEN` OU body de `GET /auth/csrf` |
-| `{{refreshToken}}` | cookie `refresh_token` (httpOnly) — o Desktop lê o cookie jar |
+| `{{refreshToken}}` | cookie `refresh_token` (httpOnly, `Path=/auth`) — o Desktop lê o cookie jar |
 | `{{userId}}`, `{{cursoId}}`, `{{requestId}}`, … | respostas GET/POST — catálogo em [01](01-ids-credenciais-e-ambiente.md) |
 
 ## 4. Headers padrão da coleção
@@ -48,7 +49,9 @@ Accept: application/json
 Content-Type: application/json
 ```
 
-**Não** coloque `Authorization` na coleção inteira — requests públicos (`/auth/**`, `/publico/**`) quebram ou ficam confusos. Coloque Bearer só nos requests autenticados:
+**Não** coloque `Authorization` na coleção inteira — requests públicos (`/auth/**`, `/publico/**`) quebram ou ficam confusos.
+
+Caminho preferido: **cookie jar** — `POST /auth/login` grava `access_token` (HttpOnly, `Path=/`) e o Desktop reenvia o cookie. Bearer é fallback (Swagger, CLI sem session):
 
 ```
 Authorization: Bearer {{accessToken}}
@@ -66,7 +69,7 @@ HTTPie Desktop precisa **guardar cookies** entre requests:
 
 1. Settings da coleção → **Cookies** → Enable cookie jar.
 2. `GET /auth/csrf` grava `XSRF-TOKEN` (não httpOnly).
-3. `POST /auth/login` grava `refresh_token` (httpOnly, `Path=/auth`).
+3. `POST /auth/login` grava `access_token` (HttpOnly, `Path=/`) **e** `refresh_token` (HttpOnly, `Path=/auth`).
 4. Copie o valor de `XSRF-TOKEN` para `{{xsrfToken}}` (o header Double Submit precisa ecoar o cookie).
 
 Isentos de CSRF (não precisam do header): `/auth/login`, `/auth/refresh`, `/auth/forgot-password`, `/auth/reset-password`, Swagger, Actuator, JWKS.
@@ -112,7 +115,7 @@ Headers de resposta incluem `Set-Cookie: XSRF-TOKEN=…; Path=/; SameSite=Lax`.
 
 **No HTTPie:** abra Cookies, copie o valor de `XSRF-TOKEN` → cole em `{{xsrfToken}}` do environment.
 
-## 8. Request 2 — Login e extração do Bearer
+## 8. Request 2 — Login (dual cookie)
 
 Cole no Body:
 
@@ -129,18 +132,21 @@ Cole no Body:
 
 **Esperado 200:**
 
-```json
+```
+Set-Cookie: access_token=eyJhbGci…; HttpOnly; Path=/; SameSite=Lax; Max-Age=900
+Set-Cookie: refresh_token=…; HttpOnly; Path=/auth; SameSite=Lax; Max-Age=604800
+
 {
-  "accessToken": "eyJhbGciOiJSUzI1NiJ9…",
-  "tokenType": "Bearer",
   "mustChangePassword": false,
   "mustAcceptLgpd": false
 }
 ```
 
-Copie `accessToken` → `{{accessToken}}`.
+**Não há `accessToken` no JSON.** O cookie jar reenvia `access_token` em `GET /me` e nos dashboards.
 
-O `refresh_token` **não** vem no JSON — só no cookie httpOnly. O Desktop reenvia o cookie em `POST /auth/refresh` automaticamente se o cookie jar estiver ligado.
+Fallback Bearer (Swagger / CLI): abra Cookies, copie o valor de `access_token` → `{{accessToken}}`. Detalhe: [T-F0-001](F0-publico/T-F0-001-login.md).
+
+`POST /auth/refresh` **não** aceita body — lê o cookie `refresh_token` e grava um novo par + novo `sid` no Redis.
 
 ## 9. Como colar JSON nesta pasta
 
@@ -167,9 +173,9 @@ Isso é o contrato FGAC: a UI (e o teste manual) é cega a papéis.
 
 | Jeito | Quando usar |
 |-------|-------------|
-| Header `Authorization: Bearer {{accessToken}}` | padrão desta pasta |
-| Aba Auth → Bearer Token → `{{accessToken}}` | equivalente |
-| Cookie `refresh_token` | só `POST /auth/refresh` |
+| Cookie `access_token` (cookie jar) | **padrão** — login grava; requests autenticados reenviam |
+| Header `Authorization: Bearer {{accessToken}}` | fallback se o jar não reenviar o cookie |
+| Cookie `refresh_token` | só `POST /auth/refresh` (`Path=/auth`) |
 
 Nunca cole o JWT no chat, em print ou em commit.
 

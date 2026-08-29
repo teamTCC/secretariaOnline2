@@ -29,6 +29,11 @@ class RateLimitFilter(
     private val forgotPasswordBuckets = ConcurrentHashMap<String, Bucket>()
     private val publicGetBuckets = ConcurrentHashMap<String, Bucket>()
     private val attendanceBuckets = ConcurrentHashMap<String, Bucket>()
+    private val transitionBuckets = ConcurrentHashMap<String, Bucket>()
+
+    companion object {
+        private val TRANSITIONS_REGEX = Regex("""/requests/[0-9a-fA-F-]{36}/transitions$""")
+    }
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -36,6 +41,7 @@ class RateLimitFilter(
         chain: FilterChain,
     ) {
         val isLogin = request.requestURI.endsWith("/auth/login") && request.method == "POST"
+        val isOtt = request.requestURI.endsWith("/auth/ott") && request.method == "POST"
         val isForgotPassword = request.requestURI.endsWith("/auth/forgot-password") && request.method == "POST"
         val isPublicGet =
             request.method == "GET" &&
@@ -52,6 +58,7 @@ class RateLimitFilter(
                         request.requestURI.contains("/attendance/exit") ||
                         request.requestURI.contains("/attendance/qr/validate")
                 )
+        val isTransition = request.method == "POST" && TRANSITIONS_REGEX.containsMatchIn(request.requestURI)
 
         if (isPublicGet) {
             val key = request.remoteAddr
@@ -92,7 +99,22 @@ class RateLimitFilter(
             return
         }
 
-        if (!isLogin && !isForgotPassword) {
+        if (isTransition) {
+            // Key = IP + hash of Authorization header prefix (session-aware but no JWT re-parsing)
+            val authPrefix = request.getHeader("Authorization")?.take(50) ?: ""
+            val key = "${request.remoteAddr}:${authPrefix.hashCode()}"
+            val probe = transitionBuckets.computeIfAbsent(key) { buildTransitionBucket() }.tryConsumeAndReturnRemaining(1)
+            if (!probe.isConsumed) {
+                val retryAfter = (probe.nanosToWaitForRefill / 1_000_000_000L).coerceAtLeast(1L)
+                log.warn("Rate limit de transição atingido para chave: {}", key.replace(":", "_"))
+                rejectWithRateLimit(response, retryAfter)
+                return
+            }
+            chain.doFilter(request, response)
+            return
+        }
+
+        if (!isLogin && !isOtt && !isForgotPassword) {
             chain.doFilter(request, response)
             return
         }
@@ -101,6 +123,17 @@ class RateLimitFilter(
         // Without this, reading the InputStream in the filter exhausts it and the controller
         // receives an empty body.
         val cached = CachedBodyHttpServletRequest(request)
+
+        if (isOtt) {
+            val key = cached.remoteAddr
+            val probe = loginBuckets.computeIfAbsent("ott:$key") { buildLoginBucket() }.tryConsumeAndReturnRemaining(1)
+            if (!probe.isConsumed) {
+                val retryAfter = (probe.nanosToWaitForRefill / 1_000_000_000L).coerceAtLeast(1L)
+                log.warn("Rate limit de OTT atingido para IP: {}", key)
+                rejectWithRateLimit(response, retryAfter)
+                return
+            }
+        }
 
         if (isLogin) {
             val identifier = extractField(cached, "identificador")
@@ -170,6 +203,13 @@ class RateLimitFilter(
             .build()
 
     private fun buildAttendanceBucket(): Bucket =
+        Bucket
+            .builder()
+            .addLimit(Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(1))))
+            .build()
+
+    // 20 transitions per minute per session — generous for real deliberators, prevents abuse
+    private fun buildTransitionBucket(): Bucket =
         Bucket
             .builder()
             .addLimit(Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(1))))

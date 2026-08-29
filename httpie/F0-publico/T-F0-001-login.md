@@ -147,7 +147,7 @@ http GET {{baseUrl}}/me "Authorization: Bearer eyJhbGci..."
 
 ---
 
-## Passo 4 — Refresh (rotação via cookie)
+## Passo 4 — Refresh (rotação via cookie + nova sessão Redis)
 
 ```bash
 # Sem body — o refresh_token é lido do cookie (Path=/auth)
@@ -165,7 +165,7 @@ Set-Cookie: refresh_token=<novo>; HttpOnly; Path=/auth; Max-Age=604800
 }
 ```
 
-Os cookies são atualizados automaticamente na session. O token antigo é invalidado.
+Os cookies são atualizados automaticamente na session. Um novo `sid` (session ID) é gerado e registrado no Redis — o token antigo expira naturalmente no seu TTL (≤ 15 min).
 
 **Reuso (teste negativo):**
 
@@ -219,7 +219,7 @@ Dispare o Passo 5 **6 vezes em menos de 1 minuto** com o mesmo identificador.
 
 ---
 
-## Passo 7 — Logout (blacklist Redis + clear cookies)
+## Passo 7 — Logout (session Redis deletada + clear cookies)
 
 ```bash
 http --session=./session.json POST {{baseUrl}}/auth/logout \
@@ -238,11 +238,12 @@ Set-Cookie: refresh_token=; HttpOnly; Path=/auth; Max-Age=0
 ```
 
 O que ocorre por baixo:
-1. JTI do access token é gravado no Redis (`auth:revoked:jti:<jti>`) com TTL = tempo restante
-2. Todos os refresh tokens do usuário são revogados no BD
-3. Ambos os cookies são limpos (MaxAge=0)
+1. Extrai o `sid` (Session ID) do payload do access token atual
+2. Redis: `DEL auth:session:<sid>` — token invalidado **instantaneamente**, independente do TTL
+3. Todos os refresh tokens do usuário são revogados no BD
+4. Ambos os cookies são limpos (MaxAge=0)
 
-Após logout, `GET {{baseUrl}}/me` → `401` (mesmo que o token não tenha expirado naturalmente).
+Após logout, `GET {{baseUrl}}/me` → `401` imediatamente (não aguarda expirar o JWT).
 
 ---
 

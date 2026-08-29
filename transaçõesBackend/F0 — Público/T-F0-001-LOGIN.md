@@ -102,15 +102,18 @@ data class LoginResponse(
 )
 ```
 
-### Como o JWT é emitido (com JTI)
+## Como o JWT é emitido (com sid + JTI)
 
-O `JwtTokenService.issueAccessToken(usuario)` cria um RS256 JWT com:
-- **jti**: UUID único (necessário para revogação Redis no logout)
+O `JwtTokenService.issueAccessToken(usuario, sid)` cria um RS256 JWT com:
+- **sid**: Session ID (UUID) — chave da entrada Redis `auth:session:<sid>`
+- **jti**: UUID único (mantido por compatibilidade e auditoria)
 - **sub**: UUID do usuário
 - **authorities**: lista de capabilities FGAC
 - **nome**: nome do usuário
 - **exp**: 15 minutos (configurável via `security.jwt.access-token-ttl-seconds`)
 - **iss**: `secretaria-online-2`
+
+O `LoginUseCase` grava `auth:session:<sid>` no Redis com TTL = accessTTL + 60s **antes** de retornar os tokens. Se o Redis estiver indisponível, a criação da sessão lança exceção e o login falha — sem sessão Redis, o token não funcionaria de qualquer forma.
 
 ---
 
@@ -179,13 +182,15 @@ POST /auth/refresh
     → isExpired()? → 401
     → isUsed() ou isRevoked()? → RISCO DE ROUBO
       → DB: revokeAllForUser
-      → Redis: forceLogoutUser(userId, TTL=accessTokenTTL) ← força expiração imediata
+      → Redis: forceLogoutUser(userId, TTL=accessTokenTTL+60s) ← cobre tokens pré-ataque
       → 401
     → DB: markUsed(oldToken)
     → DB: INSERT novo refresh_token
-    → JWT: novo accessToken
+    → sid = UUID.randomUUID()
+    → Redis: SET auth:session:<sid> userId EX <ttl>
+    → JWT: novo accessToken com claim "sid"
   → Response: 200 {mensagem}
-             + Set-Cookie: access_token  (novo, HttpOnly)
+             + Set-Cookie: access_token  (novo, HttpOnly, com sid)
              + Set-Cookie: refresh_token (novo, HttpOnly)
 ```
 
@@ -211,7 +216,7 @@ Quando um token já-utilizado é apresentado:
 
 ---
 
-## F0.1-f — Logout com Blacklist Redis
+## F0.1-f — Logout com Session Redis
 
 ### Fluxo
 
@@ -220,8 +225,8 @@ POST /auth/logout
   Authorization: Bearer <access_token>  (ou cookie access_token)
   X-XSRF-TOKEN: <token>
   → AuthController.logout()
-    → extrai JTI + exp do access token atual
-    → Redis: SET auth:revoked:jti:<jti> "1" EX <ttl_restante>
+    → extrai sid do payload do access token atual
+    → Redis: DEL auth:session:<sid>     ← token invalidado instantaneamente
     → DB: revokeAllForUser(userId)
     → limpa cookies access_token e refresh_token (MaxAge=0)
   → 200 { mensagem }
@@ -239,22 +244,20 @@ Set-Cookie: refresh_token=; HttpOnly; Path=/auth; Max-Age=0
 }
 ```
 
-### Policiamento Redis: dois mecanismos
+### Mecanismos de revogação Redis
 
-| Mecanismo | Chave Redis | TTL | Uso |
-|-----------|-------------|-----|-----|
-| JTI blacklist | `auth:revoked:jti:<jti>` | Expiry do token | Logout individual |
-| Force-logout do usuário | `auth:force-logout:user:<uuid>` | accessTokenTTL | Reuso de refresh token detectado |
+| Mecanismo | Chave Redis | TTL | Uso | Política |
+|-----------|-------------|-----|-----|----------|
+| Session store | `auth:session:<sid>` | accessTTL + 60s | Logout normal — DEL instantâneo | fail-closed |
+| Force-logout do usuário | `auth:force-logout:user:<uuid>` | accessTTL + 60s | Reuso de refresh token / reset de senha | fail-closed |
+| JTI blacklist (legacy) | `auth:revoked:jti:<jti>` | TTL restante | Tokens antigos sem claim `sid` | fail-closed |
 
-O `JwtAuthenticationFilter` verifica **ambos** antes de aceitar um token:
+O `JwtAuthenticationFilter` verifica na ordem:
+1. `sessionExists(sid)` se o token tem claim `sid` (nova estratégia)
+2. `isUserForcedLogout(userId, issuedAt)` sempre — cobre tokens pré-force-logout
+3. `isRevoked(jti)` se não há `sid` (legacy / tokens emitidos antes do deploy)
 
-```kotlin
-// 1. JTI individualmente blacklistado?
-if (jti != null && tokenRevocationPort.isRevoked(jti)) → reject
-
-// 2. Usuário com force-logout mais recente que o iat do token?
-if (issuedAt != null && tokenRevocationPort.isUserForcedLogout(userId, issuedAt)) → reject
-```
+Todos os checks são **fail-closed**: Redis indisponível = request negado.
 
 ---
 
@@ -266,18 +269,15 @@ O `JwtAuthenticationFilter` roda em todo request:
 Prioridade de extração do token:
   1. Cookie access_token (HttpOnly — fluxo browser)
   2. Authorization: Bearer <token> (fallback — httpie, Swagger, testes)
-```
 
-```kotlin
-private fun extractToken(request: HttpServletRequest): String? {
-    // Cookie primeiro
-    request.cookies?.firstOrNull { it.name == "access_token" }?.value
-        ?.takeIf { it.isNotBlank() }?.let { return it }
-
-    // Bearer fallback
-    val header = request.getHeader("Authorization") ?: return null
-    return if (header.startsWith("Bearer ")) header.removePrefix("Bearer ").trim() else null
-}
+Verificação de revogação (fail-closed):
+  1. sid presente? → sessionExists(sid) em Redis
+       NÃO existe → 401 (session expirou ou logout foi feito)
+       Redis down → exceção → request não autenticado (fail-closed)
+  2. Force-logout? → isUserForcedLogout(userId, issuedAt)
+       SIM → 401
+  3. sem sid (legacy)? → isRevoked(jti) no Redis
+       SIM → 401
 ```
 
 ---
@@ -301,13 +301,17 @@ Isentos: `/auth/login`, `/auth/refresh`, `/auth/forgot-password`, `/auth/reset-p
 - [x] `POST /auth/login` → `200` com flags `mustChangePassword/mustAcceptLgpd` + `access_token` e `refresh_token` nos cookies HttpOnly
 - [x] `accessToken` **não aparece** no corpo JSON
 - [x] `refreshToken` **não aparece** no corpo JSON
+- [x] Access token JWT contém claim `sid` (session ID)
+- [x] Redis: `auth:session:<sid>` criado no login com TTL = accessTTL + 60s
 - [x] Login com e-mail `@ufpr.br`, e-mail pessoal e GRR numérico
 - [x] `mustChangePassword: true` quando `senha_alterada = false`
 - [x] `401` genérico para credenciais inválidas (anti-enumeração)
 - [x] `429` após 5 tentativas em 1 min
-- [x] `POST /auth/refresh` sem body → lê cookie → renova par de tokens via novos cookies
+- [x] `POST /auth/refresh` sem body → lê cookie → renova par de tokens via novos cookies + nova sessão Redis
 - [x] Reuso de refresh token → revokeAllForUser (DB) + forceLogoutUser (Redis) + `401`
-- [x] `POST /auth/logout` → blacklist JTI no Redis + revoga refresh tokens no DB + limpa ambos os cookies
-- [x] `JwtAuthenticationFilter` verifica JTI blacklist + force-logout antes de aceitar o token
+- [x] `POST /auth/logout` → Redis DEL `auth:session:<sid>` + revoga refresh tokens no DB + limpa ambos os cookies
+- [x] Logout instantâneo: token recusado imediatamente após logout (mesmo antes do TTL expirar)
+- [x] `JwtAuthenticationFilter` fail-closed: Redis indisponível = request não autenticado
 - [x] Bearer fallback funciona para testes via httpie/Swagger
 - [x] CSRF Double Submit: `GET /auth/csrf` emite cookie `XSRF-TOKEN` + login/refresh/forgot/reset são isentos
+- [x] `ResetPasswordUseCase` força logout de todas as sessões após troca de senha

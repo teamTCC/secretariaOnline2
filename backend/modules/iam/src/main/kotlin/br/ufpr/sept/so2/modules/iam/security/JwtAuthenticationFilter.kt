@@ -20,9 +20,20 @@ import java.util.UUID
  *  1. The `access_token` HttpOnly cookie (primary — browser flows)
  *  2. The `Authorization: Bearer <token>` header (fallback — API/Swagger/httpie)
  *
- * After signature verification the token is checked against the Redis revocation store
- * (individual JTI blacklist + per-user force-logout marker) before the authentication
- * is set in the SecurityContext.
+ * ## Revocation check order (fail-closed)
+ *
+ * 1. **Session check** (`sid` claim present): verifies `auth:session:<sid>` exists in Redis.
+ *    If the key is missing the token is rejected. If Redis is down the exception propagates,
+ *    leaving the authentication context empty — the request is effectively unauthenticated.
+ *
+ * 2. **Force-logout check** (always): rejects tokens issued before the user's force-logout
+ *    marker (covers scenarios where `sid`-based revocation is bypassed, e.g. tokens without
+ *    `sid` still in circulation during a rolling deployment).
+ *
+ * 3. **JTI blacklist** (`sid` absent — legacy / backward compat): direct JTI lookup in Redis.
+ *
+ * All three checks are fail-closed: a Redis outage is treated as "revoked" rather than
+ * "allowed", because availability is a lesser concern than passing a revoked token.
  */
 @Component
 class JwtAuthenticationFilter(
@@ -44,15 +55,27 @@ class JwtAuthenticationFilter(
                 val jti = payload.id
                 val userId = UUID.fromString(payload.subject)
                 val issuedAt = payload.issuedAt
+                val sid = payload["sid"] as? String
 
-                if (jti != null && tokenRevocationPort.isRevoked(jti)) {
-                    log.debug("Access token JTI {} is blacklisted — rejecting", jti)
-                    filterChain.doFilter(request, response)
-                    return
+                // 1. Session check (primary — fail-closed)
+                if (sid != null) {
+                    if (!tokenRevocationPort.sessionExists(sid)) {
+                        log.debug("Session not found — rejecting token for userId={} sid={}", userId, sid)
+                        filterChain.doFilter(request, response)
+                        return
+                    }
+                } else {
+                    // 3. JTI blacklist (legacy — no sid claim)
+                    if (jti != null && tokenRevocationPort.isRevoked(jti)) {
+                        log.debug("Access token JTI {} is blacklisted — rejecting", jti)
+                        filterChain.doFilter(request, response)
+                        return
+                    }
                 }
 
+                // 2. Force-logout check (always, regardless of sid)
                 if (issuedAt != null && tokenRevocationPort.isUserForcedLogout(userId, issuedAt)) {
-                    log.debug("User {} has been force-logged-out — token issued before force-logout event", userId)
+                    log.debug("User {} force-logged-out — token issued before force-logout event", userId)
                     filterChain.doFilter(request, response)
                     return
                 }
@@ -67,7 +90,7 @@ class JwtAuthenticationFilter(
             } catch (ex: JwtException) {
                 log.debug("JWT inválido: {}", ex.message)
             } catch (ex: Exception) {
-                log.warn("Erro ao processar JWT: {}", ex.message)
+                log.warn("Erro ao processar JWT (Redis indisponível?): {}", ex.message)
             }
         }
 

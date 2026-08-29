@@ -181,30 +181,52 @@ Cole no Body:
 POST {{baseUrl}}/requests/draft
 ```
 
-**Esperado 201:** `estado` implícito `RASCUNHO`, `_links.submit`. **Não** gera protocolo nem outbox.
+**Esperado 201:** `estado: RASCUNHO`, `_links.submit`, `_links.update-draft`, `_links.upload-url`. **Não** gera protocolo nem outbox. `form_schema` **não** é validado no rascunho.
+
+Atualizar dados sem submeter:
+
+```json
+{ "dados": { "finalidade": "BOLSA", "observacoes": "Completado." } }
+```
+
+```
+PATCH {{baseUrl}}/requests/{{requestId}}/draft
+```
+
+**Esperado 200:** `estado: RASCUNHO`.
 
 ```
 POST {{baseUrl}}/requests/{{requestId}}/submit
 ```
 
-**Esperado 200:** `estado: ABERTA`, `protocolo: "2026/0002"`.
+**Esperado 200:** `estado: ABERTA`, `protocolo: "2026/0002"`. Submit **revalida** `form_schema` e anexos obrigatórios (`x-required-attachments`) → 422 se faltar campo ou categoria.
 
 ---
 
 ## Passo 9 — Anexos (MinIO)
 
-1. Presign:
+Há dois caminhos de presign (mesmo body):
+
+| Quando | Path |
+|--------|------|
+| Wizard **antes** de existir o request (órfão) | `POST /requests/attachments/presigned-url` |
+| Rascunho/solicitação **já persistida** (canônico HU) | `POST /requests/{{requestId}}/attachments/upload-url` |
+
+1. Presign (órfão **ou** vinculado):
 
 ```
 POST {{baseUrl}}/requests/attachments/presigned-url
+POST {{baseUrl}}/requests/{{requestId}}/attachments/upload-url
 ```
 
 Cole no Body:
 
 ```json
 {
-  "nomeOriginal": "historico_escolar.pdf",
+  "filename": "historico_escolar.pdf",
   "contentType": "application/pdf",
+  "sha256": "{{sha256}}",
+  "sizeBytes": 204800,
   "categoria": "HISTORICO_ESCOLAR"
 }
 ```
@@ -221,7 +243,38 @@ Get-FileHash .\historico.pdf -Algorithm SHA256
 
 Cole o hex em `{{sha256}}`.
 
-4. Abra request com anexos: 
+4. **[RECOMENDADO]** Confirmar o upload para vincular à solicitação existente:
+
+```json
+{
+  "storageKey": "{{storageKey}}",
+  "sha256": "{{sha256}}",
+  "nomeOriginal": "historico_escolar.pdf",
+  "contentType": "application/pdf",
+  "categoria": "HISTORICO_ESCOLAR",
+  "tamanhoBytes": 204800
+}
+```
+
+```
+POST {{baseUrl}}/requests/{{requestId}}/attachments/confirm
+Authorization: Bearer {{accessTokenAluno}}
+X-XSRF-TOKEN: {{xsrfToken}}
+```
+
+**Esperado 201:** `AttachmentResponse` com `id`, `storageKey`, `sha256`, `nomeOriginal`, etc.
+
+> **Validações server-side:**  
+> - `contentType` allowlist (PDF, JPEG, PNG, WEBP, DOC, DOCX, XLS, XLSX) — também no **presign**.  
+> - `tamanhoBytes` ≤ 20 MB e deve bater com o tamanho real no MinIO.  
+> - Arquivo deve existir no MinIO.  
+> - **SHA-256** informado é recalculado no servidor a partir do objeto (hex, case-insensitive).  
+> - `storageKey` deve ser `requests/orphan/…` ou `requests/{id}/…` desta solicitação.  
+> - Estado: `RASCUNHO`, `ABERTA` ou `EM_AJUSTE`.  
+> - Content-type inválido / hash divergente / arquivo ausente → **400**.  
+> - Outro aluno → **403**.
+
+**Alternativa (legado):** incluir `attachments` inline no body do `POST /requests`. Não faz verificação de existência no MinIO — evite em produção.
 
 ```json
 {
@@ -252,7 +305,7 @@ GET    {{baseUrl}}/requests/{{requestId}}/attachments/{{attachmentId}}/download-
 DELETE {{baseUrl}}/requests/{{requestId}}/attachments/{{attachmentId}}
 ```
 
-Delete só o solicitante, só em `ABERTA`/`RASCUNHO` → **204**.
+Delete só o solicitante, só em `RASCUNHO`/`ABERTA`/`EM_AJUSTE` → **204**.
 
 ---
 
@@ -273,3 +326,50 @@ PATCH {{baseUrl}}/requests/bulk-deliberate
 ```
 
 Falha em um item → **409** e rollback de todos.
+
+---
+
+## Passo 11 — Fluxo completo: REQUEST_ADJUSTMENT → deep-link → RESUBMIT
+
+Este passo valida o `generateOneTimeToken=true` do workflow.
+
+### 11a — Secretaria solicita ajuste
+
+```json
+{ "action": "REQUEST_ADJUSTMENT", "parecer": "Falta documento X." }
+```
+
+```
+POST {{baseUrl}}/requests/{{requestId}}/transitions
+Authorization: Bearer {{accessTokenSecretaria}}
+```
+
+**Esperado 200** e estado `EM_AJUSTE`. 
+
+O outbox envia email com deep-link ao aluno:
+- Link gerado: `https://secretariaonline.ufpr.br/solicitacoes/{{requestId}}?ott=<JWT>`
+- JWT TTL: 3 dias; audience: `request:{{requestId}}`
+
+### 11b — Aluno resubmete (via _links ou diretamente)
+
+```json
+{ "action": "RESUBMIT", "parecer": null }
+```
+
+```
+POST {{baseUrl}}/requests/{{requestId}}/transitions
+Authorization: Bearer {{accessTokenAluno}}
+```
+
+**Esperado 200** e estado volta a `ABERTA`. Guard `actor.id == request.idSolicitante` protege esta ação — outro usuário → **403**.
+
+---
+
+## Observações de segurança
+
+| Risco | Mitigação |
+|-------|-----------|
+| Spam de transições | Rate limit: **20/min por sessão** em `POST /requests/{id}/transitions` — retorna **429** com `Retry-After` |
+| Deep-link capturado | OTT (JWT) tem TTL de 3 dias e é de uso único (JTI blacklist no Redis) |
+| Arquivo fantasma no MinIO | `POST /confirm` faz HEAD check antes de salvar — retorna **400** se não existir |
+| Tipo de arquivo inválido | Allowlist de content-types verificada no servidor (não confiar no cliente) |

@@ -1,14 +1,13 @@
 package br.ufpr.sept.so2.modules.iam.api
 
-import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.RoleJpaRepository
-import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.UsuarioEntity
-import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.UsuarioJpaRepository
-import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.UsuarioRoleEntity
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.Argon2PasswordService
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.JwtTokenService
-import br.ufpr.sept.so2.modules.notificacoes.OutboxEventTypes
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventEntity
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository
+import br.ufpr.sept.so2.modules.iam.api.dto.PasswordResetEnqueuedResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.UsuarioCreatedResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.UsuarioDetailResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.UsuarioStatusResponse
+import br.ufpr.sept.so2.modules.iam.api.dto.UsuarioSummaryResponse
+import br.ufpr.sept.so2.modules.iam.application.CreateUsuarioCommand
+import br.ufpr.sept.so2.modules.iam.application.ManageUsuarioUseCase
+import br.ufpr.sept.so2.modules.iam.application.UsuarioQuery
 import br.ufpr.sept.so2.shared.api.PageResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -28,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.time.Duration
 import java.util.UUID
 
 data class CreateUsuarioDto(
@@ -46,13 +44,9 @@ data class UpdateStatusDto(
 @RequestMapping("/usuarios")
 @Tag(name = "Usuários", description = "Administração de usuários (secretaria/admin)")
 class UsuariosController(
-    private val usuarioRepo: UsuarioJpaRepository,
-    private val roleRepo: RoleJpaRepository,
-    private val argon2PasswordService: Argon2PasswordService,
-    private val jwtTokenService: JwtTokenService,
-    private val outboxRepo: OutboxEventJpaRepository,
+    private val usuarioQuery: UsuarioQuery,
+    private val manageUsuarioUseCase: ManageUsuarioUseCase,
 ) {
-
     @GetMapping
     @PreAuthorize("hasAuthority('user.manage_students') or hasAuthority('user.manage_all')")
     @Operation(summary = "Listar usuários com filtros (nome, email, ativo)")
@@ -62,66 +56,24 @@ class UsuariosController(
         @RequestParam(required = false) ativo: Boolean?,
         @RequestParam(required = false) role: String?,
         @PageableDefault(size = 20) pageable: Pageable,
-    ): PageResponse<Map<String, Any?>> =
-        PageResponse.of(usuarioRepo.searchUsuarios(nome, email, ativo, pageable)) { u ->
-            mapOf(
-                "id" to u.id,
-                "nome" to u.nome,
-                "email" to u.email,
-                "grr" to u.grr,
-                "ativo" to u.ativo,
-                "roles" to u.usuarioRoles.map { it.role.code },
-            )
-        }
+    ): PageResponse<UsuarioSummaryResponse> = usuarioQuery.list(nome, email, ativo, pageable)
 
     @PostMapping
     @PreAuthorize("hasAuthority('user.manage_students') or hasAuthority('user.manage_all')")
     @Operation(summary = "Criar novo usuário (secretaria cria alunos/professores)")
     fun create(
         @Valid @RequestBody dto: CreateUsuarioDto,
-    ): ResponseEntity<Map<String, Any>> {
-        require(!usuarioRepo.existsByEmail(dto.email)) { "Email já cadastrado: ${dto.email}" }
-        dto.grr?.let { require(!usuarioRepo.existsByGrr(it)) { "GRR já cadastrado: $it" } }
-
-        val role =
-            roleRepo
-                .findByCode(dto.roleCode)
-                .orElseThrow { NoSuchElementException("Role não encontrada: ${dto.roleCode}") }
-
-        val senhaTemporaria = UUID.randomUUID().toString().take(12)
-        val senhaHash = argon2PasswordService.hash(senhaTemporaria)
-
-        val usuario =
-            UsuarioEntity(
-                nome = dto.nome,
-                email = dto.email,
-                grr = dto.grr,
-                senhaHash = senhaHash,
-                senhaAlterada = false,
+    ): ResponseEntity<UsuarioCreatedResponse> {
+        val created =
+            manageUsuarioUseCase.create(
+                CreateUsuarioCommand(
+                    nome = dto.nome,
+                    email = dto.email,
+                    grr = dto.grr,
+                    roleCode = dto.roleCode,
+                ),
             )
-        val saved = usuarioRepo.save(usuario)
-
-        val usuarioRole = UsuarioRoleEntity(usuario = saved, role = role)
-        saved.usuarioRoles.add(usuarioRole)
-        usuarioRepo.save(saved)
-
-        outboxRepo.save(
-            OutboxEventEntity(
-                eventType = "iam.usuario_criado",
-                aggregateType = "Usuario",
-                aggregateId = saved.id,
-                payload =
-                    mapOf(
-                        "email" to dto.email,
-                        "nome" to dto.nome,
-                        "senhaTemporaria" to senhaTemporaria,
-                    ),
-            ),
-        )
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(
-            mapOf("id" to saved.id, "email" to saved.email),
-        )
+        return ResponseEntity.status(HttpStatus.CREATED).body(created)
     }
 
     @GetMapping("/{id}")
@@ -129,25 +81,7 @@ class UsuariosController(
     @Operation(summary = "Detalhe de um usuário")
     fun getById(
         @PathVariable id: UUID,
-    ): ResponseEntity<Map<String, Any?>> {
-        val usuario =
-            usuarioRepo
-                .findByIdWithRoles(id)
-                .orElseThrow { NoSuchElementException("Usuário não encontrado: $id") }
-
-        return ResponseEntity.ok(
-            mapOf(
-                "id" to usuario.id,
-                "nome" to usuario.nome,
-                "email" to usuario.email,
-                "grr" to usuario.grr,
-                "ativo" to usuario.ativo,
-                "metadata" to usuario.metadata,
-                "roles" to usuario.usuarioRoles.map { it.role.code },
-                "senhaAlterada" to usuario.senhaAlterada,
-            ),
-        )
-    }
+    ): ResponseEntity<UsuarioDetailResponse> = ResponseEntity.ok(usuarioQuery.getById(id))
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAuthority('user.manage_students') or hasAuthority('user.manage_all')")
@@ -155,52 +89,14 @@ class UsuariosController(
     fun updateStatus(
         @PathVariable id: UUID,
         @RequestBody dto: UpdateStatusDto,
-    ): ResponseEntity<Map<String, Any?>> {
-        val usuario =
-            usuarioRepo
-                .findById(id)
-                .orElseThrow { NoSuchElementException("Usuário não encontrado: $id") }
-
-        usuario.ativo = dto.ativo
-        usuarioRepo.save(usuario)
-
-        return ResponseEntity.ok(mapOf("id" to usuario.id, "ativo" to usuario.ativo))
-    }
+    ): ResponseEntity<UsuarioStatusResponse> =
+        ResponseEntity.ok(manageUsuarioUseCase.updateStatus(id, dto.ativo))
 
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasAuthority('user.reset_password')")
     @Operation(summary = "Resetar senha do usuário (envia link por e-mail)")
     fun resetPassword(
         @PathVariable id: UUID,
-    ): ResponseEntity<Map<String, String>> {
-        val usuario =
-            usuarioRepo
-                .findById(id)
-                .orElseThrow { NoSuchElementException("Usuário não encontrado: $id") }
-
-        require(usuario.ativo) { "Não é possível resetar senha de usuário inativo." }
-
-        val token =
-            jwtTokenService.issueOneTimeToken(
-                subject = usuario.id,
-                audience = "password-reset",
-                ttl = Duration.ofHours(24),
-            )
-
-        outboxRepo.save(
-            OutboxEventEntity(
-                eventType = OutboxEventTypes.PASSWORD_RESET_REQUESTED,
-                aggregateType = "Usuario",
-                aggregateId = usuario.id,
-                payload =
-                    mapOf(
-                        "email" to usuario.email,
-                        "nome" to usuario.nome,
-                        "token" to token,
-                    ),
-            ),
-        )
-
-        return ResponseEntity.ok(mapOf("mensagem" to "Link de redefinição de senha enviado para ${usuario.email}."))
-    }
+    ): ResponseEntity<PasswordResetEnqueuedResponse> =
+        ResponseEntity.ok(manageUsuarioUseCase.enqueuePasswordReset(id))
 }

@@ -197,3 +197,12 @@ interface RequestEventJpaRepository : JpaRepository<RequestEventEntity, UUID> {
 interface RequestAttachmentJpaRepository : JpaRepository<RequestAttachmentEntity, UUID> {
     fun findAllByIdRequest(idRequest: UUID): List<RequestAttachmentEntity>
 }
+
+interface RequestTypeVersionJpaRepository : JpaRepository<RequestTypeVersionEntity, UUID> {
+    fun findFirstByIdRequestTypeOrderByVersionDesc(idRequestType: UUID): Optional<RequestTypeVersionEntity>
+
+    @Query("SELECT MAX(v.version) FROM RequestTypeVersionEntity v WHERE v.idRequestType = :idRequestType")
+    fun findMaxVersion(
+        @Param("idRequestType") idRequestType: UUID,
+    ): Int?
+}

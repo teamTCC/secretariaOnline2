@@ -13,11 +13,13 @@ Login egresso (`POST /auth/login`):
 }
 ```
 
-Authority `alumni.view_own` / dashboard egresso.
+Authority `alumni.view_own` (V016). Controller: `DashboardEgressoController` + `DashboardEgressoQuery`.
 
 ---
 
 ## Passo 1 — BFF (implementado)
+
+Cookie `access_token` da session **ou**:
 
 ```
 GET {{baseUrl}}/bff/dashboard/egresso

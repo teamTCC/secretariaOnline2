@@ -5,45 +5,84 @@ import java.util.Date
 import java.util.UUID
 
 /**
- * Port for revoking access tokens before their natural expiry.
+ * Port for session management and access-token revocation backed by Redis.
  *
- * Two revocation strategies are supported:
- *  1. JTI-based: blacklists a specific token by its JWT ID (individual logout).
- *  2. User-level force-logout: marks a timestamp so that any token issued before
- *     that moment is rejected (forced session termination — e.g., token-theft response).
+ * ## Session-based revocation (primary — sid in JWT)
  *
- * Implementations are expected to use a TTL-capable store (e.g. Redis) so entries
- * are cleaned up automatically when the underlying tokens expire naturally.
+ * Every access token carries a `sid` (session ID) claim that maps to a short-lived
+ * Redis key (`auth:session:<sid>`). The filter checks this key on every request.
+ * Deleting the key immediately invalidates any access token that carries this `sid`,
+ * regardless of JWT expiry — enabling true instantaneous logout.
+ *
+ * - [createSession]: call on login and on every refresh (generates fresh `sid`).
+ * - [deleteSession]: call on logout (fail-open: cookies are cleared anyway; session
+ *   expires naturally via TTL if Redis is temporarily unavailable).
+ * - [sessionExists]: called by [JwtAuthenticationFilter] — **fail-closed**: throws when
+ *   Redis is unavailable so that the filter does NOT authenticate the request.
+ *
+ * ## Force-logout (secondary — user-level marker)
+ *
+ * Used when refresh-token reuse is detected (possible token theft) or after a password
+ * reset. Marks the user's user ID with the current timestamp; any access token issued
+ * before that timestamp is rejected, covering tokens that were issued before the attack
+ * was detected and are not yet expired.
+ *
+ * ## Legacy JTI blacklist (tertiary — backward compat)
+ *
+ * Used for graceful rollout when tokens without a `sid` claim are still in circulation.
+ * Also covers edge cases where a session cannot be resolved.
  */
 interface TokenRevocationPort {
-    /**
-     * Blacklist a specific access token identified by its JTI.
-     * The entry should expire at the same time as the token itself.
-     */
-    fun revokeAccessToken(
-        jti: String,
-        expiresAt: Date,
-    )
+    // ── Session (primary) ────────────────────────────────────────────────────
 
     /**
-     * Force-logout all tokens for a user by recording the current timestamp in the store.
-     * Any access token whose `iat` (issued-at) is earlier than this timestamp will be rejected.
-     * The marker should expire after [ttl] so the store doesn't hold stale entries.
+     * Creates a Redis session entry for the given [sid].
+     * TTL should be access-token TTL + a small clock-skew buffer (e.g. +60 s).
+     * Throws if Redis is unavailable — login must fail if no session can be recorded.
      */
-    fun forceLogoutUser(
-        userId: UUID,
-        ttl: Duration,
-    )
+    fun createSession(sid: String, userId: UUID, ttl: Duration)
 
-    /** Returns true if the given JTI has been individually revoked. */
+    /**
+     * Deletes the Redis session entry for [sid] (instant logout).
+     * Fail-open: logs a warning if Redis is unavailable; the session expires
+     * naturally via its TTL (≤ access-token TTL).
+     */
+    fun deleteSession(sid: String)
+
+    /**
+     * Returns `true` if a Redis session for [sid] exists and has not expired.
+     * **Fail-closed**: throws when Redis is unavailable so the caller (filter)
+     * can treat the request as unauthenticated rather than silently bypassing revocation.
+     */
+    fun sessionExists(sid: String): Boolean
+
+    // ── Force-logout (secondary) ─────────────────────────────────────────────
+
+    /**
+     * Sets a force-logout marker for [userId] with TTL = [ttl].
+     * Any access token whose `iat` precedes the stored timestamp is rejected.
+     * Fail-open: logs a warning if Redis is unavailable.
+     */
+    fun forceLogoutUser(userId: UUID, ttl: Duration)
+
+    /**
+     * Returns `true` when a force-logout marker for [userId] is newer than [tokenIssuedAt].
+     * Fail-closed: throws when Redis is unavailable.
+     */
+    fun isUserForcedLogout(userId: UUID, tokenIssuedAt: Date): Boolean
+
+    // ── JTI blacklist (legacy / backward compat) ─────────────────────────────
+
+    /**
+     * Blacklists a specific access token by its JTI.
+     * Used during graceful rollout (tokens without `sid` still in circulation)
+     * and for one-time tokens. Fail-open.
+     */
+    fun revokeAccessToken(jti: String, expiresAt: Date)
+
+    /**
+     * Returns `true` if the JTI has been individually revoked.
+     * Fail-closed: throws when Redis is unavailable.
+     */
     fun isRevoked(jti: String): Boolean
-
-    /**
-     * Returns true if the user has a force-logout marker that is newer than [tokenIssuedAt],
-     * meaning the token was issued before the forced-logout event and must be rejected.
-     */
-    fun isUserForcedLogout(
-        userId: UUID,
-        tokenIssuedAt: Date,
-    ): Boolean
 }

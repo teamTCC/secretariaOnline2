@@ -1,6 +1,7 @@
 package br.ufpr.sept.so2.modules.auditoria.api
 
-import br.ufpr.sept.so2.modules.auditoria.infrastructure.persistence.AuditLogJpaRepository
+import br.ufpr.sept.so2.modules.auditoria.api.dto.AuditLogSummaryResponse
+import br.ufpr.sept.so2.modules.auditoria.application.AuditQuery
 import br.ufpr.sept.so2.shared.api.PageResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -19,7 +20,7 @@ import java.util.UUID
 @RequestMapping("/admin/audit")
 @Tag(name = "Admin — Auditoria", description = "Consulta ao log de auditoria imutável")
 class AuditController(
-    private val auditLogRepo: AuditLogJpaRepository,
+    private val auditQuery: AuditQuery,
 ) {
     @GetMapping
     @PreAuthorize("hasAuthority('audit.read')")
@@ -32,21 +33,5 @@ class AuditController(
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         since: OffsetDateTime?,
         @PageableDefault(size = 20) pageable: Pageable,
-    ): PageResponse<Map<String, Any?>> {
-        val desde = since ?: OffsetDateTime.now().minusDays(30)
-        val page = auditLogRepo.findWithFilters(idAtor, acao, resultado, desde, pageable)
-        return PageResponse.of(page) { a ->
-            mapOf(
-                "id" to a.id,
-                "acao" to a.acao,
-                "idAtor" to a.idAtor,
-                "ip" to a.ip,
-                "userAgent" to a.userAgent,
-                "alvoTipo" to a.alvoTipo,
-                "alvoId" to a.alvoId,
-                "resultado" to a.resultado,
-                "at" to a.at,
-            )
-        }
-    }
+    ): PageResponse<AuditLogSummaryResponse> = auditQuery.query(idAtor, acao, resultado, since, pageable)
 }

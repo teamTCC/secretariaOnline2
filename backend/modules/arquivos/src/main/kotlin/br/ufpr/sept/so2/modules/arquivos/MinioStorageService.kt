@@ -15,6 +15,7 @@ import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.stereotype.Service
 import java.io.InputStream
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 @Service
@@ -99,17 +100,41 @@ class MinioStorageService(
 
     fun exists(storageKey: String): Boolean =
         try {
-            minioClient.statObject(
+            objectSize(storageKey)
+            true
+        } catch (e: Exception) {
+            false
+        }
+
+    fun objectSize(storageKey: String): Long =
+        minioClient
+            .statObject(
                 StatObjectArgs
                     .builder()
                     .bucket(bucket)
                     .`object`(storageKey)
                     .build(),
-            )
-            true
-        } catch (e: Exception) {
-            false
-        }
+            ).size()
+
+    /** SHA-256 hex (lowercase) of the object bytes — used to verify client-supplied hashes. */
+    fun sha256(storageKey: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        minioClient
+            .getObject(
+                GetObjectArgs
+                    .builder()
+                    .bucket(bucket)
+                    .`object`(storageKey)
+                    .build(),
+            ).use { stream ->
+                val buf = ByteArray(8192)
+                var n: Int
+                while (stream.read(buf).also { n = it } != -1) {
+                    digest.update(buf, 0, n)
+                }
+            }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
 
     private fun ensureBucketExists() {
         val exists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucket).build())

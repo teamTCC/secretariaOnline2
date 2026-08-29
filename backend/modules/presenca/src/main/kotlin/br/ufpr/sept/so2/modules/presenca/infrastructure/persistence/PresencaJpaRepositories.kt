@@ -58,6 +58,8 @@ interface EventAttendanceJpaRepository : JpaRepository<EventAttendanceEntity, UU
 
     fun countByEstado(estado: String): Long
 
+    fun countByEstadoAndIdOrganizador(estado: String, idOrganizador: UUID): Long
+
     @Query(
         """
         SELECT e FROM EventAttendanceEntity e

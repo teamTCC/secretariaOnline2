@@ -3,10 +3,7 @@ version: '3.9'
 # ─────────────────────────────────────────────────────────────────────────────
 # SecretariaOnline2 — Local & Containerised Stack
 #
-# Three services:
-#   1. postgres  — PostgreSQL 16 (data persistence)
-#   2. redis     — Redis 7     (cache + token revocation blacklist)
-#   3. backend   — Spring Boot / Tomcat (all modules, built via Dockerfile)
+# Services: postgres, redis, minio, backend.
 #
 # Quick start:
 #   cp backend/.env.example ops/.env && nano ops/.env   # fill JWT keys
@@ -41,8 +38,13 @@ services:
 
   # ── Redis ────────────────────────────────────────────────────────────────────
   # Dual role:
-  #   1. BFF dashboard cache (TTL 60 s, cache-aside in DashboardController)
-  #   2. Access-token revocation blacklist (JTI blacklist + force-logout markers)
+  #   1. Session store: auth:session:<sid> → userId (fail-closed, TTL = accessTokenTTL+60s)
+  #   2. Force-logout marker: auth:force-logout:user:<uuid>
+  #   3. JTI blacklist legacy: auth:revoked:jti:<jti>
+  #   4. BFF dashboard cache: bff-dashboard::<key> (TTL 60 s)
+  #
+  # Policy: noeviction — never silently drop auth keys under memory pressure.
+  # Persistence: AOF everysec — auth session state survives restarts.
   redis:
     image: redis:7-alpine
     container_name: secretaria_redis
@@ -51,14 +53,45 @@ services:
       - "6379:6379"
     command: >
       redis-server
-      --save ""
+      --appendonly yes
+      --appendfsync everysec
       --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - secretaria_net
+
+  # ── MinIO (Object Storage — S3-compatible) ──────────────────────────────────
+  # Stores request attachments via presigned URLs (no server bandwidth waste).
+  # Console available at http://localhost:9001 (user: minioadmin / minioadmin).
+  # For local Gradle dev (no backend container), expose both 9000 and 9001 via:
+  #   docker compose -f ops/docker-compose.yml up postgres redis minio
+  minio:
+    image: minio/minio:latest
+    container_name: secretaria_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      # Official minio image has `mc`, not curl.
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - secretaria_net
 
@@ -111,8 +144,9 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
 
-      # MinIO (optional)
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://localhost:9000}
+      # MinIO — uses internal Docker network hostname when running in compose;
+      # override with MINIO_ENDPOINT=http://localhost:9000 for local Gradle dev.
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
 
@@ -123,6 +157,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        # service_started: MinIO image has no curl; a failing healthcheck must not block the stack.
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health || exit 1"]
       interval: 30s
@@ -134,6 +171,10 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
     driver: local
 
 networks:

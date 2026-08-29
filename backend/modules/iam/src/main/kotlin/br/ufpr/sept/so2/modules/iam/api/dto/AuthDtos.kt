@@ -34,6 +34,11 @@ data class ForgotPasswordRequest(
     val email: String,
 )
 
+data class OttExchangeRequest(
+    @field:NotBlank(message = "Token é obrigatório")
+    val token: String,
+)
+
 data class ResetPasswordRequest(
     @field:NotBlank(message = "Token é obrigatório")
     val token: String,
@@ -55,4 +60,11 @@ data class ChangePasswordRequest(
     @field:NotBlank(message = "Nova senha é obrigatória")
     @field:Size(min = 12, message = "Senha deve ter no mínimo 12 caracteres")
     val novaSenha: String,
+)
+
+/** Response for GET /auth/csrf — carries the XSRF-TOKEN value for the SPA to include in `X-XSRF-TOKEN` header. */
+data class CsrfResponse(
+    val token: String,
+    val headerName: String,
+    val parameterName: String,
 )

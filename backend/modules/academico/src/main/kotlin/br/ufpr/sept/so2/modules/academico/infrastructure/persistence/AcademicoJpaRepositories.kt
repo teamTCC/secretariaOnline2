@@ -28,6 +28,24 @@ interface DisciplinaJpaRepository : JpaRepository<DisciplinaEntity, UUID> {
         @Param("search") search: String?,
         pageable: org.springframework.data.domain.Pageable,
     ): org.springframework.data.domain.Page<DisciplinaEntity>
+
+    @Query(
+        """
+        SELECT d FROM DisciplinaEntity d
+        WHERE d.ativa = true
+          AND (:cursoId IS NULL OR d.idCurso = :cursoId)
+          AND (
+            :search IS NULL
+            OR LOWER(d.nome) LIKE LOWER(CONCAT('%', :search, '%'))
+            OR LOWER(d.codigo) LIKE LOWER(CONCAT('%', :search, '%'))
+          )
+        """,
+    )
+    fun searchActive(
+        @Param("cursoId") cursoId: UUID?,
+        @Param("search") search: String?,
+        pageable: org.springframework.data.domain.Pageable,
+    ): org.springframework.data.domain.Page<DisciplinaEntity>
 }
 
 interface PeriodoLetivoJpaRepository : JpaRepository<PeriodoLetivoEntity, UUID> {

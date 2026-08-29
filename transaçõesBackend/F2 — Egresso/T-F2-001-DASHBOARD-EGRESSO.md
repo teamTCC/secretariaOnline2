@@ -1,11 +1,38 @@
 # T-F2-001 — Dashboard do Egresso e Reemissão de Certificados
 
 > **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F2 — Egresso/US-F2-001-DASHBOARD-EGRESSO.md`](../../foundationDocs/sequenceDiagrams/F2 — Egresso/US-F2-001-DASHBOARD-EGRESSO.md)  
-> **Status:** ✅ Implementado — endpoint BFF `GET /bff/dashboard/egresso`
+> **Status:** ✅ BFF `GET /bff/dashboard/egresso` · ⏳ `/alumni/me` e diploma MinIO ainda no diagrama (não no BFF)
 
 ---
 
-## O que os diagramas especificam
+## Implementado — BFF `GET /bff/dashboard/egresso`
+
+| Papel | Arquivo |
+|-------|---------|
+| Controller | [`bff/DashboardEgressoController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/DashboardEgressoController.kt) |
+| Query | [`bff/application/DashboardEgressoQuery.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/application/DashboardEgressoQuery.kt) |
+| FGAC | `alumni.view_own` — seed em [`V016__egresso_and_report_authorities.sql`](../../backend/app/src/main/resources/db/migration/V016__egresso_and_report_authorities.sql) |
+
+```
+GET /bff/dashboard/egresso
+Cookie: access_token=…   (ou Bearer fallback)
+```
+
+`@PreAuthorize("hasAuthority('alumni.view_own')")` — aluno ativo sem essa authority recebe **403**. Egresso em `/bff/dashboard/aluno` também **403** (`dashboard.view_own` foi revogada na colação).
+
+Blocos (degradação graciosa + cache `egresso:{uuid}`, TTL 60 s):
+
+- `usuario` — nome, email, GRR
+- `tccsDefendidos` — count de TCCs com `aprovado == true`
+- `certificados` — lista com `_link` `/certificates/{id}`
+- `comunicados` — 5 entregas mais recentes
+- `_links.self`, `certificados`, `comunicados` — **sem** `novaSolicitacao`
+
+O role `EGRESSO` (V016) recebe: `user.update_own_profile`, `user.update_own_password`, `alumni.view_own`, `certificate.view_own`, `communication.read`.
+
+---
+
+## O que os diagramas especificam (ainda não no BFF)
 
 ### F2.1-D01 — `GET /alumni/me` (Dashboard read-only)
 
@@ -149,9 +176,12 @@ A transição que transforma um aluno em egresso (registrar colação, revogar c
 
 ## Checklist de Verificação
 
+- [x] `GET /bff/dashboard/egresso` com `alumni.view_own` → `200` (controller + query próprios)
+- [x] Sem `alumni.view_own` → **403** (não basta `isAuthenticated()`)
+- [x] Role EGRESSO seedada em V016 com capabilities mínimas
+- [x] Cache `egresso:{uuid}`; `_degraded` não cacheia
 - [ ] `GET /alumni/me` → `200` com dados, diploma, certificados, `_links`
 - [ ] `GET /alumni/me/diploma/download` → URL presigned MinIO TTL=900s
 - [ ] `POST /certificates/{id}/reissue` → URL presigned do certificado existente
 - [ ] IDOR guard: `owner = alumniId` em ambos os endpoints de download
-- [ ] `alumni.view_own` obrigatório (403 sem authority)
-- [ ] 403 para rotas de aluno ativo (defense-in-depth via `@PreAuthorize`)
+- [x] 403 para rotas de aluno ativo (defense-in-depth via `@PreAuthorize`)

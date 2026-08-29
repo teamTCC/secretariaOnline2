@@ -86,20 +86,22 @@ class WorkflowEngine(
     }
 }
 
+open class WorkflowException(
+    message: String,
+) : RuntimeException(message)
+
 class InvalidTransitionException(
     from: String,
     action: String,
     requestId: UUID,
-) : IllegalStateException("Transição '$action' não é válida a partir do estado '$from' na solicitação $requestId")
+) : WorkflowException("Transição '$action' não é válida a partir do estado '$from' na solicitação $requestId")
 
 class InsufficientAuthorityException(
     required: List<String>,
     action: String,
-) : org.springframework.security.access.AccessDeniedException(
-        "Ação '$action' requer uma das seguintes capacidades: ${required.joinToString()}",
-    )
+) : WorkflowException("Ação '$action' requer uma das seguintes capacidades: ${required.joinToString()}")
 
 class TransitionGuardFailedException(
     guard: String,
     reason: String,
-) : IllegalStateException("Guard '$guard' falhou: $reason")
+) : WorkflowException("Guard '$guard' falhou: $reason")

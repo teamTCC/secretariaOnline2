@@ -3,16 +3,27 @@
 > **Diagrama de referência:** [`foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-001-DASHBOARD.md`](../../foundationDocs/sequenceDiagrams/F1 — Aluno/US-F1-001-DASHBOARD.md)  
 > **Status:** ✅ Implementado — BFF agrega dados em chamada única (cache Redis TTL 60s — ver T-10.7)
 
+Cada perfil tem **controller HTTP slim + query de agregação**. Não há um god-class único: aluno, professor, egresso e secretaria são classes distintas.
+
 ---
 
 ## Arquivos implementados
 
 | Papel | Arquivo |
 |-------|---------|
-| BFF Controller | [`bff/DashboardAlunoController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/DashboardAlunoController.kt) |
+| Controller (HTTP + FGAC) | [`bff/DashboardAlunoController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/DashboardAlunoController.kt) |
+| Query (cache-aside + agregação) | [`bff/application/DashboardAlunoQuery.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/application/DashboardAlunoQuery.kt) |
 | Repository de solicitações | [`solicitacoes/persistence/SolicitacoesJpaRepositories.kt`](../../backend/modules/solicitacoes/src/main/kotlin/br/ufpr/sept/so2/modules/solicitacoes/infrastructure/persistence/SolicitacoesJpaRepositories.kt) |
 | Repository de eventos | `presenca/persistence/EventAttendanceJpaRepository` |
 | Repository de formativas | `formativas/persistence/FormativeEntryJpaRepository` |
+
+Outros dashboards (arquivos próprios, mesmo prefixo `/bff/dashboard`):
+
+| Perfil | Controller | Query | Authority |
+|--------|------------|-------|-----------|
+| Professor | `DashboardProfessorController.kt` | `DashboardProfessorQuery.kt` | `dashboard.view_self_professor` |
+| Egresso | `DashboardEgressoController.kt` | `DashboardEgressoQuery.kt` | `alumni.view_own` (V016) |
+| Secretaria | `DashboardSecretariaController.kt` | `DashboardSecretariaQuery.kt` | `dashboard.view_secretary` |
 
 ---
 
@@ -25,13 +36,17 @@ O endpoint `GET /bff/dashboard/aluno` agrega **4 blocos + KPIs** em uma única c
 3. **Eventos abertos** (`EM_ANDAMENTO`, máx. 3)
 4. **Últimas solicitações** (5 mais recentes)
 
+O controller só autoriza e delega. A lógica (queries, `try/catch` por bloco, cache-aside) vive em `DashboardAlunoQuery`.
+
 ---
 
 ## Chamada e JSON de resposta
 
+Autenticação: cookie HttpOnly `access_token` (primário) ou `Authorization: Bearer` (fallback httpie/Swagger).
+
 ```
 GET /bff/dashboard/aluno
-Authorization: Bearer eyJhbGci...
+Cookie: access_token=eyJhbGci...
 ```
 
 ### JSON de saída — 200
@@ -86,22 +101,18 @@ Authorization: Bearer eyJhbGci...
 
 ## Como os `_links` HATEOAS funcionam
 
-O frontend usa `useActions(_links)` para renderizar condicionalmente botões e tiles:
+O frontend usa `useActions(_links)` para renderizar condicionalmente botões e tiles. `novaSolicitacao` só entra no mapa se o JWT tiver `request.open`:
 
 ```kotlin
-// DashboardAlunoController.kt
-return mapOf(
-    "kpis" to ...,
-    "pendencias" to pendencias,
-    "eventos" to eventos,
-    "ultimasSolicitacoes" to ultimasSolicitacoes,
-    "_links" to mapOf(
-        "self" to "/bff/dashboard/aluno",
-        "novaSolicitacao" to "/requests/types",  // botão só aparece se presente
-        "formativas" to "/formativas/minhas",
-        "eventos" to "/events?audience=me",
-    ),
-)
+// DashboardAlunoQuery.kt
+buildMap {
+    put("self", "/bff/dashboard/aluno")
+    if ("request.open" in authorities) {
+        put("novaSolicitacao", "/requests/types")
+    }
+    put("formativas", "/formativas/minhas")
+    put("eventos", "/events?audience=me")
+}
 ```
 
 > Um aluno sem `request.open` não recebe `_links.novaSolicitacao` — o botão "Nova solicitação" desaparece do frontend **sem código condicional** no React.
@@ -113,10 +124,9 @@ return mapOf(
 ```kotlin
 // DashboardAlunoController.kt
 @PreAuthorize("hasAuthority('dashboard.view_own')")
-fun dashboardAluno(): Map<String, Any?> {
+fun dashboard(): Map<String, Any?> {
     val user = currentUser()
-    val alunoId = user.userId  // ID vem do JWT, NÃO de query param
-    ...
+    return query.execute(user.userId, user.authorities)
 }
 ```
 
@@ -126,42 +136,31 @@ O `alunoId` é extraído do JWT no `SecurityContext` — não é possível para 
 
 ## F1.1-D01 vs. F1.1-D02: Cache Redis
 
-Implementado com cache-aside TTL 60s — ver [T-10.7-REDIS-BFF](../transversal/T-10.7-REDIS-BFF.md). Chave `aluno:{alunoId}` no cache `bff-dashboard`. Respostas com `_degraded=true` **não** são cacheadas.
+Implementado em `DashboardAlunoQuery` com cache-aside TTL 60s — ver [T-10.7-REDIS-BFF](../transversal/T-10.7-REDIS-BFF.md). Chave `aluno:{alunoId}` no cache `bff-dashboard`. Respostas com `_degraded=true` **não** são cacheadas.
 
 ---
 
 ## F1.1-D03: Degradação graciosa
 
-Cada bloco está em `try/catch`. Falha isolada → campo `null` + `_degraded: true`, HTTP **200**.
+Cada bloco está em `try/catch` na query. Falha isolada → campo `null` + `_degraded: true`, HTTP **200**.
 
 ---
 
-## Dashboards do Professor e da Secretaria
+## Dashboards dos outros perfis
 
-O mesmo controller tem endpoints para outros perfis:
+Não ficam neste controller. Ver:
 
-```
-GET /bff/dashboard/professor → hasAuthority('dashboard.view_self_professor')
-GET /bff/dashboard/secretaria → hasAuthority('dashboard.view_secretary')
-```
-
-**Dashboard do Professor** retorna:
-- `meusEventos`: lista de eventos do professor (todos os estados)
-- `solicitacoesPendentes`: solicitações em `EM_DELIBERACAO`
-- `_links`: `novoEvento`, `meuEventos`
-
-**Dashboard da Secretaria** retorna:
-- `kpis.emTriagem`: contagem de solicitações `ABERTA`
-- `kpis.emDeliberacao`: contagem de solicitações `EM_DELIBERACAO`
-- `_links`: `solicitacoes`, `usuarios`
+- Professor — [T-F3-PROFESSOR](../F3 — Professor/T-F3-PROFESSOR.md)
+- Secretaria — [T-F5-SECRETARIA](../F5 — Secretaria/T-F5-SECRETARIA.md)
+- Egresso — [T-F2-001-DASHBOARD-EGRESSO](../F2 — Egresso/T-F2-001-DASHBOARD-EGRESSO.md) (`alumni.view_own`)
 
 ---
 
 ## Checklist de Verificação
 
-- [x] `GET /bff/dashboard/aluno` com Bearer válido → `200` com os 4 blocos
+- [x] `GET /bff/dashboard/aluno` autenticado (cookie ou Bearer) → `200` com os 4 blocos
 - [x] `alunoId` extraído do JWT (não de query param)
-- [x] `_links` HATEOAS presente na resposta
+- [x] `_links` HATEOAS presente; `novaSolicitacao` só com `request.open`
 - [x] `dashboard.view_own` obrigatório (403 sem authority)
 - [x] KPI: `horasAprovadas / 120.0 * 100` calculado no servidor
 - [x] Pendências: apenas estado `EM_AJUSTE` do aluno, máx. 3
@@ -169,3 +168,4 @@ GET /bff/dashboard/secretaria → hasAuthority('dashboard.view_secretary')
 - [x] `kpis.atendimentosPendentes` (count `PENDENTE_CIENCIA`)
 - [x] Cache Redis TTL=60s — ver T-10.7
 - [x] Degradação graciosa por bloco
+- [x] Controller slim; agregação em `DashboardAlunoQuery`

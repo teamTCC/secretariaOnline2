@@ -1,12 +1,14 @@
 package br.ufpr.sept.so2.modules.academico.api
 
-import br.ufpr.sept.so2.modules.academico.infrastructure.persistence.DisciplinaJpaRepository
-import br.ufpr.sept.so2.modules.academico.infrastructure.persistence.HistoricoEscolarEntity
-import br.ufpr.sept.so2.modules.academico.infrastructure.persistence.HistoricoEscolarJpaRepository
+import br.ufpr.sept.so2.modules.academico.api.dto.HistoricoItemResponse
+import br.ufpr.sept.so2.modules.academico.api.dto.HistoricoUpsertResponse
+import br.ufpr.sept.so2.modules.academico.api.dto.UpsertHistoricoDto
+import br.ufpr.sept.so2.modules.academico.application.HistoricoEscolarQuery
+import br.ufpr.sept.so2.modules.academico.application.UpsertHistoricoCommand
+import br.ufpr.sept.so2.modules.academico.application.UpsertHistoricoEscolarUseCase
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
-import jakarta.validation.constraints.NotBlank
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
@@ -17,33 +19,19 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 
-data class UpsertHistoricoDto(
-    @field:NotBlank val estado: String,
-)
-
 @RestController
 @RequestMapping("/academico/alunos")
 @Tag(name = "Coordenação — Histórico escolar", description = "Disciplinas CONCLUIDA/CURSANDO/REPROVADA por aluno")
 class HistoricoEscolarController(
-    private val historicoRepo: HistoricoEscolarJpaRepository,
-    private val disciplinaRepo: DisciplinaJpaRepository,
+    private val historicoEscolarQuery: HistoricoEscolarQuery,
+    private val upsertHistoricoEscolarUseCase: UpsertHistoricoEscolarUseCase,
 ) {
     @GetMapping("/{alunoId}/historico")
     @PreAuthorize("hasAuthority('course.config') or hasAuthority('diploma.register') or hasAuthority('system.admin')")
     @Operation(summary = "Listar histórico escolar do aluno")
     fun list(
         @PathVariable alunoId: UUID,
-    ): List<Map<String, Any?>> =
-        historicoRepo.findAllByIdAluno(alunoId).map { h ->
-            val disc = disciplinaRepo.findById(h.idDisciplina).orElse(null)
-            mapOf(
-                "id" to h.id,
-                "idDisciplina" to h.idDisciplina,
-                "codigo" to disc?.codigo,
-                "nome" to disc?.nome,
-                "estado" to h.estado,
-            )
-        }
+    ): List<HistoricoItemResponse> = historicoEscolarQuery.list(alunoId)
 
     @PutMapping("/{alunoId}/historico/{disciplinaId}")
     @PreAuthorize("hasAuthority('course.config') or hasAuthority('diploma.register') or hasAuthority('system.admin')")
@@ -52,18 +40,22 @@ class HistoricoEscolarController(
         @PathVariable alunoId: UUID,
         @PathVariable disciplinaId: UUID,
         @Valid @RequestBody dto: UpsertHistoricoDto,
-    ): ResponseEntity<Map<String, Any?>> {
-        val estado = dto.estado.uppercase()
-        require(estado in setOf("CURSANDO", "CONCLUIDA", "REPROVADA")) {
-            "estado deve ser CURSANDO, CONCLUIDA ou REPROVADA."
-        }
-        disciplinaRepo.findById(disciplinaId).orElseThrow { NoSuchElementException("Disciplina não encontrada: $disciplinaId") }
-        val entity =
-            historicoRepo.findByIdAlunoAndIdDisciplina(alunoId, disciplinaId).orElse(
-                HistoricoEscolarEntity(idAluno = alunoId, idDisciplina = disciplinaId, estado = estado),
+    ): ResponseEntity<HistoricoUpsertResponse> {
+        val saved =
+            upsertHistoricoEscolarUseCase.execute(
+                UpsertHistoricoCommand(
+                    alunoId = alunoId,
+                    disciplinaId = disciplinaId,
+                    estado = dto.estado,
+                ),
             )
-        entity.estado = estado
-        val saved = historicoRepo.save(entity)
-        return ResponseEntity.ok(mapOf("id" to saved.id, "idAluno" to alunoId, "idDisciplina" to disciplinaId, "estado" to saved.estado))
+        return ResponseEntity.ok(
+            HistoricoUpsertResponse(
+                id = saved.id,
+                idAluno = alunoId,
+                idDisciplina = disciplinaId,
+                estado = saved.estado,
+            ),
+        )
     }
 }

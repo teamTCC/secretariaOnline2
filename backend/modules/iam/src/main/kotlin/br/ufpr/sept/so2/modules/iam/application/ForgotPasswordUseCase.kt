@@ -1,12 +1,11 @@
 package br.ufpr.sept.so2.modules.iam.application
 
+import br.ufpr.sept.so2.modules.iam.application.ports.out.TokenServicePort
 import br.ufpr.sept.so2.modules.iam.application.ports.out.UsuarioRepository
-import br.ufpr.sept.so2.modules.iam.infrastructure.services.JwtTokenService
 import br.ufpr.sept.so2.modules.notificacoes.OutboxEventTypes
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventEntity
-import br.ufpr.sept.so2.modules.notificacoes.infrastructure.persistence.OutboxEventJpaRepository
 import br.ufpr.sept.so2.shared.audit.AuditPayload
 import br.ufpr.sept.so2.shared.audit.AuditPublisher
+import br.ufpr.sept.so2.shared.outbox.OutboxEventPublisher
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -20,8 +19,8 @@ data class ForgotPasswordCommand(
 @Service
 class ForgotPasswordUseCase(
     private val usuarioRepository: UsuarioRepository,
-    private val jwtTokenService: JwtTokenService,
-    private val outboxRepo: OutboxEventJpaRepository,
+    private val tokenService: TokenServicePort,
+    private val outboxPublisher: OutboxEventPublisher,
     private val auditPublisher: AuditPublisher,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -33,26 +32,23 @@ class ForgotPasswordUseCase(
 
         if (usuario != null && usuario.ativo) {
             val token =
-                jwtTokenService.issueOneTimeToken(
+                tokenService.issueOneTimeToken(
                     subject = usuario.id,
                     audience = "password-reset",
                     ttl = Duration.ofHours(24),
                 )
 
             // Same TX as the audit trail: if COMMIT fails, no e-mail is ever sent.
-            // OutboxDispatcher delivers via MailService within ~5s (retry with backoff).
-            outboxRepo.save(
-                OutboxEventEntity(
-                    eventType = OutboxEventTypes.PASSWORD_RESET_REQUESTED,
-                    aggregateType = "Usuario",
-                    aggregateId = usuario.id,
-                    payload =
-                        mapOf(
-                            "email" to usuario.email.value,
-                            "nome" to usuario.nome,
-                            "token" to token,
-                        ),
-                ),
+            outboxPublisher.enqueue(
+                eventType = OutboxEventTypes.PASSWORD_RESET_REQUESTED,
+                aggregateType = "Usuario",
+                aggregateId = usuario.id,
+                payload =
+                    mapOf(
+                        "email" to usuario.email.value,
+                        "nome" to usuario.nome,
+                        "token" to token,
+                    ),
             )
 
             auditPublisher.publish(

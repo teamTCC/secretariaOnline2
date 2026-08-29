@@ -8,7 +8,7 @@
 
 ## Arquivo
 
-[`bff/ReportsController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/ReportsController.kt)
+[`bff/ReportsController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/ReportsController.kt) — tag OpenAPI `BFF — Relatórios Analíticos`. Authority `report.view_secretary` seedada em [`V016`](../../backend/app/src/main/resources/db/migration/V016__egresso_and_report_authorities.sql) para SECRETARIO, COORDENADOR, CAAF, COE e ADMIN.
 
 ```
 GET /reports/secretary?periodo=2025-2&curso=TADS

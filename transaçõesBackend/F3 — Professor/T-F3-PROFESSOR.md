@@ -7,11 +7,12 @@
 
 ## F3.1 — Dashboard do Professor
 
-> **Ver:** [T-F1-001-DASHBOARD](../F1 — Aluno/T-F1-001-DASHBOARD.md) — seção "Dashboards do Professor e da Secretaria"
+> **Arquivos:** [`DashboardProfessorController.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/DashboardProfessorController.kt) + [`DashboardProfessorQuery.kt`](../../backend/modules/bff/src/main/kotlin/br/ufpr/sept/so2/modules/bff/application/DashboardProfessorQuery.kt)  
+> **Ver também:** [T-F1-001-DASHBOARD](../F1 — Aluno/T-F1-001-DASHBOARD.md) (mesmo padrão slim controller + query)
 
 ```
 GET /bff/dashboard/professor
-Authorization: Bearer eyJhbGci...  (hasAuthority('dashboard.view_self_professor'))
+Cookie: access_token=…   (hasAuthority('dashboard.view_self_professor'))
 ```
 
 ```json
@@ -36,7 +37,7 @@ Authorization: Bearer eyJhbGci...  (hasAuthority('dashboard.view_self_professor'
   "_links": {
     "self": "/bff/dashboard/professor",
     "novoEvento": "/events",
-    "meuEventos": "/events?host=me"
+    "meusEventos": "/events?host=me"
   }
 }
 ```

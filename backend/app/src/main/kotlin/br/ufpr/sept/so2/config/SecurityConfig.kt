@@ -34,7 +34,7 @@ class SecurityConfig(
      */
     @Value("\${app.cors.allowed-origins}") private val allowedOrigins: List<String>,
     /**
-     * Pattern-based origins — support wildcards (e.g. https://*.vercel.app).
+     * Pattern-based origins — support wildcards (e.g. Vercel preview URLs).
      * Required for Vercel preview deployments where the subdomain is random.
      * Set via CORS_ALLOWED_ORIGIN_PATTERN_1 / _2 env vars.
      * Empty list by default (no wildcard matching unless explicitly configured).
@@ -53,6 +53,7 @@ class SecurityConfig(
                     .ignoringRequestMatchers(
                         "/auth/login",
                         "/auth/refresh",
+                        "/auth/ott",
                         "/auth/forgot-password",
                         "/auth/reset-password",
                         "/v3/api-docs/**",
@@ -68,6 +69,7 @@ class SecurityConfig(
                     .requestMatchers(
                         "/auth/login",
                         "/auth/refresh",
+                        "/auth/ott",
                         "/auth/forgot-password",
                         "/auth/reset-password",
                         "/auth/csrf",

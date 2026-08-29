@@ -60,7 +60,7 @@ class DataExportUseCase(
             .writeValueAsBytes(exportData)
 
         val jobId = UUID.randomUUID()
-        val storageKey = "exports/${command.usuarioId}/data_export_${jobId}.json"
+        val storageKey = "exports/${command.usuarioId}/data_export_$jobId.json"
 
         minioStorageService.upload(
             storageKey = storageKey,

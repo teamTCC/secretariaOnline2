@@ -5,7 +5,6 @@ import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.GraduationRecordE
 import br.ufpr.sept.so2.modules.iam.infrastructure.persistence.UsuarioJpaRepository
 import com.lowagie.text.Document
 import com.lowagie.text.Element
-import com.lowagie.text.Font
 import com.lowagie.text.FontFactory
 import com.lowagie.text.PageSize
 import com.lowagie.text.Paragraph

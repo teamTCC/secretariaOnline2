@@ -1,9 +1,11 @@
 package br.ufpr.sept.so2.modules.academico.api
 
-import br.ufpr.sept.so2.modules.academico.infrastructure.persistence.CalendarioAcademicoJpaRepository
-import br.ufpr.sept.so2.modules.academico.infrastructure.persistence.CursoJpaRepository
-import br.ufpr.sept.so2.modules.academico.infrastructure.persistence.DisciplinaJpaRepository
-import br.ufpr.sept.so2.modules.academico.infrastructure.persistence.PeriodoLetivoJpaRepository
+import br.ufpr.sept.so2.modules.academico.api.dto.CalendarioItemResponse
+import br.ufpr.sept.so2.modules.academico.api.dto.CursoSummaryResponse
+import br.ufpr.sept.so2.modules.academico.api.dto.DisciplinaSummaryResponse
+import br.ufpr.sept.so2.modules.academico.api.dto.PeriodoAtivoResponse
+import br.ufpr.sept.so2.modules.academico.application.AcademicoQuery
+import br.ufpr.sept.so2.shared.api.PageResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.data.domain.Pageable
@@ -20,17 +22,11 @@ import java.util.UUID
 @RequestMapping("/academico")
 @Tag(name = "Acadêmico", description = "Cursos, disciplinas e períodos letivos")
 class AcademicoController(
-    private val cursoRepo: CursoJpaRepository,
-    private val disciplinaRepo: DisciplinaJpaRepository,
-    private val periodoRepo: PeriodoLetivoJpaRepository,
-    private val calendarioRepo: CalendarioAcademicoJpaRepository,
+    private val academicoQuery: AcademicoQuery,
 ) {
     @GetMapping("/cursos")
     @Operation(summary = "Listar cursos ativos")
-    fun listCursos(): List<Map<String, Any?>> =
-        cursoRepo.findAllByAtivoTrue().map { c ->
-            mapOf("id" to c.id, "nome" to c.nome, "sigla" to c.sigla)
-        }
+    fun listCursos(): List<CursoSummaryResponse> = academicoQuery.listCursos()
 
     @GetMapping("/cursos/{cursoId}/disciplinas")
     @Operation(summary = "Listar disciplinas de um curso")
@@ -38,32 +34,30 @@ class AcademicoController(
         @PathVariable cursoId: UUID,
         @RequestParam(required = false) search: String?,
         @PageableDefault(size = 50) pageable: Pageable,
-    ) = disciplinaRepo.searchByCurso(cursoId, search, pageable).map { d ->
-        mapOf("id" to d.id, "codigo" to d.codigo, "nome" to d.nome, "creditos" to d.creditos)
-    }
+    ): PageResponse<DisciplinaSummaryResponse> = academicoQuery.listDisciplinas(cursoId, search, pageable)
+
+    /**
+     * Alias for form_schema `x-ui.endpoint: /academico/disciplinas`.
+     * Optional [idCurso] filters; unused [enrolled]/[tipo] are accepted so seed URLs do not 400.
+     */
+    @GetMapping("/disciplinas")
+    @Operation(summary = "Listar disciplinas ativas (filtro opcional por curso)")
+    fun listDisciplinasAlias(
+        @RequestParam(required = false) idCurso: UUID?,
+        @RequestParam(required = false) search: String?,
+        @RequestParam(required = false) enrolled: Boolean?,
+        @RequestParam(required = false) tipo: String?,
+        @PageableDefault(size = 50) pageable: Pageable,
+    ): PageResponse<DisciplinaSummaryResponse> = academicoQuery.listDisciplinasAlias(idCurso, search, pageable)
 
     @GetMapping("/periodos/ativo")
     @Operation(summary = "Período letivo ativo atual")
-    fun periodoAtivo(): Map<String, Any?> {
-        val periodo =
-            periodoRepo
-                .findFirstByAtivoTrueOrderByAnoDescSemestreDesc()
-                .orElseThrow { NoSuchElementException("Nenhum período letivo ativo encontrado") }
-        return mapOf(
-            "id" to periodo.id,
-            "ano" to periodo.ano,
-            "semestre" to periodo.semestre,
-            "inicio" to periodo.inicio,
-            "fim" to periodo.fim,
-        )
-    }
+    fun periodoAtivo(): PeriodoAtivoResponse = academicoQuery.periodoAtivo()
 
     @GetMapping("/periodos/{periodoId}/calendario")
     @Operation(summary = "Calendário acadêmico de um período")
     @PreAuthorize("isAuthenticated()")
     fun calendario(
         @PathVariable periodoId: UUID,
-    ) = calendarioRepo.findAllByIdPeriodoLetivo(periodoId).map { c ->
-        mapOf("id" to c.id, "descricao" to c.descricao, "prazoInicio" to c.prazoInicio, "prazoFim" to c.prazoFim)
-    }
+    ): List<CalendarioItemResponse> = academicoQuery.calendario(periodoId)
 }

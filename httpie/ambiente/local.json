@@ -5,7 +5,7 @@
   "jwksUrl": "http://localhost:8080/.well-known/jwks.json",
   "minioConsoleUrl": "http://localhost:9001",
 
-  "accessToken": "COLE_AQUI_O_JWT_DO_LOGIN",
+  "accessToken": "OPCIONAL_VALOR_DO_COOKIE_access_token",
   "xsrfToken": "COLE_AQUI_O_COOKIE_XSRF-TOKEN",
   "refreshToken": "normalmente_so_no_cookie_jar",
 
