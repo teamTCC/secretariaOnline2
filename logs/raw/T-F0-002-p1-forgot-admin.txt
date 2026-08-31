@@ -1,0 +1,10 @@
+usage:
+    http [METHOD] URL [REQUEST_ITEM ...]
+
+error:
+    the following arguments are required: URL
+
+for more information:
+    run 'http --help' or visit https://httpie.io/docs/cli
+
+

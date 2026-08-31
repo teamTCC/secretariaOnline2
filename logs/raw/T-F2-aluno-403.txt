@@ -1,0 +1,1 @@
+{"type":"https://secretariaonline.ufpr.br/errors/forbidden","title":"Acesso negado","status":403,"detail":"Voc├¬ n├úo tem permiss├úo para esta opera├º├úo.","instance":"/bff/dashboard/egresso","timestamp":"2026-08-31T09:58:25.503855600-03:00"}

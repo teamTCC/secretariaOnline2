@@ -6,6 +6,8 @@ import br.ufpr.sept.so2.modules.solicitacoes.domain.WorkflowDefinition
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestAttachmentEntity
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestAttachmentJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestEntity
+import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestEventEntity
+import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestEventJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestTypeJpaRepository
 import br.ufpr.sept.so2.shared.outbox.OutboxEventPublisher
@@ -39,6 +41,7 @@ class OpenRequestUseCase(
     private val requestRepo: RequestJpaRepository,
     private val requestTypeRepo: RequestTypeJpaRepository,
     private val attachmentRepo: RequestAttachmentJpaRepository,
+    private val requestEventRepo: RequestEventJpaRepository,
     private val outboxPublisher: OutboxEventPublisher,
     private val versionStore: RequestTypeVersionStore,
     private val objectMapper: ObjectMapper,
@@ -89,6 +92,16 @@ class OpenRequestUseCase(
                 idRequestTypeVersion = versionStore.latestId(requestType.id),
             )
         val saved = requestRepo.save(entity)
+
+        requestEventRepo.save(
+            RequestEventEntity(
+                idRequest = saved.id,
+                tipo = "ABERTURA",
+                estadoAnterior = "-",
+                estadoNovo = initialState,
+                idAtor = command.idSolicitante,
+            ),
+        )
 
         command.attachments.forEach { att ->
             attachmentRepo.save(

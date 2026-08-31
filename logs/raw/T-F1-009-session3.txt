@@ -1,0 +1,1 @@
+{"idEvento":"907818cf-00b9-4a55-8974-083d380304a8","estado":"EM_ANDAMENTO","attendanceMode":"SECRET_SINGLE","isComplete":false,"_links":{"self":"/events/907818cf-00b9-4a55-8974-083d380304a8/attendance/session","confirmar-entrada":"/events/907818cf-00b9-4a55-8974-083d380304a8/attendance/entry"}}

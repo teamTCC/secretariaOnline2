@@ -60,7 +60,11 @@ data class PageResponse<T>(
                     null
                 }
 
-            fun pageUrl(p: Int) = if (base != null) "$base?page=$p&size=${page.size}" else null
+            fun pageUrl(p: Int): String? {
+                if (base == null) return null
+                val sep = if (base.contains('?')) '&' else '?'
+                return "$base${sep}page=$p&size=${page.size}"
+            }
 
             val links =
                 if (base != null) {

@@ -1,0 +1,27 @@
+GET /publico/verificar-certificado/deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef HTTP/1.1
+Accept-Encoding: gzip, deflate
+Accept: */*
+Connection: keep-alive
+User-Agent: HTTPie/3.2.4
+Host: localhost:8080
+
+
+
+HTTP/1.1 404 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:26:36 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+Set-Cookie: XSRF-TOKEN=56182b4b-6883-4a58-a5d8-96b5d2ba248a; Max-Age=43200; Expires=Tue, 01 Sep 2026 00:26:36 GMT; Path=/
+
+{"type":"https://secretariaonline.ufpr.br/errors/not-found","title":"Recurso n├úo encontrado","status":404,"detail":"Certificado n├úo encontrado para hash: deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef","instance":"/publico/verificar-certificado/deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef","timestamp":"2026-08-31T09:26:36.760835700-03:00"}

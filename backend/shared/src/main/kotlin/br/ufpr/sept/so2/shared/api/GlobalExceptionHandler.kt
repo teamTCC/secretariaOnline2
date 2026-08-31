@@ -6,10 +6,12 @@ import org.springframework.http.ProblemDetail
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.AuthenticationException
 import org.springframework.validation.FieldError
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.context.request.WebRequest
+import org.springframework.web.servlet.resource.NoResourceFoundException
 import java.net.URI
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -23,17 +25,26 @@ class GlobalExceptionHandler {
         val errors =
             ex.bindingResult.allErrors.map { error ->
                 when (error) {
-                    is FieldError -> mapOf("campo" to error.field, "mensagem" to (error.defaultMessage ?: "inválido"))
+                    is FieldError -> mapOf("field" to error.field, "message" to (error.defaultMessage ?: "inválido"))
                     else -> mapOf("mensagem" to (error.defaultMessage ?: "inválido"))
                 }
             }
         return problemDetail(
-            status = HttpStatus.UNPROCESSABLE_ENTITY,
+            status = HttpStatus.BAD_REQUEST,
             title = "Dados inválidos",
             detail = "A requisição contém dados inválidos. Verifique os campos.",
             type = "validation-error",
-        ).also { it.setProperty("erros", errors) }
+        ).also { it.setProperty("errors", errors) }
     }
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleUnreadableBody(ex: HttpMessageNotReadableException): ProblemDetail =
+        problemDetail(
+            status = HttpStatus.BAD_REQUEST,
+            title = "Dados inválidos",
+            detail = "Corpo da requisição ausente ou inválido.",
+            type = "validation-error",
+        )
 
     @ExceptionHandler(AccessDeniedException::class)
     fun handleAccessDenied(
@@ -41,15 +52,15 @@ class GlobalExceptionHandler {
         request: WebRequest,
     ): ProblemDetail {
         log.warn("Acesso negado: {} - {}", request.getDescription(false), ex.message)
-        return problemDetail(HttpStatus.FORBIDDEN, "Acesso negado", "Você não tem permissão para esta operação.", "access-denied")
+        return problemDetail(HttpStatus.FORBIDDEN, "Acesso negado", "Você não tem permissão para esta operação.", "forbidden")
     }
 
     @ExceptionHandler(AuthenticationException::class)
     fun handleAuthentication(ex: AuthenticationException): ProblemDetail =
-        problemDetail(HttpStatus.UNAUTHORIZED, "Não autenticado", "Token inválido ou expirado.", "authentication-required")
+        problemDetail(HttpStatus.UNAUTHORIZED, "Não autenticado", "Token inválido ou expirado.", "unauthorized")
 
-    @ExceptionHandler(NoSuchElementException::class)
-    fun handleNotFound(ex: NoSuchElementException): ProblemDetail =
+    @ExceptionHandler(NoSuchElementException::class, NoResourceFoundException::class)
+    fun handleNotFound(ex: Exception): ProblemDetail =
         problemDetail(HttpStatus.NOT_FOUND, "Recurso não encontrado", ex.message ?: "O recurso solicitado não foi encontrado.", "not-found")
 
     @ExceptionHandler(IllegalArgumentException::class)

@@ -16,20 +16,25 @@ import java.time.OffsetDateTime
 class IamExceptionHandler {
     @ExceptionHandler(InvalidCredentialsException::class)
     fun handleInvalidCredentials(ex: InvalidCredentialsException): ProblemDetail =
-        problem(HttpStatus.UNAUTHORIZED, "Autenticação falhou", ex.message ?: "Credenciais inválidas", "invalid-credentials")
+        problem(
+            HttpStatus.UNAUTHORIZED,
+            "Não autorizado",
+            ex.message ?: "Credenciais inválidas. Verifique seus dados e tente novamente.",
+            "unauthorized",
+        )
 
     @ExceptionHandler(AccountBlockedException::class)
     fun handleAccountBlocked(ex: AccountBlockedException): ProblemDetail =
         problem(
-            HttpStatus.TOO_MANY_REQUESTS,
-            "Conta bloqueada temporariamente",
-            ex.message ?: "Tente novamente mais tarde",
-            "account-blocked",
+            HttpStatus.UNAUTHORIZED,
+            "Não autorizado",
+            "Credenciais inválidas. Verifique seus dados e tente novamente.",
+            "unauthorized",
         )
 
     @ExceptionHandler(InvalidTokenException::class)
     fun handleInvalidToken(ex: InvalidTokenException): ProblemDetail =
-        problem(HttpStatus.UNAUTHORIZED, "Token inválido", ex.message ?: "Token inválido ou expirado", "invalid-token")
+        problem(HttpStatus.UNAUTHORIZED, "Token inválido", ex.message ?: "Token inválido ou expirado", "unauthorized")
 
     @ExceptionHandler(WeakPasswordException::class)
     fun handleWeakPassword(ex: WeakPasswordException): ProblemDetail =
@@ -39,8 +44,8 @@ class IamExceptionHandler {
     fun handlePasswordReuse(ex: PasswordReuseException): ProblemDetail =
         problem(
             HttpStatus.UNPROCESSABLE_ENTITY,
-            "Reutilização de senha",
-            ex.message ?: "Não é possível reutilizar senhas recentes",
+            "Senha já utilizada",
+            "Esta senha já foi utilizada recentemente.",
             "password-reuse",
         )
 

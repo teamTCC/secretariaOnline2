@@ -1,0 +1,1 @@
+{"type":"https://secretariaonline.ufpr.br/errors/invalid-transition","title":"Transi├º├úo inv├ílida","status":422,"detail":"Transi├º├úo 'DEFER' n├úo ├® v├ílida a partir do estado 'ABERTA' na solicita├º├úo 9144d3da-a23c-440f-b3d6-419cca3a83d4","instance":"/requests/bulk-deliberate","timestamp":"2026-08-31T10:01:13.053424300-03:00"}

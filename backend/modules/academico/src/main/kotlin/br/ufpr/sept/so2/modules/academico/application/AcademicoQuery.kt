@@ -38,10 +38,17 @@ class AcademicoQuery(
         idCurso: UUID?,
         search: String?,
         pageable: Pageable,
-    ): PageResponse<DisciplinaSummaryResponse> =
-        PageResponse.of(disciplinaRepo.searchActive(idCurso, search, pageable)) { d ->
+    ): PageResponse<DisciplinaSummaryResponse> {
+        val page =
+            if (idCurso != null) {
+                disciplinaRepo.searchByCurso(idCurso, search, pageable)
+            } else {
+                disciplinaRepo.searchActiveAll(search, pageable)
+            }
+        return PageResponse.of(page) { d ->
             DisciplinaSummaryResponse(id = d.id, codigo = d.codigo, nome = d.nome, creditos = d.creditos)
         }
+    }
 
     fun periodoAtivo(): PeriodoAtivoResponse {
         val periodo =

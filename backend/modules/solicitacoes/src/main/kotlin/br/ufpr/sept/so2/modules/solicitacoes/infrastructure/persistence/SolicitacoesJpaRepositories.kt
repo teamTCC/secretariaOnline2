@@ -94,13 +94,17 @@ interface RequestJpaRepository : JpaRepository<RequestEntity, UUID> {
     fun findTop10ByEstadoAndPrazoEmIsNotNullOrderByPrazoEmAsc(estado: String): List<RequestEntity>
 
     @Query(
-        """
-        SELECT r.requestTypeCode, COUNT(r) FROM RequestEntity r
-        WHERE (:cursoId IS NULL OR r.idCurso = :cursoId)
-        AND (:fromTs IS NULL OR r.createdAt >= :fromTs)
-        AND (:toTs IS NULL OR r.createdAt < :toTs)
-        GROUP BY r.requestTypeCode
-        """,
+        value =
+            """
+            SELECT request_type_code, COUNT(*)
+            FROM request
+            WHERE deleted_at IS NULL
+              AND (CAST(:cursoId AS uuid) IS NULL OR id_curso = CAST(:cursoId AS uuid))
+              AND (CAST(:fromTs AS timestamptz) IS NULL OR created_at >= CAST(:fromTs AS timestamptz))
+              AND (CAST(:toTs AS timestamptz) IS NULL OR created_at < CAST(:toTs AS timestamptz))
+            GROUP BY request_type_code
+            """,
+        nativeQuery = true,
     )
     fun countGroupedByTypeFiltered(
         @Param("cursoId") cursoId: UUID?,
@@ -109,13 +113,17 @@ interface RequestJpaRepository : JpaRepository<RequestEntity, UUID> {
     ): List<Array<Any>>
 
     @Query(
-        """
-        SELECT r.estado, COUNT(r) FROM RequestEntity r
-        WHERE (:cursoId IS NULL OR r.idCurso = :cursoId)
-        AND (:fromTs IS NULL OR r.createdAt >= :fromTs)
-        AND (:toTs IS NULL OR r.createdAt < :toTs)
-        GROUP BY r.estado
-        """,
+        value =
+            """
+            SELECT estado, COUNT(*)
+            FROM request
+            WHERE deleted_at IS NULL
+              AND (CAST(:cursoId AS uuid) IS NULL OR id_curso = CAST(:cursoId AS uuid))
+              AND (CAST(:fromTs AS timestamptz) IS NULL OR created_at >= CAST(:fromTs AS timestamptz))
+              AND (CAST(:toTs AS timestamptz) IS NULL OR created_at < CAST(:toTs AS timestamptz))
+            GROUP BY estado
+            """,
+        nativeQuery = true,
     )
     fun countGroupedByEstadoFiltered(
         @Param("cursoId") cursoId: UUID?,
@@ -129,9 +137,9 @@ interface RequestJpaRepository : JpaRepository<RequestEntity, UUID> {
             SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS mes, COUNT(*)
             FROM request
             WHERE deleted_at IS NULL
-              AND (:cursoId IS NULL OR id_curso = CAST(:cursoId AS uuid))
-              AND (:fromTs IS NULL OR created_at >= CAST(:fromTs AS timestamptz))
-              AND (:toTs IS NULL OR created_at < CAST(:toTs AS timestamptz))
+              AND (CAST(:cursoId AS uuid) IS NULL OR id_curso = CAST(:cursoId AS uuid))
+              AND (CAST(:fromTs AS timestamptz) IS NULL OR created_at >= CAST(:fromTs AS timestamptz))
+              AND (CAST(:toTs AS timestamptz) IS NULL OR created_at < CAST(:toTs AS timestamptz))
             GROUP BY 1 ORDER BY 1
             """,
         nativeQuery = true,
@@ -148,7 +156,7 @@ interface RequestJpaRepository : JpaRepository<RequestEntity, UUID> {
             SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (concluded_at - created_at))), 0)
             FROM request
             WHERE concluded_at IS NOT NULL
-              AND (:cursoId IS NULL OR id_curso = CAST(:cursoId AS uuid))
+              AND (CAST(:cursoId AS uuid) IS NULL OR id_curso = CAST(:cursoId AS uuid))
             """,
         nativeQuery = true,
     )

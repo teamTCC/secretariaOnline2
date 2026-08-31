@@ -55,6 +55,8 @@ data class AttendanceConfirmedResponse(
 data class WindowOpenedResponse(
     val mensagem: String,
     val closeAt: String,
+    val secret: String? = null,
+    val qrToken: String? = null,
 )
 
 @JsonInclude(JsonInclude.Include.NON_NULL)

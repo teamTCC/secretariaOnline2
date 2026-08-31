@@ -1,0 +1,1 @@
+{"type":"https://secretariaonline.ufpr.br/errors/not-found","title":"Recurso n├úo encontrado","status":404,"detail":"No static resource reports/coordenacao.","instance":"/reports/coordenacao","timestamp":"2026-08-31T09:43:27.079201800-03:00"}

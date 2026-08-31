@@ -1,0 +1,1 @@
+[{"id":"be5ab905-2248-48dd-8369-2a1f0aa689c9","titulo":"Moderniza├º├úo de Sistema Acad├¬mico ÔÇö SecretariaOnline2","estado":"EM_ANDAMENTO","idOrientador":"7edddaf0-f656-4b20-b8e4-2ac49489e6c6"}]

@@ -1,0 +1,27 @@
+GET /.well-known/jwks.json HTTP/1.1
+Accept-Encoding: gzip, deflate
+Accept: */*
+Connection: keep-alive
+User-Agent: HTTPie/3.2.4
+Host: localhost:8080
+
+
+
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:26:33 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+Set-Cookie: XSRF-TOKEN=9cfcca4b-72c2-469f-8fd2-f625943e4620; Max-Age=43200; Expires=Tue, 01 Sep 2026 00:26:33 GMT; Path=/
+
+{"keys":[{"kty":"RSA","use":"sig","alg":"RS256","kid":"jwt-signing-key-1","n":"AJyGqfpR6uFdlq2-fEPr4TsrohTqQrGSU52akwqqrFIvmlbIXt09ixzO7jJjz6aMxrL2zlnT0GBEcJYEkkEfnhasbh5WNm6o74n_rW92W5pmM-8Z9ra_wrjX1iG1PxL349vnbA3T-Ko62kLkKpUVfVqYDuBAGQxb2ls3YkCetG4X1r7v7wKemmeY0srFRH74z71o7PkXMC7CkmsK8IVAaLYkgcGVSApLgTshXX-kHBbfd_AdGKMOf8tEq8m9z_dquvb84_kG2wf89wmB_jIamhkrLAaHq5Re0B9WeCYdGnaH8m1IStORl15lqWwRW1jzHyHlpglyjReEcDOV8wlZy78","e":"AQAB"},{"kty":"OKP","crv":"Ed25519","use":"sig","kid":"cert-signing-key-1","x":"jOIsIOLtnWRIa8TfGrI8TFmaGAFgaN6oazjZ2KxSoSA"}]}

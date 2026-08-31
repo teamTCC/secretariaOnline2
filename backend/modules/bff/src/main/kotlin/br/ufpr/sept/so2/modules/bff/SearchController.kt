@@ -54,10 +54,18 @@ class SearchController(
             return SearchResponse(query = q, results = emptyList(), totalResults = 0)
         }
 
+        // Copy SecurityContext into the async thread — fan-out ports read Authentication.
+        val securityContext = org.springframework.security.core.context.SecurityContextHolder.getContext()
         return try {
             CompletableFuture
-                .supplyAsync { searchQuery.execute(q, types, page, size) }
-                .get(5, TimeUnit.SECONDS)
+                .supplyAsync {
+                    org.springframework.security.core.context.SecurityContextHolder.setContext(securityContext)
+                    try {
+                        searchQuery.execute(q, types, page, size)
+                    } finally {
+                        org.springframework.security.core.context.SecurityContextHolder.clearContext()
+                    }
+                }.get(5, TimeUnit.SECONDS)
         } catch (_: TimeoutException) {
             SearchResponse(query = q, results = emptyList(), totalResults = 0, timedOut = true)
         } catch (e: Exception) {

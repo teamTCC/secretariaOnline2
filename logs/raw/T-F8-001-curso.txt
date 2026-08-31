@@ -1,0 +1,1 @@
+{"query":"TADS","results":[{"type":"CURSO","id":"01a055d7-4449-74b3-828a-a4b44cef7dfd","title":"Tecnologia em An├ílise e Desenvolvimento de Sistemas","subtitle":"TADS","href":"/academico/cursos/01a055d7-4449-74b3-828a-a4b44cef7dfd"}],"totalResults":1}

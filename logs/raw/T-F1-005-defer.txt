@@ -1,0 +1,30 @@
+POST /requests/d72e7178-b51f-4a11-88c9-ad73ed92467a/transitions HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Cookie: XSRF-TOKEN=53de8488-5b54-46e7-8b28-29c77ef2ed65; access_token=eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiI3MWQ2YWIxMS1iYTBlLTRhNmYtOTY2NC1mZWUzOTQyZTA5YjgiLCJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwic3ViIjoiYjk0YzE4ODEtZGI3OS00MjI2LWEzMWQtMzM5NjJjNWM2MTZkIiwic2lkIjoiNzQyMWVjOTMtOTI3My00MTVhLTg0ODEtNWUyNTc2ODk0NjMyIiwiYXV0aG9yaXRpZXMiOlsidXNlci5tYW5hZ2Vfc3R1ZGVudHMiLCJ1c2VyLnVwZGF0ZV9vd25fcHJvZmlsZSIsImFsdW1uaS5saXN0IiwiYXV0aC5maXJzdF9hY2Nlc3MiLCJ1c2VyLnVwZGF0ZV9vd25fcGFzc3dvcmQiLCJkaXBsb21hLnJlZ2lzdGVyIiwiYXVkaXQucmVhZCIsImNvbW11bmljYXRpb24ucmVhZCIsInJlcXVlc3QucmVvcGVuIiwidXNlci5leHBvcnRfb3duX2RhdGEiLCJyZXF1ZXN0LmRlbGliZXJhdGUiLCJldmVudC5tYW5hZ2UiLCJ0YXNrLm1hbmFnZSIsImNvbW11bmljYXRpb24ucHVibGlzaCIsImltYWdlX2F1dGhvcml6YXRpb24ucmV2aWV3IiwiZGFzaGJvYXJkLnZpZXdfc2VjcmV0YXJ5IiwicmVxdWVzdC5pbnRlcm5hbF9vcGVuIiwicmVxdWVzdC52aWV3X2N1cnNvIiwidXNlci5yZXNldF9wYXNzd29yZCIsImltcG9ydC5ydW4iLCJleHBvcnQucnVuIiwicmVwb3J0LnZpZXdfc2VjcmV0YXJ5Il0sIm5vbWUiOiJTZWNyZXRhcmlhIERlbW8iLCJpYXQiOjE3ODgxNzk1OTksImV4cCI6MTc4ODE4MDQ5OX0.D0_g-KzCYP5em4iSEU5drxRiLaVXZYPpsFBy1G8L8A935Mxnb6zIoqYAdTBnUiSyyWJkosZmScHj4BR_Y4hQBI-_76JcSM02Euh_wBe0WUU08OjZDbyF6rX2-FHdW40FU1VF9gE95R_0OQVheQvVoqC0rDVQMcnu1QrJE5xiKX8jJgUYsZJxiAqjU1hXoSVO3X7L6Rmroj4bT88ciQCrYVg8oURQ_3pOq77QCcCo6kSw3k7Lk8QPBVUnBFcha_nuLbgexb8_PNklv5qe6WzsPOkYSUfkOkYbep1QTt1pHwxPUoLXlJzXCrBLtX2YZ8JCPwy5toH1-XvmnqZLbmBAxw
+Content-Length: 102
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+Content-Type: application/json
+X-XSRF-TOKEN: 53de8488-5b54-46e7-8b28-29c77ef2ed65
+Host: localhost:8080
+
+{"action": "DEFER", "parecer": "Deferido conforme documenta\u00e7\u00e3o apresentada (teste HTTPie)."}
+
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:35:42 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"mensagem":"Transi├º├úo 'DEFER' aplicada com sucesso.","estadoNovo":"DEFERIDA","_links":{"self":"/requests/d72e7178-b51f-4a11-88c9-ad73ed92467a"}}

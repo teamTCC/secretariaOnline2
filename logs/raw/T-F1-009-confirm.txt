@@ -1,0 +1,30 @@
+POST /events/da124ef3-ed23-4196-b884-ed8d3ddfdfcf/attendance/entry HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Cookie: XSRF-TOKEN=3ab6d59d-bff6-4f26-8fdc-d9a5449391db; access_token=eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiI5MzkxM2RjZi1iZjQ4LTQ1MjAtOTVkYy02MWZlMGNmNjE4NDMiLCJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwic3ViIjoiMWUyOWRiZDctMjMxMS00MzY3LWFjMjktYzMxNGJhMjRiZWU4Iiwic2lkIjoiNjUyY2I0ZDAtNGYxMC00NDA0LTg2YzctNWFhNDhhZGU4MDk2IiwiYXV0aG9yaXRpZXMiOlsiYXR0ZW5kYW5jZS5jaGVja19pbiIsImludGVybnNoaXAudmlld19vd24iLCJzZXJ2aWNlX3JlY29yZC52aWV3X293biIsInVzZXIudXBkYXRlX293bl9wYXNzd29yZCIsImRhc2hib2FyZC52aWV3X293biIsImZvcm1hdGl2ZS5zdWJtaXQiLCJhdXRoLmZpcnN0X2FjY2VzcyIsInRjYy52aWV3X293biIsInVzZXIudXBkYXRlX293bl9wcm9maWxlIiwiaW50ZXJuc2hpcC51cGxvYWRfZG9jX293biIsImF0dGVuZGFuY2Uudmlld19vcGVuIiwidXNlci5leHBvcnRfb3duX2RhdGEiLCJjb21tdW5pY2F0aW9uLnJlYWQiLCJyZXF1ZXN0LnZpZXdfb3duIiwidGNjLnVwbG9hZF9maW5hbCIsInJlcXVlc3Qub3BlbiIsImZvcm1hdGl2ZS52aWV3X293biIsImNlcnRpZmljYXRlLnZpZXdfb3duIl0sIm5vbWUiOiJBbmEgQWx1bm8gRGVtbyIsImlhdCI6MTc4ODE4MDE1NSwiZXhwIjoxNzg4MTgxMDU1fQ.LnkB0-mfr2DwnH_lroHI2AMuJi7bU785csHAd_f_dY_sqlNQW40F6kLhGAICRlPW09tXj4ALvurrs9C2yOiPhJSOqkr20lOyXw7zyphywCb3aEZAzOMY_Xz_kTfhTyytlyvkDrCPRSK595TvU57RseupmioUQ7eq8lqBEFiVuRbEjXk2qR8mKKMpdTldhDF2H4yXfs65jMhb-rZzgvGXDAqrv1dQnn5yNdSsx18xMtwEBvpP7k5xNxA6K4F4bADePV8btwFatuVhSTq6__fwyhvOoWMxlKV4gQiwg5kDJxvhPFA5EzbS5f8rmyrOF50LVlj8Ln_UXI5OpCJao1Nptw
+Content-Length: 52
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+Content-Type: application/json
+X-XSRF-TOKEN: 3ab6d59d-bff6-4f26-8fdc-d9a5449391db
+Host: localhost:8080
+
+{"pin": "593331", "deviceUuid": "httpie-device-001"}
+
+HTTP/1.1 409 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:43:19 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"type":"https://secretariaonline.ufpr.br/errors/conflict","title":"Conflito de estado","status":409,"detail":"Evento n├úo est├í em andamento.","instance":"/events/da124ef3-ed23-4196-b884-ed8d3ddfdfcf/attendance/entry","timestamp":"2026-08-31T09:43:19.040519600-03:00"}

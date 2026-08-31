@@ -1,0 +1,30 @@
+POST /auth/first-access HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Cookie: refresh_token=c1b0ab2d06184eda852145f37af55b06ac1e77d933dd4b1ebaad17f0bbfb9296; XSRF-TOKEN=72e7934e-a654-4cce-b027-7d24673efd40; access_token=eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiI2OTc2Zjc5ZS0zOTI5LTQ0MzItYTE1NC04MDgwNmYyY2JkMDgiLCJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwic3ViIjoiY2JmMjcxMzktYjdjYy00MDFkLTk3NDctYWNmZTFjNzhmZWZkIiwic2lkIjoiNmJjM2FhNGQtN2QxOS00ZWI5LThkMjgtZTk4ZmVkMGYxNTY2IiwiYXV0aG9yaXRpZXMiOlsidXNlci5leHBvcnRfb3duX2RhdGEiLCJyZXF1ZXN0Lm9wZW4iLCJhdXRoLmZpcnN0X2FjY2VzcyIsImF0dGVuZGFuY2Uudmlld19vcGVuIiwiZm9ybWF0aXZlLnN1Ym1pdCIsInVzZXIudXBkYXRlX293bl9wYXNzd29yZCIsImludGVybnNoaXAudmlld19vd24iLCJmb3JtYXRpdmUudmlld19vd24iLCJ0Y2MudXBsb2FkX2ZpbmFsIiwiYXR0ZW5kYW5jZS5jaGVja19pbiIsInJlcXVlc3Qudmlld19vd24iLCJzZXJ2aWNlX3JlY29yZC52aWV3X293biIsImRhc2hib2FyZC52aWV3X293biIsImludGVybnNoaXAudXBsb2FkX2RvY19vd24iLCJjZXJ0aWZpY2F0ZS52aWV3X293biIsInRjYy52aWV3X293biIsImNvbW11bmljYXRpb24ucmVhZCIsInVzZXIudXBkYXRlX293bl9wcm9maWxlIl0sIm5vbWUiOiJSZXNldCBUZXN0ZSBGMDAzIiwiaWF0IjoxNzg4MTc5MDE1LCJleHAiOjE3ODgxNzk5MTV9.Z__m8A9rsJopSpgmAuOxq7YvD-sKfA9FTVOSjb3Ru7vYp01pG2fd06Dedc9g_FeeBWw1KgSzTBJhn9_mlvF_AWjgHsph9JpfGNOBE5rjVl949T8B5BJERhrj2ndDPHjixOHR5MWRjFLxzDcX7kAgLmdJZgorI8nHaMDMfc3EsP6XmLI6PToP9wXO_q0g0n9bBbPBgPJXYYv0oi8QWxCNJjoMcdS1VIjyunkej92FV6d9ylXMUoosgIrt0mwm0IdTFwwCc5IlurTGP7054jysSDBIA-qXQ0zt2d4wBJZ99wjswkiamUt_VH2Mu4uHbNI36HHyM3_8BqusQpK4WFw5mg
+Content-Length: 54
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+Content-Type: application/json
+X-XSRF-TOKEN: 72e7934e-a654-4cce-b027-7d24673efd40
+Host: localhost:8080
+
+{"novaSenha": "TempCurr3nt@2026!", "aceiteLgpd": true}
+
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:23:40 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"mensagem":"Primeiro acesso conclu├¡do com sucesso."}

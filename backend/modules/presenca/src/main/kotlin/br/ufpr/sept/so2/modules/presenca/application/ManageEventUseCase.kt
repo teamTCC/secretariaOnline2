@@ -28,6 +28,8 @@ data class CloseEventCommand(
 data class OpenWindowResult(
     val message: String,
     val closeAt: String,
+    val secret: String? = null,
+    val qrToken: String? = null,
 )
 
 @Service
@@ -48,6 +50,10 @@ class ManageEventUseCase(
 
         val mode = AttendanceMode.valueOf(event.attendanceMode)
 
+        require(event.estado != EventState.CONCLUIDO.name) {
+            "Evento já encerrado."
+        }
+
         if (command.phase == AttendancePhase.EXIT) {
             require(mode.isDual()) { "Este evento não usa modo dual de presença." }
             require(event.estado == EventState.EM_ANDAMENTO.name) {
@@ -55,8 +61,9 @@ class ManageEventUseCase(
             }
         }
 
+        // Mutate the managed entity — a bulk UPDATE followed by save() would overwrite AGENDADO.
         if (command.phase == AttendancePhase.ENTRY && event.estado == EventState.AGENDADO.name) {
-            eventRepo.updateEstado(command.eventId, EventState.EM_ANDAMENTO.name)
+            event.estado = EventState.EM_ANDAMENTO.name
         }
 
         val now = OffsetDateTime.now()
@@ -78,6 +85,8 @@ class ManageEventUseCase(
         return OpenWindowResult(
             message = "Janela de $phaseLabel aberta",
             closeAt = window["closeAt"] as String,
+            secret = window["secret"] as String?,
+            qrToken = window["qrToken"] as String?,
         )
     }
 
@@ -91,7 +100,8 @@ class ManageEventUseCase(
             throw AccessDeniedException("Apenas o organizador pode encerrar o evento")
         }
 
-        eventRepo.updateEstado(command.eventId, EventState.CONCLUIDO.name)
+        event.estado = EventState.CONCLUIDO.name
+        eventRepo.save(event)
         return certificateIssuerService.issueCertificatesForEvent(command.eventId)
     }
 

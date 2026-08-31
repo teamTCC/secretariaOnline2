@@ -100,10 +100,10 @@ data class UnregisterFcmTokenDto(
 // ─── Contato Público ──────────────────────────────────────────────────────────
 
 data class ContatoFormDto(
-    @field:NotBlank @field:Size(max = 200) val nome: String,
-    @field:NotBlank @field:Email val email: String,
-    @field:NotBlank @field:Size(max = 300) val assunto: String,
-    @field:NotBlank @field:Size(max = 4000) val mensagem: String,
+    @field:NotBlank @field:Size(max = 200) val nome: String = "",
+    @field:NotBlank @field:Email val email: String = "",
+    @field:NotBlank @field:Size(max = 300) val assunto: String = "",
+    @field:NotBlank @field:Size(max = 4000) val mensagem: String = "",
 )
 
 // ─── Secretary Tasks ──────────────────────────────────────────────────────────

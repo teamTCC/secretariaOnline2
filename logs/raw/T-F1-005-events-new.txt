@@ -1,0 +1,1 @@
+[{"tipo":"ABERTURA","estadoAnterior":"-","estadoNovo":"ABERTA","createdAt":"2026-08-31T12:49:39.384794Z"}]

@@ -1,0 +1,30 @@
+POST /auth/reset-password HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Content-Length: 627
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+Content-Type: application/json
+Host: localhost:8080
+
+{"token":"eyJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwianRpIjoiYzJkNWMwYWItYTJiNy00MjQ4LWI4MTAtOWU2NTRiZTFkZTAzIiwic3ViIjoiY2JmMjcxMzktYjdjYy00MDFkLTk3NDctYWNmZTFjNzhmZWZkIiwiYXVkIjpbInBhc3N3b3JkLXJlc2V0Il0sImV4cCI6MTc4ODI2NTQyMX0.nAR28yjb6BlGw_cQqVq35laPQvsl97SZDAOdthuUzA109nT5hLYB0Vp1QtHxoWX3sDMtLDtuhoJmFMTfbJQGIIfCIv900uRPULYTsOaAakNfal2z-2Ly3N5Hxc9vgxhbSgf-B6Arl1wSit7HE6v3TZaT901IlNKjjyxCtVVhbssIws186A8Mx3aHUi2_PreIq5rMbT2TmwxyY53X1h_0EvA66GCH_F5zSFPI3lia2Vm-BDXpeLF0ReP4FT7B3YpbHjVSImtHxWiqS3dmQcSB568bVIjnBE5WZvXuO8y_8a7fo0jN5s8UbfoUnwV7ZHjIAw6qes30U3K6S61317qE_g","novaSenha":"NovaS3nh@Forte2026!"}
+
+
+HTTP/1.1 401 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:24:23 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+Set-Cookie: XSRF-TOKEN=cb42007c-a074-427c-9894-87722264b4e0; Max-Age=43200; Expires=Tue, 01 Sep 2026 00:24:23 GMT; Path=/
+
+{"type":"https://secretariaonline.ufpr.br/errors/unauthorized","title":"Token inv├ílido","status":401,"detail":"Token de redefini├º├úo de senha inv├ílido ou expirado.","instance":"/auth/reset-password","timestamp":"2026-08-31T09:24:23.703044-03:00"}

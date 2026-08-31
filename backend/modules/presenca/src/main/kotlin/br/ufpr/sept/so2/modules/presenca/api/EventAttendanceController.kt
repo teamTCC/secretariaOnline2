@@ -167,7 +167,14 @@ class EventAttendanceController(
                     requestingUserAuthorities = user.authorities,
                 ),
             )
-        return ResponseEntity.ok(WindowOpenedResponse(mensagem = result.message, closeAt = result.closeAt))
+        return ResponseEntity.ok(
+            WindowOpenedResponse(
+                mensagem = result.message,
+                closeAt = result.closeAt,
+                secret = result.secret,
+                qrToken = result.qrToken,
+            ),
+        )
     }
 
     @PostMapping("/{eventId}/attendance/windows/exit")
@@ -188,7 +195,14 @@ class EventAttendanceController(
                     requestingUserAuthorities = user.authorities,
                 ),
             )
-        return ResponseEntity.ok(WindowOpenedResponse(mensagem = result.message, closeAt = result.closeAt))
+        return ResponseEntity.ok(
+            WindowOpenedResponse(
+                mensagem = result.message,
+                closeAt = result.closeAt,
+                secret = result.secret,
+                qrToken = result.qrToken,
+            ),
+        )
     }
 
     @PostMapping("/{eventId}/attendance/qr/validate")

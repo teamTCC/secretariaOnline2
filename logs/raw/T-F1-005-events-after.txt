@@ -1,0 +1,1 @@
+[{"tipo":"ASSIGN","estadoAnterior":"ABERTA","estadoNovo":"EM_TRIAGEM","createdAt":"2026-08-31T12:35:40.884387Z"},{"tipo":"DEFER","estadoAnterior":"EM_TRIAGEM","estadoNovo":"DEFERIDA","parecer":"Deferido conforme documenta├º├úo apresentada (teste HTTPie).","createdAt":"2026-08-31T12:35:42.354321Z"}]

@@ -1,0 +1,1 @@
+{"jobId":"6dd20509-a0d7-4292-90f5-f472e15aeb3e","kind":"alunos","status":"PRONTO","filename":"export-alunos-6dd20509-a0d7-4292-90f5-f472e15aeb3e.csv","expiresAt":"2026-09-07T12:49:43.645445Z","createdAt":"2026-08-31T12:49:43.645445Z","_links":{"self":"/exports/6dd20509-a0d7-4292-90f5-f472e15aeb3e","download":"/exports/6dd20509-a0d7-4292-90f5-f472e15aeb3e/download"}}

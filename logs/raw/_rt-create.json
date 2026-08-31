@@ -1,0 +1,34 @@
+{
+  "code": "ATESTADO_MATRICULA_TESTE",
+  "descricao": "Atestado de matrícula (rascunho HTTPie)",
+  "prazoDias": 5,
+  "formSchema": {
+    "type": "object",
+    "properties": {
+      "finalidade": {
+        "type": "string",
+        "title": "Finalidade",
+        "enum": ["BOLSA", "CONVENIO", "OUTRO"]
+      }
+    },
+    "required": ["finalidade"]
+  },
+  "workflowJson": {
+    "initial": "ABERTA",
+    "states": ["RASCUNHO", "ABERTA", "EM_TRIAGEM", "DEFERIDA", "ARQUIVADA"],
+    "transitions": [
+      {
+        "from": "ABERTA",
+        "to": "EM_TRIAGEM",
+        "action": "ASSIGN",
+        "requiresAuthority": ["request.deliberate"]
+      },
+      {
+        "from": "EM_TRIAGEM",
+        "to": "DEFERIDA",
+        "action": "DEFER",
+        "requiresAuthority": ["request.deliberate"]
+      }
+    ]
+  }
+}

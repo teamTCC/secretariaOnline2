@@ -1,0 +1,27 @@
+POST /auth/login HTTP/1.1
+Accept-Encoding: gzip, deflate
+Accept: */*
+Connection: keep-alive
+Content-Length: 0
+User-Agent: HTTPie/3.2.4
+Host: localhost:8080
+
+
+
+HTTP/1.1 500 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:26:11 GMT
+Connection: close
+Set-Cookie: XSRF-TOKEN=d06e98eb-5eb4-40c7-9bb6-cc4ae951a255; Max-Age=43200; Expires=Tue, 01 Sep 2026 00:26:11 GMT; Path=/
+
+{"type":"https://secretariaonline.ufpr.br/errors/internal-error","title":"Erro interno","status":500,"detail":"Ocorreu um erro inesperado. Tente novamente ou contate o suporte.","instance":"/auth/login","timestamp":"2026-08-31T09:26:11.580942300-03:00","incidentId":"INC-2026-3cc9"}

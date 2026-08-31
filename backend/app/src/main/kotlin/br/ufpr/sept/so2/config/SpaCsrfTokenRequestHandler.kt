@@ -11,7 +11,8 @@ import java.util.function.Supplier
 
 /**
  * Double Submit Cookie para SPA: cookie `XSRF-TOKEN` (não httpOnly) + header `X-XSRF-TOKEN`.
- * Força a materialização do token para o cookie ser escrito na resposta.
+ * Usa token plano (sem XOR) para o JSON de `GET /auth/csrf` coincidir com o cookie —
+ * o SPA e o HTTPie ecoam esse valor no header. XOR só entra se o token vier como parâmetro de form.
  */
 class SpaCsrfTokenRequestHandler : CsrfTokenRequestHandler {
     private val plain = CsrfTokenRequestAttributeHandler()
@@ -22,7 +23,7 @@ class SpaCsrfTokenRequestHandler : CsrfTokenRequestHandler {
         response: HttpServletResponse,
         csrfToken: Supplier<CsrfToken>,
     ) {
-        xor.handle(request, response, csrfToken)
+        plain.handle(request, response, csrfToken)
         csrfToken.get()
     }
 

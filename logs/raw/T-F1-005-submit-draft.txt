@@ -1,0 +1,1 @@
+{"id":"dd8fdb23-90fe-4db2-b938-333daf456cb6","estado":"ABERTA","protocolo":"2026/0003","_links":{"self":"/requests/dd8fdb23-90fe-4db2-b938-333daf456cb6"}}

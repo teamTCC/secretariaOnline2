@@ -1,0 +1,1 @@
+{"id":"c87511b2-3dad-417b-96e2-1c753a768802","idAluno":"1e29dbd7-2311-4367-ac29-c314ba24bee8","assunto":"Revisao de matricula","tipo":"AGENDAMENTO","descricao":"Quero conferir disciplinas do periodo 2026/2.","estado":"AGENDADO","createdAt":"2026-08-31T12:37:29.2246011Z","_links":{"self":"/service-records/c87511b2-3dad-417b-96e2-1c753a768802"}}

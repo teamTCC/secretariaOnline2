@@ -1,0 +1,31 @@
+POST /events HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Cookie: XSRF-TOKEN=4b09a787-c887-4383-89f6-4f4613096fd5; access_token=eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiJkODdiOTA5YS1jZGVmLTQxZDItYmJhNC01YjhkNTM1OGRmNzQiLCJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwic3ViIjoiN2VkZGRhZjAtZjY1Ni00YjIwLWI4ZTQtMmFjNDk0ODllNmM2Iiwic2lkIjoiZmQxYzhlNjQtNGQ2MC00ZDJlLThjYzgtM2Q1OGI0NzVhN2Q3IiwiYXV0aG9yaXRpZXMiOlsiY29tbXVuaWNhdGlvbi5wdWJsaXNoX2NsYXNzIiwiZXZlbnQubWFuYWdlIiwidXNlci51cGRhdGVfb3duX3Byb2ZpbGUiLCJldmVudC5ob3N0IiwicmVxdWVzdC5kZWxpYmVyYXRlIiwiZGFzaGJvYXJkLnZpZXdfc2VsZl9wcm9mZXNzb3IiLCJjb21tdW5pY2F0aW9uLnJlYWQiLCJpbnRlcm5zaGlwLnN1cGVydmlzZSIsInRjYy5zdXBlcnZpc2UiLCJyZXF1ZXN0LnZpZXdfY3Vyc28iLCJ1c2VyLnVwZGF0ZV9vd25fcGFzc3dvcmQiLCJhdXRoLmZpcnN0X2FjY2VzcyIsInRjYy5leGFtaW5lIiwiZm9ybWF0aXZlLnJldmlldyJdLCJub21lIjoiQW5hIFByb2Zlc3NvcmEgRGVtbyIsImlhdCI6MTc4ODE3OTU5NiwiZXhwIjoxNzg4MTgwNDk2fQ.lY4sz4RDYkbkpAP2U8HkACnc0z9oPI974iaiKD1ron9Dwps0y3L53c3YgGmGUugY90l-NqG84uZwYqJqIq_LYuhbXdHvx53b8meSe0XrEO929CHbFIlBW_xe01gHIm1kfUJ6MjCcYvX2INb8PTbJ_9ygVevHUzSSbjPsn3sKmlMNyBFef4x_RaUXTLwRwVMxxqP1u_NpDxqUYqndP3iEO6vI8V6Y5W_yctv7-tPpizuDiX_gsw2W7pIxwVKLS7y9yWfXMIIdOJQH_LuJdgP4BioEyf4UqPEeZ8vTwN9HWyG2HA-84SQiMVeJktNsq3Vh6cx0Rk7BAMEsKAmSFy5gbA
+Content-Length: 264
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+Content-Type: application/json
+X-XSRF-TOKEN: 4b09a787-c887-4383-89f6-4f4613096fd5
+Host: localhost:8080
+
+{"inicioEm":"2026-08-31T12:00:00Z","attendanceMode":"SECRET_SINGLE","chCreditadas":4.0,"idCurso":"01a055d7-4449-74b3-828a-a4b44cef7dfd","fimEm":"2026-08-31T23:59:00Z","titulo":"Palestra: Inteligencia Artificial na Engenharia","descricao":"Palestra teste HTTPie"}
+
+
+HTTP/1.1 201 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:37:35 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"id":"da124ef3-ed23-4196-b884-ed8d3ddfdfcf","_links":{"self":"/events/da124ef3-ed23-4196-b884-ed8d3ddfdfcf"}}

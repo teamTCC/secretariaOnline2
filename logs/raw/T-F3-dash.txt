@@ -1,0 +1,1 @@
+{"meusEventos":[{"id":"da124ef3-ed23-4196-b884-ed8d3ddfdfcf","titulo":"Palestra: Inteligencia Artificial na Engenharia","estado":"CONCLUIDO","inicioEm":"2026-08-31T12:00:00Z","fimEm":"2026-08-31T23:59:00Z"}],"solicitacoesPendentes":[],"_links":{"self":"/bff/dashboard/professor","novoEvento":"/events","meusEventos":"/events?host=me"}}

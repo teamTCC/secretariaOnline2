@@ -6,9 +6,9 @@ import jakarta.validation.constraints.Size
 
 data class LoginRequest(
     @field:NotBlank(message = "Identificador é obrigatório")
-    val identificador: String,
+    val identificador: String = "",
     @field:NotBlank(message = "Senha é obrigatória")
-    val senha: String,
+    val senha: String = "",
 )
 
 /**
@@ -43,7 +43,6 @@ data class ResetPasswordRequest(
     @field:NotBlank(message = "Token é obrigatório")
     val token: String,
     @field:NotBlank(message = "Nova senha é obrigatória")
-    @field:Size(min = 12, message = "Senha deve ter no mínimo 12 caracteres")
     val novaSenha: String,
 )
 

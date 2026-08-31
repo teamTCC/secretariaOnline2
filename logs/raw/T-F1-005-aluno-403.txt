@@ -1,0 +1,1 @@
+{"type":"https://secretariaonline.ufpr.br/errors/insufficient-authority","title":"Acesso negado","status":403,"detail":"A├º├úo 'ASSIGN' requer uma das seguintes capacidades: request.deliberate","instance":"/requests/d72e7178-b51f-4a11-88c9-ad73ed92467a/transitions","timestamp":"2026-08-31T09:35:38.955143-03:00"}

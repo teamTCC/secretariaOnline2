@@ -53,7 +53,7 @@ class ResetPasswordUseCase(
         val jti = parsed.jti ?: throw InvalidTokenException("Token malformado.")
 
         if (emailOneTimeTokenStore.exists(jti)) {
-            throw InvalidTokenException("Token já utilizado. Solicite um novo link.")
+            throw InvalidTokenException("Token de redefinição de senha inválido ou expirado.")
         }
 
         val usuarioId = parsed.subject
@@ -64,7 +64,8 @@ class ResetPasswordUseCase(
         validatePasswordStrength(command.novaSenha)
 
         val recentHashes = passwordHistoryRepository.findRecentHashes(usuarioId, limit = 3)
-        val isReused = recentHashes.any { hash -> passwordService.verify(command.novaSenha, hash) }
+        val hashesToReject = recentHashes + usuario.senhaHash
+        val isReused = hashesToReject.any { hash -> passwordService.verify(command.novaSenha, hash) }
         if (isReused) throw PasswordReuseException()
 
         val newHash = passwordService.hash(command.novaSenha)

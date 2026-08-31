@@ -1,0 +1,1 @@
+[{"id":"ac2fa51a-3831-4b44-ba30-130cfa2e8cc8","idDisciplina":"1bc7bc4c-aa75-4b53-86ec-134e996b8f9d","codigo":"TADS-CAL1","nome":"Calculo Diferencial e Integral I","estado":"CONCLUIDA"}]

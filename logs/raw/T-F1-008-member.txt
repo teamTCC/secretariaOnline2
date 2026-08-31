@@ -1,0 +1,1 @@
+{"idTcc":"be5ab905-2248-48dd-8369-2a1f0aa689c9","idAluno":"1e29dbd7-2311-4367-ac29-c314ba24bee8","papel":"AUTOR"}

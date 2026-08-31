@@ -1,0 +1,1 @@
+[{"id":"01a055d7-444c-7a20-8458-8e485b2ee204","ano":2026,"semestre":1,"inicio":"2026-03-01","fim":"2026-07-31","ativo":false},{"id":"01a055d7-444e-7cc2-8630-49cc892fbc02","ano":2026,"semestre":2,"inicio":"2026-08-01","fim":"2026-12-31","ativo":true}]

@@ -1,0 +1,1 @@
+{"courseId":"01a055d7-4449-74b3-828a-a4b44cef7dfd","sigla":"TADS","horasFormativasMinimas":150,"duracaoCalendario":"15_SEMANAS","bancaMembrosExternos":1,"bancaModalidade":"PRESENCIAL","_links":{"self":"/courses/01a055d7-4449-74b3-828a-a4b44cef7dfd/config","update":"/courses/01a055d7-4449-74b3-828a-a4b44cef7dfd/config"}}

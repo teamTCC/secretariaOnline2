@@ -4,7 +4,6 @@ import br.ufpr.sept.so2.modules.iam.security.JwtAuthenticationFilter
 import br.ufpr.sept.so2.modules.iam.security.RateLimitFilter
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.MediaType
@@ -28,27 +27,17 @@ class SecurityConfig(
     private val jwtAuthFilter: JwtAuthenticationFilter,
     private val rateLimitFilter: RateLimitFilter,
     private val objectMapper: ObjectMapper,
-    /**
-     * Exact origins — no wildcards (e.g. http://localhost:3000, https://secretaria.ufpr.br).
-     * Set via CORS_ALLOWED_ORIGIN_1 / _2 / _3 env vars.
-     */
-    @Value("\${app.cors.allowed-origins}") private val allowedOrigins: List<String>,
-    /**
-     * Pattern-based origins — support wildcards (e.g. Vercel preview URLs).
-     * Required for Vercel preview deployments where the subdomain is random.
-     * Set via CORS_ALLOWED_ORIGIN_PATTERN_1 / _2 env vars.
-     * Empty list by default (no wildcard matching unless explicitly configured).
-     */
-    @Value("\${app.cors.allowed-origin-patterns:}") private val allowedOriginPatterns: List<String>,
+    private val corsProperties: CorsProperties,
 ) {
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain =
         http
             .csrf { csrf ->
-                val repo = CookieCsrfTokenRepository.withHttpOnlyFalse()
-                repo.cookiePath = "/"
+                val cookieRepo = CookieCsrfTokenRepository.withHttpOnlyFalse()
+                cookieRepo.cookiePath = "/"
+                cookieRepo.setCookieMaxAge(12 * 60 * 60)
                 csrf
-                    .csrfTokenRepository(repo)
+                    .csrfTokenRepository(SkipBlankCsrfCookieRepository(cookieRepo))
                     .csrfTokenRequestHandler(SpaCsrfTokenRequestHandler())
                     .ignoringRequestMatchers(
                         "/auth/login",
@@ -91,11 +80,12 @@ class SecurityConfig(
             .exceptionHandling { ex ->
                 ex.authenticationEntryPoint { _, response, _ ->
                     response.status = HttpServletResponse.SC_UNAUTHORIZED
+                    response.characterEncoding = Charsets.UTF_8.name()
                     response.contentType = MediaType.APPLICATION_PROBLEM_JSON_VALUE
                     response.writer.write(
                         objectMapper.writeValueAsString(
                             mapOf(
-                                "type" to "https://secretariaonline.ufpr.br/errors/authentication-required",
+                                "type" to "https://secretariaonline.ufpr.br/errors/unauthorized",
                                 "title" to "Não autenticado",
                                 "status" to 401,
                                 "detail" to "Token JWT inválido ou expirado.",
@@ -106,11 +96,12 @@ class SecurityConfig(
                 }
                 ex.accessDeniedHandler { _, response, _ ->
                     response.status = HttpServletResponse.SC_FORBIDDEN
+                    response.characterEncoding = Charsets.UTF_8.name()
                     response.contentType = MediaType.APPLICATION_PROBLEM_JSON_VALUE
                     response.writer.write(
                         objectMapper.writeValueAsString(
                             mapOf(
-                                "type" to "https://secretariaonline.ufpr.br/errors/access-denied",
+                                "type" to "https://secretariaonline.ufpr.br/errors/forbidden",
                                 "title" to "Acesso negado",
                                 "status" to 403,
                                 "detail" to "Você não tem permissão para esta operação.",
@@ -133,14 +124,14 @@ class SecurityConfig(
         val config = CorsConfiguration()
 
         // Exact origins (no wildcards) — primary list
-        val filteredOrigins = allowedOrigins.filter { it.isNotBlank() }
+        val filteredOrigins = corsProperties.allowedOrigins.filter { it.isNotBlank() }
         if (filteredOrigins.isNotEmpty()) {
             config.allowedOrigins = filteredOrigins
         }
 
         // Pattern-based origins — supports wildcards, needed for Vercel preview URLs
         // e.g. "https://*.vercel.app" or "https://secretaria-online-*.vercel.app"
-        val patterns = allowedOriginPatterns.filter { it.isNotBlank() }
+        val patterns = corsProperties.allowedOriginPatterns.filter { it.isNotBlank() }
         if (patterns.isNotEmpty()) {
             config.allowedOriginPatterns = patterns
         }

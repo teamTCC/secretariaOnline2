@@ -1,0 +1,1 @@
+{"protocolo":"2026/0001","tipo":"DECLARACAO_MATRICULA","estado":"DEFERIDA","abertaEm":"2026-08-31T12:34:08.756032Z","prazoEm":"2026-09-03T12:34:08.735031Z","_links":{"self":"/publico/solicitacoes/2026/1"}}

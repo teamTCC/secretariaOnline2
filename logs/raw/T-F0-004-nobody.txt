@@ -1,0 +1,28 @@
+POST /publico/contato HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Cookie: XSRF-TOKEN=01d3bd7b-e72c-48fe-9c55-9f4c5c51e2d7
+Content-Length: 0
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+X-XSRF-TOKEN: 01d3bd7b-e72c-48fe-9c55-9f4c5c51e2d7
+Host: localhost:8080
+
+
+
+HTTP/1.1 400 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:32:22 GMT
+Connection: close
+
+{"type":"https://secretariaonline.ufpr.br/errors/validation-error","title":"Dados inv├ílidos","status":400,"detail":"Corpo da requisi├º├úo ausente ou inv├ílido.","instance":"/publico/contato","timestamp":"2026-08-31T09:32:22.040814100-03:00"}

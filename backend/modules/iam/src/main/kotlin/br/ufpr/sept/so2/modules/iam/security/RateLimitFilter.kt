@@ -167,6 +167,7 @@ class RateLimitFilter(
         retryAfterSeconds: Long,
     ) {
         response.status = 429
+        response.characterEncoding = Charsets.UTF_8.name()
         response.contentType = MediaType.APPLICATION_PROBLEM_JSON_VALUE
         response.setHeader("Retry-After", retryAfterSeconds.toString())
         response.writer.write(

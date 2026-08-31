@@ -1,0 +1,1 @@
+{"content":[{"id":"1bc7bc4c-aa75-4b53-86ec-134e996b8f9d","codigo":"TADS-CAL1","nome":"Calculo Diferencial e Integral I","creditos":4}],"page":{"number":0,"size":50,"totalElements":1,"totalPages":1}}

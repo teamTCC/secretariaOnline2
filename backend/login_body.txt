@@ -1,0 +1,1 @@
+{"type":"https://secretariaonline.ufpr.br/errors/internal-error","title":"Erro interno","status":500,"detail":"Ocorreu um erro inesperado. Tente novamente ou contate o suporte.","instance":"/auth/login","timestamp":"2026-08-31T00:27:25.366379400-03:00","incidentId":"INC-2026-a753"}

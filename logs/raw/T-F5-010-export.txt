@@ -1,0 +1,1 @@
+{"jobId":"6dd20509-a0d7-4292-90f5-f472e15aeb3e","status":"PROCESSANDO","expiresAt":"2026-09-07T12:49:43.6454448Z","_links":{"self":"/exports/6dd20509-a0d7-4292-90f5-f472e15aeb3e","download":"/exports/6dd20509-a0d7-4292-90f5-f472e15aeb3e/download"}}

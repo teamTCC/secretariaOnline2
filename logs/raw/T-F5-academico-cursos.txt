@@ -1,0 +1,1 @@
+[{"id":"01a055d7-444b-736c-b388-6b1e132b787b","nome":"Engenharia de Software","sigla":"ES"},{"id":"01a055d7-4449-74b3-828a-a4b44cef7dfd","nome":"Tecnologia em An├ílise e Desenvolvimento de Sistemas","sigla":"TADS"}]

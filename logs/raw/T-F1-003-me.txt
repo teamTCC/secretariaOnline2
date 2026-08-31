@@ -1,0 +1,28 @@
+GET /me HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Cookie: XSRF-TOKEN=3ab6d59d-bff6-4f26-8fdc-d9a5449391db; access_token=eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiI5NDUzMWExMC1mMzg5LTQ4ODUtYTE5Yy1lN2VjOGZiODQzMjkiLCJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwic3ViIjoiMWUyOWRiZDctMjMxMS00MzY3LWFjMjktYzMxNGJhMjRiZWU4Iiwic2lkIjoiOTM3ZTJlYTUtNmNjZi00MTY2LTkxMjctNTQyOTFiMjg1OTk4IiwiYXV0aG9yaXRpZXMiOlsicmVxdWVzdC5vcGVuIiwiYXV0aC5maXJzdF9hY2Nlc3MiLCJ1c2VyLnVwZGF0ZV9vd25fcGFzc3dvcmQiLCJyZXF1ZXN0LnZpZXdfb3duIiwiYXR0ZW5kYW5jZS5jaGVja19pbiIsInRjYy51cGxvYWRfZmluYWwiLCJhdHRlbmRhbmNlLnZpZXdfb3BlbiIsImNvbW11bmljYXRpb24ucmVhZCIsInVzZXIudXBkYXRlX293bl9wcm9maWxlIiwic2VydmljZV9yZWNvcmQudmlld19vd24iLCJ0Y2Mudmlld19vd24iLCJ1c2VyLmV4cG9ydF9vd25fZGF0YSIsImRhc2hib2FyZC52aWV3X293biIsImZvcm1hdGl2ZS52aWV3X293biIsImludGVybnNoaXAudmlld19vd24iLCJpbnRlcm5zaGlwLnVwbG9hZF9kb2Nfb3duIiwiZm9ybWF0aXZlLnN1Ym1pdCIsImNlcnRpZmljYXRlLnZpZXdfb3duIl0sIm5vbWUiOiJBbmEgQWx1bm8gRGVtbyIsImlhdCI6MTc4ODE3OTU5MiwiZXhwIjoxNzg4MTgwNDkyfQ.iTUutWdPcN1pMZ-DFMg1cy258wAYVDatJPS-UC-E6n6GklVJtPElDborWpJJj9jKClsIoDkaGy3ngh_r9UYP6lOoUSRQcwHy2yS6HNRqGXvXlEzAXJr9V2GLIwJ84UZR7ZI5WFcYPXH_uXgzk1pR2HAuVBVx9Mv5sM5ZWhRfMQZru0800Uu3B2YB_LPq2AewnXcVuKIcXNxxWE8-zcZ-j2T0XL7EvS-avjjm8CYQoTID-_8wTAY5TP0y0Ldpm1zA-cS8ZXFWfXPS68V4BFkVlF2IIMAxHpp0Hbyj2JxeXVzqY9f5KNVznkiifKhADXAK0I28lhT8Q_-K7sXGmAQ1RQ
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+X-XSRF-TOKEN: 3ab6d59d-bff6-4f26-8fdc-d9a5449391db
+Host: localhost:8080
+
+
+
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:33:43 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"id":"1e29dbd7-2311-4367-ac29-c314ba24bee8","nome":"Ana Aluno Demo","email":"ana.aluno@ufpr.br","grr":"GRR20210001","ativo":true,"metadata":{"idCurso":"01a055d7-4449-74b3-828a-a4b44cef7dfd","telefone":"41999990000"},"roles":["ALUNO"],"_links":{"self":"/me","update-profile":"/me","change-password":"/me/password","notifications":"/me/notifications","data-export":"/me/data-export"}}

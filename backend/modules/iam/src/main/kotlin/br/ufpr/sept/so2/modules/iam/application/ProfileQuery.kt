@@ -14,9 +14,9 @@ class ProfileQuery(
     fun getProfile(userId: UUID): ProfileResponse {
         val usuario =
             usuarioJpaRepository
-                .findByIdWithRoles(userId)
+                .findByIdWithRoleAssignments(userId)
                 .orElseThrow { NoSuchElementException("Usuário não encontrado: $userId") }
-        val roles = usuario.usuarioRoles.map { it.role.code }
+        val roles = usuario.usuarioRoles.map { it.role.code }.distinct()
         return ProfileResponse(
             id = usuario.id,
             nome = usuario.nome,

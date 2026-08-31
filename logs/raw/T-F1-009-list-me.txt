@@ -1,0 +1,1 @@
+{"content":[{"id":"907818cf-00b9-4a55-8974-083d380304a8","titulo":"Palestra HTTPie ÔÇö janela em andamento","attendanceMode":"SECRET_SINGLE","estado":"EM_ANDAMENTO","chCreditadas":4.0,"inicioEm":"2026-08-31T08:00:00Z","fimEm":"2026-08-31T23:59:00Z"}],"page":{"number":0,"size":20,"totalElements":1,"totalPages":1}}

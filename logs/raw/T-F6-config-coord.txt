@@ -1,0 +1,1 @@
+{"type":"https://secretariaonline.ufpr.br/errors/forbidden","title":"Acesso negado","status":403,"detail":"Voc├¬ n├úo tem permiss├úo para esta opera├º├úo.","instance":"/courses/tads/config","timestamp":"2026-08-31T09:37:30.971956300-03:00"}

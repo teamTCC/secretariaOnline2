@@ -41,14 +41,21 @@ class FirstAccessUseCase(
         require(usuario.mustChangePassword()) { "Usuário já completou o primeiro acesso." }
 
         val newHash = passwordService.hash(command.novaSenha)
-        usuarioRepository.updatePassword(command.usuarioId, newHash)
-        passwordHistoryRepository.save(command.usuarioId, usuario.senhaHash)
-
         val updatedMetadata =
             usuario.metadata.toMutableMap().apply {
                 put("aceite_lgpd_em", OffsetDateTime.now().toString())
             }
-        usuarioRepository.updateMetadata(command.usuarioId, updatedMetadata)
+
+        // Persist hash + LGPD in one save. A bulk UPDATE followed by find+save
+        // overwrites the hash with the stale persistence-context entity.
+        passwordHistoryRepository.save(command.usuarioId, usuario.senhaHash)
+        usuarioRepository.save(
+            usuario.copy(
+                senhaHash = newHash,
+                senhaAlterada = true,
+                metadata = updatedMetadata,
+            ),
+        )
 
         auditPublisher.publish(
             AuditPayload(

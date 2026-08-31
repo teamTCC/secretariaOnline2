@@ -1,0 +1,1 @@
+{"valido":true,"hashSha256":"8738bcca55f6907f05d0bb835c4e53ba1d88463aa254dc6d72a6d7e7ecb07e32","chCreditadas":4.0,"issuedAt":"2026-08-31T12:57:23.896255Z","idEvento":"907818cf-00b9-4a55-8974-083d380304a8","origem":"EVENTO","integridadePdf":true,"verificacaoAssinatura":"ED25519_VALID","ephemeralKey":true,"_links":{"jwks":"/.well-known/jwks.json"}}

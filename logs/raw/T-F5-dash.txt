@@ -1,0 +1,1 @@
+{"kpis":{"emTriagem":0,"emDeliberacao":0},"_links":{"self":"/bff/dashboard/secretaria","solicitacoes":"/requests","usuarios":"/usuarios"}}

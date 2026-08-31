@@ -1,0 +1,28 @@
+GET /bff/dashboard/secretaria HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Cookie: XSRF-TOKEN=72e7934e-a654-4cce-b027-7d24673efd40; access_token=eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiI3MzA1YzIwOC04OWI1LTQzYjItOTAyNi0zYmY0MTMyNzM5MDEiLCJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwic3ViIjoiY2JmMjcxMzktYjdjYy00MDFkLTk3NDctYWNmZTFjNzhmZWZkIiwic2lkIjoiZTcwMzVlN2QtMmFmNi00MGNmLWE2ZWQtYjI4NjA3YTQ4MmNiIiwiYXV0aG9yaXRpZXMiOlsiYXR0ZW5kYW5jZS52aWV3X29wZW4iLCJhdXRoLmZpcnN0X2FjY2VzcyIsInJlcXVlc3Qub3BlbiIsInRjYy51cGxvYWRfZmluYWwiLCJpbnRlcm5zaGlwLnZpZXdfb3duIiwicmVxdWVzdC52aWV3X293biIsImNlcnRpZmljYXRlLnZpZXdfb3duIiwidGNjLnZpZXdfb3duIiwiaW50ZXJuc2hpcC51cGxvYWRfZG9jX293biIsImZvcm1hdGl2ZS52aWV3X293biIsImNvbW11bmljYXRpb24ucmVhZCIsInVzZXIuZXhwb3J0X293bl9kYXRhIiwiZGFzaGJvYXJkLnZpZXdfb3duIiwidXNlci51cGRhdGVfb3duX3Bhc3N3b3JkIiwiZm9ybWF0aXZlLnN1Ym1pdCIsInVzZXIudXBkYXRlX293bl9wcm9maWxlIiwiYXR0ZW5kYW5jZS5jaGVja19pbiIsInNlcnZpY2VfcmVjb3JkLnZpZXdfb3duIl0sIm5vbWUiOiJSZXNldCBUZXN0ZSBGMDAzIiwiaWF0IjoxNzg4MTc5MDY0LCJleHAiOjE3ODgxNzk5NjR9.NrIe09MtTzlnA6q4duLBfex6WrJckjdZ0lfp4RROA7fNah81BKESMxNdjbIqS7d8G_ktBd6xTXaD11NrXjYAZ-EzcD0aTBK7t4fbqHBf0mPmwEHBgSUF7XpAwrBzE7U5LYGkDiPlhwkNXh5iAiT43NuzN1fPAqdsk2zmkJt3uNRPSU-SXlU9fdRVldwNZRVACru1xFA2gVwqWLJ5i2ytZclGAcibc8jF-LXgrbjOMwzQf_mbiZ6qy7szj2ayewhRd0Df7nSsRDOEnZCiQ9ipEPbDT-IK41nKTef4zjqL23TAh130PdUW2xaKexUl2c7D9thmeW4Vln_e76ZIUzCtgw
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+X-XSRF-TOKEN: 72e7934e-a654-4cce-b027-7d24673efd40
+Host: localhost:8080
+
+
+
+HTTP/1.1 403 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:26:10 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"type":"https://secretariaonline.ufpr.br/errors/forbidden","title":"Acesso negado","status":403,"detail":"Voc├¬ n├úo tem permiss├úo para esta opera├º├úo.","instance":"/bff/dashboard/secretaria","timestamp":"2026-08-31T09:26:10.482361600-03:00"}

@@ -27,7 +27,7 @@ class UsuarioQuery(
                 email = u.email,
                 grr = u.grr,
                 ativo = u.ativo,
-                roles = u.usuarioRoles.map { it.role.code },
+                roles = u.usuarioRoles.map { it.role.code }.distinct(),
             )
         }
 
@@ -44,7 +44,7 @@ class UsuarioQuery(
             grr = usuario.grr,
             ativo = usuario.ativo,
             metadata = usuario.metadata,
-            roles = usuario.usuarioRoles.map { it.role.code },
+            roles = usuario.usuarioRoles.map { it.role.code }.distinct(),
             senhaAlterada = usuario.senhaAlterada,
         )
     }

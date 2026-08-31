@@ -1,0 +1,1 @@
+{"tccsDefendidos":0,"_links":{"self":"/bff/dashboard/egresso","certificados":"/certificates/mine","comunicados":"/communications/me"}}

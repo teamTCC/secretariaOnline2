@@ -1,0 +1,28 @@
+GET /search?q=ana&page=0&size=10 HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Cookie: XSRF-TOKEN=3ab6d59d-bff6-4f26-8fdc-d9a5449391db; access_token=eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiI5MzkxM2RjZi1iZjQ4LTQ1MjAtOTVkYy02MWZlMGNmNjE4NDMiLCJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwic3ViIjoiMWUyOWRiZDctMjMxMS00MzY3LWFjMjktYzMxNGJhMjRiZWU4Iiwic2lkIjoiNjUyY2I0ZDAtNGYxMC00NDA0LTg2YzctNWFhNDhhZGU4MDk2IiwiYXV0aG9yaXRpZXMiOlsiYXR0ZW5kYW5jZS5jaGVja19pbiIsImludGVybnNoaXAudmlld19vd24iLCJzZXJ2aWNlX3JlY29yZC52aWV3X293biIsInVzZXIudXBkYXRlX293bl9wYXNzd29yZCIsImRhc2hib2FyZC52aWV3X293biIsImZvcm1hdGl2ZS5zdWJtaXQiLCJhdXRoLmZpcnN0X2FjY2VzcyIsInRjYy52aWV3X293biIsInVzZXIudXBkYXRlX293bl9wcm9maWxlIiwiaW50ZXJuc2hpcC51cGxvYWRfZG9jX293biIsImF0dGVuZGFuY2Uudmlld19vcGVuIiwidXNlci5leHBvcnRfb3duX2RhdGEiLCJjb21tdW5pY2F0aW9uLnJlYWQiLCJyZXF1ZXN0LnZpZXdfb3duIiwidGNjLnVwbG9hZF9maW5hbCIsInJlcXVlc3Qub3BlbiIsImZvcm1hdGl2ZS52aWV3X293biIsImNlcnRpZmljYXRlLnZpZXdfb3duIl0sIm5vbWUiOiJBbmEgQWx1bm8gRGVtbyIsImlhdCI6MTc4ODE4MDE1NSwiZXhwIjoxNzg4MTgxMDU1fQ.LnkB0-mfr2DwnH_lroHI2AMuJi7bU785csHAd_f_dY_sqlNQW40F6kLhGAICRlPW09tXj4ALvurrs9C2yOiPhJSOqkr20lOyXw7zyphywCb3aEZAzOMY_Xz_kTfhTyytlyvkDrCPRSK595TvU57RseupmioUQ7eq8lqBEFiVuRbEjXk2qR8mKKMpdTldhDF2H4yXfs65jMhb-rZzgvGXDAqrv1dQnn5yNdSsx18xMtwEBvpP7k5xNxA6K4F4bADePV8btwFatuVhSTq6__fwyhvOoWMxlKV4gQiwg5kDJxvhPFA5EzbS5f8rmyrOF50LVlj8Ln_UXI5OpCJao1Nptw
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+X-XSRF-TOKEN: 3ab6d59d-bff6-4f26-8fdc-d9a5449391db
+Host: localhost:8080
+
+
+
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 12:42:39 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"query":"ana","results":[],"totalResults":0}

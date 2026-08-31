@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
 import java.util.Optional
 import java.util.UUID
@@ -45,6 +46,18 @@ interface UsuarioJpaRepository : JpaRepository<UsuarioEntity, UUID> {
     """,
     )
     fun findByIdWithRoles(
+        @Param("id") id: UUID,
+    ): Optional<UsuarioEntity>
+
+    @Query(
+        """
+        SELECT DISTINCT u FROM UsuarioEntity u
+        LEFT JOIN FETCH u.usuarioRoles ur
+        LEFT JOIN FETCH ur.role
+        WHERE u.id = :id
+    """,
+    )
+    fun findByIdWithRoleAssignments(
         @Param("id") id: UUID,
     ): Optional<UsuarioEntity>
 
@@ -112,7 +125,7 @@ interface UsuarioJpaRepository : JpaRepository<UsuarioEntity, UUID> {
         @Param("bloqueadoAte") bloqueadoAte: OffsetDateTime?,
     )
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE UsuarioEntity u SET u.senhaHash = :hash, u.senhaAlterada = true WHERE u.id = :id")
     fun updatePassword(
         @Param("id") id: UUID,
@@ -122,8 +135,8 @@ interface UsuarioJpaRepository : JpaRepository<UsuarioEntity, UUID> {
     @Query(
         """
         SELECT u FROM UsuarioEntity u
-        WHERE (:nome IS NULL OR LOWER(u.nome) LIKE LOWER(CONCAT('%', :nome, '%')))
-        AND (:email IS NULL OR LOWER(u.email) LIKE LOWER(CONCAT('%', :email, '%')))
+        WHERE LOWER(u.nome) LIKE CONCAT('%', LOWER(COALESCE(CAST(:nome AS string), '')), '%')
+        AND LOWER(u.email) LIKE CONCAT('%', LOWER(COALESCE(CAST(:email AS string), '')), '%')
         AND (:ativo IS NULL OR u.ativo = :ativo)
         """,
     )
@@ -156,6 +169,7 @@ interface RefreshTokenJpaRepository : JpaRepository<RefreshTokenEntity, UUID> {
     )
 
     @Modifying
+    @Transactional
     @Query("UPDATE RefreshTokenEntity t SET t.revokedAt = :now WHERE t.usuarioId = :usuarioId AND t.revokedAt IS NULL")
     fun revokeAllForUser(
         @Param("usuarioId") usuarioId: UUID,

@@ -1,0 +1,1 @@
+{"mensagem":"Janela de entrada aberta","closeAt":"2026-08-31T09:53:03.954729300-03:00"}

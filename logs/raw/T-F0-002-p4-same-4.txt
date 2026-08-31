@@ -1,0 +1,30 @@
+POST /auth/forgot-password HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Content-Length: 34
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+Content-Type: application/json
+Host: localhost:8080
+
+{"email": "limite.forgot@ufpr.br"}
+
+HTTP/1.1 429 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+Retry-After: 3594
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json;charset=UTF-8
+Content-Length: 192
+Date: Mon, 31 Aug 2026 12:20:59 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+Set-Cookie: XSRF-TOKEN=0a7c7632-7f5a-4c46-b9df-8c16d88a144d; Max-Age=43200; Expires=Tue, 01 Sep 2026 00:20:59 GMT; Path=/
+
+{"type":"https://secretariaonline.ufpr.br/errors/rate-limit","title":"Muitas tentativas","status":429,"detail":"Muitas tentativas. Aguarde antes de tentar novamente.","retryAfterSeconds":3594}

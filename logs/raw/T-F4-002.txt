@@ -1,0 +1,1 @@
+{"type":"https://secretariaonline.ufpr.br/errors/not-found","title":"Recurso n├úo encontrado","status":404,"detail":"No static resource commissions/coe/queue.","instance":"/commissions/coe/queue","timestamp":"2026-08-31T09:43:26.253589600-03:00"}

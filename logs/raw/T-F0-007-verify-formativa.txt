@@ -1,0 +1,1 @@
+{"valido":false,"hashSha256":"bb3a398a551239efa12510d35bf2a77fa27e1b85b166ab335a10463fb546f6cd","chCreditadas":4.0,"issuedAt":"2026-08-31T12:49:31.904393Z","origem":"FORMATIVA","integridadePdf":true,"verificacaoAssinatura":"INVALID","ephemeralKey":true,"_links":{"jwks":"/.well-known/jwks.json"}}

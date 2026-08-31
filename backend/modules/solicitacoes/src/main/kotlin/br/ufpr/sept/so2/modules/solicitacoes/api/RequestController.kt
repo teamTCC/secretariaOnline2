@@ -63,14 +63,17 @@ class RequestController(
     private val requestQuery: RequestQuery,
 ) {
     @PostMapping
-    @PreAuthorize("hasAuthority('request.open') or hasAuthority('request.open_on_behalf')")
-    @Operation(summary = "Abrir nova solicitação (ou em nome de aluno com request.open_on_behalf)")
+    @PreAuthorize("hasAuthority('request.open') or hasAuthority('request.open_on_behalf') or hasAuthority('request.internal_open')")
+    @Operation(summary = "Abrir nova solicitação (ou em nome de aluno com request.open_on_behalf / request.internal_open)")
     fun open(
         @Valid @RequestBody dto: OpenRequestDto,
     ): ResponseEntity<RequestCreatedResponse> {
         val user = currentUser()
         val onBehalf = dto.idSolicitanteOnBehalf?.also {
-            require(user.authorities.contains("request.open_on_behalf")) {
+            val canOpenOnBehalf =
+                user.authorities.contains("request.open_on_behalf") ||
+                    user.authorities.contains("request.internal_open")
+            require(canOpenOnBehalf) {
                 "Você não tem autoridade para abrir solicitações em nome de outro usuário."
             }
         }

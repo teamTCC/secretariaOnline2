@@ -1,0 +1,1 @@
+{"type":"https://secretariaonline.ufpr.br/errors/bad-request","title":"Dados inv├ílidos","status":400,"detail":"Voc├¬ n├úo tem autoridade para abrir solicita├º├Áes em nome de outro usu├írio.","instance":"/requests","timestamp":"2026-08-31T09:50:52.623915800-03:00"}

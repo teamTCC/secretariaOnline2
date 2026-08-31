@@ -1,0 +1,1 @@
+{"mensagem":"Evento encerrado. 0 certificados emitidos.","certificadosEmitidos":0}

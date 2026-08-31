@@ -1,0 +1,1 @@
+{"idEvento":"da124ef3-ed23-4196-b884-ed8d3ddfdfcf","estado":"AGENDADO","attendanceMode":"SECRET_SINGLE","isComplete":false,"_links":{"self":"/events/da124ef3-ed23-4196-b884-ed8d3ddfdfcf/attendance/session"}}

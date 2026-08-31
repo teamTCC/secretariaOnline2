@@ -1,0 +1,38 @@
+{
+  "id": "01a055d7-4451-7c68-b714-b1d49ba351c3",
+  "code": "DECLARACAO_MATRICULA",
+  "descricao": "Declara├º├úo de matr├¡cula",
+  "prazoDias": 3,
+  "formSchema": {
+    "type": "object",
+    "required": [
+      "finalidade"
+    ],
+    "properties": {
+      "finalidade": {
+        "enum": [
+          "BOLSA",
+          "CONVENIO",
+          "OUTRO"
+        ],
+        "type": "string",
+        "x-ui": {
+          "widget": "select"
+        },
+        "title": "Finalidade"
+      },
+      "observacoes": {
+        "type": "string",
+        "x-ui": {
+          "widget": "textarea"
+        },
+        "title": "Observa├º├Áes"
+      }
+    }
+  },
+  "_links": {
+    "self": "/requests/types/DECLARACAO_MATRICULA",
+    "open": "/requests",
+    "save-draft": "/requests/draft"
+  }
+}
