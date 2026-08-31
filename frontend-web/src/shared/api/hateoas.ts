@@ -18,7 +18,32 @@ export function hrefOf(links: Record<string, string> | undefined, rel: string) {
   return links?.[rel]
 }
 
-const META_RELS = new Set(['self', 'events', 'attachments', 'public'])
+/** API href (`/requests/{id}`) → rota da SPA. Pendências do BFF e `_links` do dashboard usam path de API. */
+export function uiPathFromHref(href: string): string {
+  let path = href
+  let search = ''
+  try {
+    const u = href.startsWith('http') ? new URL(href) : new URL(href, 'http://spa.local')
+    path = u.pathname
+    search = u.search
+  } catch {
+    const q = href.indexOf('?')
+    if (q >= 0) {
+      path = href.slice(0, q)
+      search = href.slice(q)
+    }
+  }
+  const typeCode = path.match(/^\/requests\/types\/([^/]+)$/)
+  if (path === '/requests/types' || typeCode) {
+    return typeCode ? `/solicitacoes/nova?code=${encodeURIComponent(typeCode[1])}` : '/solicitacoes/nova'
+  }
+  const req = path.match(/^\/requests\/([0-9a-fA-F-]{36})$/)
+  if (req) return `/solicitacoes/${req[1]}`
+  if (path === '/requests') return '/solicitacoes'
+  return `${path}${search}`
+}
+
+const META_RELS = new Set(['self', 'events', 'attachments'])
 
 export function useActions(links: Record<string, string> | undefined) {
   const n = links ?? {}

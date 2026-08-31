@@ -7,4 +7,14 @@ export const queryKeys = {
   protocolo: (ano: string, numero: string) => ['publico', 'protocolo', ano, numero] as const,
   certificado: (hash: string) => ['publico', 'certificado', hash] as const,
   jwks: ['jwks'] as const,
+  requestTypes: ['requests', 'types'] as const,
+  requestType: (code: string) => ['requests', 'types', code] as const,
+  requests: (filters: Record<string, string | number | undefined>) =>
+    ['requests', 'list', filters] as const,
+  request: (id: string) => ['requests', 'detail', id] as const,
+  requestEvents: (id: string) => ['requests', 'events', id] as const,
+  requestAttachments: (id: string) => ['requests', 'attachments', id] as const,
+  requestProtocol: (id: string) => ['requests', 'protocol', id] as const,
+  cursos: ['academico', 'cursos'] as const,
+  disciplinas: (q: Record<string, string | undefined>) => ['academico', 'disciplinas', q] as const,
 }

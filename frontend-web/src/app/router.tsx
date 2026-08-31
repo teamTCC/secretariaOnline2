@@ -1,5 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
+import { NovaSolicitacaoPage } from '../features/solicitacoes/NovaSolicitacaoPage'
+import { SolicitacaoDetailPage } from '../features/solicitacoes/SolicitacaoDetailPage'
+import { SolicitacoesListPage } from '../features/solicitacoes/SolicitacoesListPage'
 import { MePage } from '../features/perfil/MePage'
 import { CertificadoPage } from '../features/publico/CertificadoPage'
 import { ContatoPage } from '../features/publico/ContatoPage'
@@ -11,17 +14,8 @@ import { PrimeiroAcessoPage } from '../features/publico/PrimeiroAcessoPage'
 import { ProtocoloPage } from '../features/publico/ProtocoloPage'
 import { ResetPage } from '../features/publico/ResetPage'
 import { AuthGuard } from '../shared/auth/AuthGuard'
-import { Page } from '../shared/ui/Page'
 import { Shell } from '../shared/ui/Shell'
 import { HealthPage } from './HealthPage'
-
-function SolicitacoesStub() {
-  return (
-    <Page title="solicitacoes">
-      <p>fatia 3</p>
-    </Page>
-  )
-}
 
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/login" replace /> },
@@ -46,7 +40,9 @@ export const router = createBrowserRouter([
           { path: '/me', element: <MePage /> },
           { path: '/me-raw', element: <Navigate to="/me" replace /> },
           { path: '/primeiro-acesso', element: <PrimeiroAcessoPage /> },
-          { path: '/solicitacoes', element: <SolicitacoesStub /> },
+          { path: '/solicitacoes', element: <SolicitacoesListPage /> },
+          { path: '/solicitacoes/nova', element: <NovaSolicitacaoPage /> },
+          { path: '/solicitacoes/:id', element: <SolicitacaoDetailPage /> },
         ],
       },
     ],

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../shared/api/client'
-import { normalizeLinks } from '../../shared/api/hateoas'
+import { normalizeLinks, uiPathFromHref } from '../../shared/api/hateoas'
 import { isProblem } from '../../shared/api/problem'
 import { queryKeys } from '../../shared/api/queryKeys'
 import { HateoasBar } from '../../shared/ui/HateoasBar'
@@ -94,14 +94,14 @@ export function DashboardPage() {
         <>
           <HateoasBar
             links={normalizeLinks(data._links)}
-            onAction={(_rel, href) => nav(href)}
+            onAction={(_rel, href) => nav(uiPathFromHref(href))}
           />
           <p>degraded: {String(Boolean(data._degraded))}</p>
           {data.pendencias?.length ? (
             <ul>
               {data.pendencias.map((p) => (
                 <li key={p.id ?? p._link}>
-                  <button type="button" disabled={!p._link} onClick={() => p._link && nav(p._link)}>
+                  <button type="button" disabled={!p._link} onClick={() => p._link && nav(uiPathFromHref(p._link))}>
                     {p.tipo ?? p.id} {p.estado} {p._link}
                   </button>
                 </li>

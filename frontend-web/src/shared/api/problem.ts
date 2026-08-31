@@ -7,6 +7,7 @@ export type Problem = {
   timestamp?: string
   incidentId?: string
   retryAfterSeconds?: number
+  erros?: unknown
 }
 
 declare module '@tanstack/react-query' {
