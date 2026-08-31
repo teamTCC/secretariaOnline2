@@ -42,7 +42,11 @@ security:
     public-key: ${SECURITY_JWT_PUBLIC_KEY:PLACEHOLDER_REPLACE_ME}
 
 # Dev cookie settings — Secure=false so HttpOnly cookies work on plain HTTP (localhost)
+# Scalar CSV so @Value List in SecurityConfig resolves (YAML lists become [0],[1],…).
 app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:}
   security:
     cookie:
       secure: false

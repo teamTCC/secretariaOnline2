@@ -32,12 +32,12 @@ interface TccJpaRepository : JpaRepository<TccEntity, UUID> {
     ): List<TccEntity>
 }
 
-interface TccMemberJpaRepository : JpaRepository<TccMemberEntity, Any> {
+interface TccMemberJpaRepository : JpaRepository<TccMemberEntity, TccMemberId> {
     fun findAllByIdTcc(idTcc: UUID): List<TccMemberEntity>
 
     fun findAllByIdAluno(idAluno: UUID): List<TccMemberEntity>
 }
 
-interface TccExaminerJpaRepository : JpaRepository<TccExaminerEntity, Any> {
+interface TccExaminerJpaRepository : JpaRepository<TccExaminerEntity, TccExaminerId> {
     fun findAllByIdTcc(idTcc: UUID): List<TccExaminerEntity>
 }

@@ -17,6 +17,8 @@ data class ProfileResponse(
     val ativo: Boolean,
     val metadata: Any?,
     val roles: List<String>,
+    val mustChangePassword: Boolean = false,
+    val mustAcceptLgpd: Boolean = false,
     @JsonProperty("_links") val links: Map<String, String> = emptyMap(),
 )
 

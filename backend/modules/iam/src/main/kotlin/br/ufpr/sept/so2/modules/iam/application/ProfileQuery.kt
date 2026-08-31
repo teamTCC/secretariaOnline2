@@ -16,7 +16,20 @@ class ProfileQuery(
             usuarioJpaRepository
                 .findByIdWithRoles(userId)
                 .orElseThrow { NoSuchElementException("Usuário não encontrado: $userId") }
-        val roles = usuario.usuarioRoles.map { it.role.code }
+        val roles = usuario.usuarioRoles.map { it.role.code }.distinct()
+        val mustChangePassword = !usuario.senhaAlterada
+        val mustAcceptLgpd = !usuario.metadata.containsKey("aceite_lgpd_em")
+        val links =
+            linkedMapOf(
+                "self" to "/me",
+                "update-profile" to "/me",
+                "change-password" to "/me/password",
+                "notifications" to "/me/notifications",
+                "data-export" to "/me/data-export",
+            )
+        if (roles.any { it.equals("ALUNO", ignoreCase = true) }) {
+            links["dashboard"] = "/bff/dashboard/aluno"
+        }
         return ProfileResponse(
             id = usuario.id,
             nome = usuario.nome,
@@ -25,14 +38,9 @@ class ProfileQuery(
             ativo = usuario.ativo,
             metadata = usuario.metadata,
             roles = roles,
-            links =
-                mapOf(
-                    "self" to "/me",
-                    "update-profile" to "/me",
-                    "change-password" to "/me/password",
-                    "notifications" to "/me/notifications",
-                    "data-export" to "/me/data-export",
-                ),
+            mustChangePassword = mustChangePassword,
+            mustAcceptLgpd = mustAcceptLgpd,
+            links = links,
         )
     }
 }

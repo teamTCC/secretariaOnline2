@@ -4,6 +4,7 @@ import br.ufpr.sept.so2.shared.infrastructure.BaseEntity
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
+import jakarta.persistence.IdClass
 import jakarta.persistence.Index
 import jakarta.persistence.Table
 import java.io.Serializable
@@ -41,8 +42,14 @@ class TccEntity(
     var aprovado: Boolean? = null,
 ) : BaseEntity(id)
 
+data class TccMemberId(
+    val idTcc: UUID = UUID(0, 0),
+    val idAluno: UUID = UUID(0, 0),
+) : Serializable
+
 @Entity
 @Table(name = "tcc_member")
+@IdClass(TccMemberId::class)
 class TccMemberEntity(
     @Id
     @Column(columnDefinition = "uuid")
@@ -56,8 +63,14 @@ class TccMemberEntity(
     val joinedAt: OffsetDateTime = OffsetDateTime.now(),
 ) : Serializable
 
+data class TccExaminerId(
+    val idTcc: UUID = UUID(0, 0),
+    val idProfessor: UUID = UUID(0, 0),
+) : Serializable
+
 @Entity
 @Table(name = "tcc_examiner")
+@IdClass(TccExaminerId::class)
 class TccExaminerEntity(
     @Id
     @Column(columnDefinition = "uuid")
