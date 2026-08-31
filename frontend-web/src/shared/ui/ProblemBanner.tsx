@@ -1,0 +1,22 @@
+import type { Problem } from '../api/problem'
+
+type Props = { problem: Problem | null | undefined }
+
+export function ProblemBanner({ problem }: Props) {
+  if (!problem) return null
+  return (
+    <div className="danger">
+      <strong>
+        {problem.title}
+        {problem.status ? ` (${problem.status})` : ''}
+      </strong>
+      {problem.detail ? <p>{problem.detail}</p> : null}
+      {problem.incidentId ? (
+        <p>
+          incidentId: <a href={`/erro/${problem.incidentId}`}>{problem.incidentId}</a>
+        </p>
+      ) : null}
+      {problem.retryAfterSeconds != null ? <p>tente em {problem.retryAfterSeconds}s</p> : null}
+    </div>
+  )
+}

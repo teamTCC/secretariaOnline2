@@ -1,0 +1,11 @@
+POST /auth/login HTTP/1.1
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Cookie: XSRF-TOKEN=8482416e-eb47-4f83-b930-6aa9daff3244
+Content-Length: 59
+User-Agent: HTTPie/3.2.4
+Accept: application/json, */*;q=0.5
+Content-Type: application/json
+Host: localhost:8080
+
+{"mustChangePassword":false,"mustAcceptLgpd":false}

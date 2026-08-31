@@ -1,0 +1,1 @@
+{"content":[],"page":{"number":0,"size":20,"totalElements":0,"totalPages":0},"_links":{"self":"http://localhost:8080/admin/outbox?page=0&size=20","first":"http://localhost:8080/admin/outbox?page=0&size=20","last":"http://localhost:8080/admin/outbox?page=0&size=20"}}

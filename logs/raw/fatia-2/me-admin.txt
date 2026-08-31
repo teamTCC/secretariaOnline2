@@ -1,0 +1,1 @@
+{"id":"01a05940-ec31-70fa-8350-d42331ef541a","nome":"Administrador Sistema","email":"admin@ufpr.br","ativo":true,"metadata":{"aceite_lgpd_em":"2026-01-01T00:00:00Z"},"roles":["ADMIN"],"_links":{"self":"/me","update-profile":"/me","change-password":"/me/password","notifications":"/me/notifications","data-export":"/me/data-export"}}

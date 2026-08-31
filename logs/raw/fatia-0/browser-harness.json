@@ -1,0 +1,57 @@
+{
+  "at": "2026-08-31T12:22:38-03:00",
+  "url": "http://localhost:5173/health-front",
+  "heading": "health-front",
+  "jsonPanel": {
+    "token": "8f6aeb40-d12d-484c-91b3-16899d32d3ff",
+    "headerName": "X-XSRF-TOKEN",
+    "parameterName": "_csrf"
+  },
+  "cookie": "XSRF-TOKEN=8f6aeb40-d12d-484c-91b3-16899d32d3ff",
+  "localStorage": {},
+  "sessionStorage": {},
+  "jwtInLocalStorage": false,
+  "capturedFetches": [
+    {
+      "url": "http://localhost:8080/auth/csrf",
+      "credentials": "include",
+      "method": "GET",
+      "hasAuthorization": false,
+      "xsrf": null
+    },
+    {
+      "url": "http://localhost:8080/me",
+      "credentials": "include",
+      "method": "GET",
+      "hasAuthorization": false,
+      "xsrf": null
+    },
+    {
+      "url": "http://localhost:8080/publico/contato",
+      "credentials": "include",
+      "method": "POST",
+      "hasAuthorization": false,
+      "xsrf": "8f6aeb40-d12d-484c-91b3-16899d32d3ff"
+    }
+  ],
+  "meProblem": {
+    "type": "https://secretariaonline.ufpr.br/errors/unauthorized",
+    "title": "Não autenticado",
+    "status": 401,
+    "detail": "Token JWT inválido ou expirado."
+  },
+  "isProblemContentType": true,
+  "isProblemMe": true,
+  "contatoWithCsrfHeader": {
+    "status": 400,
+    "title": "Dados inválidos",
+    "note": "CSRF aceito (não 403). 400 por campo assunto ausente — fora do escopo da fatia 0."
+  },
+  "normalizeLinks": {
+    "map": { "self": "/requests/1", "assign": "/requests/1/transitions" },
+    "halObj": { "self": "/requests/1", "defer": "/requests/1/transitions" },
+    "halArr": { "self": "/requests/1", "deny": "/requests/1/transitions" }
+  },
+  "actionFromRel": "FORWARD_TO_DELIBERATOR",
+  "useActions": { "actionRels": ["assign"], "hasAssign": true, "hasSelf": true }
+}

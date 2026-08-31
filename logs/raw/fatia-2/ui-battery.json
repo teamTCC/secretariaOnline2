@@ -1,0 +1,47 @@
+[
+  {
+    "name": "aluno-login-dashboard",
+    "result": "200",
+    "notes": "perfil BFF aluno; novaSolicitacao visivel apos AuthGuard so redirecionar mustChangePassword"
+  },
+  {
+    "name": "me-mutations",
+    "result": "ok",
+    "notes": "PATCH /me 200; notifications 200; FCM POST/DELETE 200; data-export READY; avatar presign 200; password errada 400 na banner"
+  },
+  {
+    "name": "logout-sair",
+    "result": "login",
+    "notes": "POST /auth/logout; flags null; so XSRF-TOKEN em document.cookie"
+  },
+  {
+    "name": "f5-dashboard-anon",
+    "result": "redirect /login",
+    "notes": "GET /dashboard sem cookie -> AuthGuard 401 -> /login"
+  },
+  {
+    "name": "prof-dashboard",
+    "result": "200",
+    "notes": "_links.novoEvento=/events; meusEventos=[]"
+  },
+  {
+    "name": "prof-force-aluno",
+    "result": "403",
+    "notes": "ProblemBanner Acesso negado; instance=/bff/dashboard/aluno"
+  },
+  {
+    "name": "admin-sem-bff",
+    "result": "ok",
+    "notes": "perfil BFF nenhum; JSON /me roles ADMIN"
+  },
+  {
+    "name": "grr-login",
+    "result": "200",
+    "notes": "identificador GRR20210001; BFF aluno; email ana.aluno@ufpr.br"
+  },
+  {
+    "name": "aluno-force-secretaria",
+    "result": "403",
+    "notes": "instance=/bff/dashboard/secretaria"
+  }
+]

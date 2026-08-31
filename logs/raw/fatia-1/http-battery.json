@@ -1,0 +1,59 @@
+{
+  "at": "2026-08-31T14:15:00-03:00",
+  "origin": "http://localhost:5173",
+  "api": "http://localhost:8080",
+  "login": {
+    "empty": { "status": 400, "type": "validation-error" },
+    "badCredentials": {
+      "status": 401,
+      "detail": "Credenciais inválidas. Verifique seus dados e tente novamente."
+    },
+    "grrBare20210001": { "status": 401, "note": "as-built exige prefixo GRR" },
+    "grrPrefixed": { "status": 200, "identificador": "GRR20210001", "flags": { "mustChangePassword": false, "mustAcceptLgpd": true } },
+    "alunoEmail": { "status": 200, "jwtInBody": false },
+    "profiles": {
+      "admin": { "login": 200, "me": "admin@ufpr.br", "roles": ["ADMIN"], "jwtInBody": false, "lgpd": false },
+      "prof": { "login": 200, "me": "prof.ana@ufpr.br", "roles": ["PROFESSOR"] },
+      "sec": { "login": 200, "me": "secretaria@ufpr.br", "roles": ["SECRETARIO"] },
+      "coord": { "login": 200, "me": "coord.tads@ufpr.br", "roles": ["COORDENADOR"] },
+      "egresso": { "login": 200, "me": "ana.egressa@ufpr.br", "roles": ["EGRESSO"] }
+    },
+    "rateLimit": {
+      "identifier": "audit.fatia1.429@ufpr.br",
+      "attempts": [401, 401, 401, 401, 401, 429, 429],
+      "retryAfterSecondsOn6th": 59
+    }
+  },
+  "forgot": {
+    "fake": { "status": 202, "mensagem": "Se este email existir, enviaremos um link válido por 24h." },
+    "real": { "status": 202, "mensagem": "Se este email existir, enviaremos um link válido por 24h." },
+    "empty": { "status": 400, "type": "validation-error" }
+  },
+  "reset": {
+    "invalidToken": { "status": 401, "detail": "Token de redefinição de senha inválido ou expirado." }
+  },
+  "contato": {
+    "get": { "status": 200, "_links": { "enviar": "/publico/contato" } },
+    "postNoCsrf": { "status": 403, "type": "forbidden" },
+    "postWithCsrf": { "status": 202, "statusBody": "ACEITO" }
+  },
+  "publico": {
+    "jwks": { "status": 200, "kty": ["RSA", "OKP/Ed25519"] },
+    "protocolo99999": { "status": 404, "type": "not-found" },
+    "certDeadbeef": { "status": 404, "type": "not-found" }
+  },
+  "ott": {
+    "invalid": { "status": 401, "detail": "Token one-time inválido ou expirado." }
+  },
+  "spaClientCaptures": [
+    { "url": "http://localhost:8080/auth/login", "credentials": "include", "authorization": null, "xsrf": null },
+    { "url": "http://localhost:8080/publico/contato", "method": "POST", "skipCsrf": true, "xsrf": null, "result": 403 },
+    { "url": "http://localhost:8080/publico/contato", "method": "POST", "xsrf": "present", "result": 202 }
+  ],
+  "storageAfterAlunoUiLogin": {
+    "localStorage": {},
+    "sessionStorage": { "so2.session.flags": "{\"mustChangePassword\":false,\"mustAcceptLgpd\":true}" },
+    "documentCookie": "XSRF-TOKEN=<uuid>",
+    "httpOnlyAccessRefresh": "inferred via GET /me 200"
+  }
+}

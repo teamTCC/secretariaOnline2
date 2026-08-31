@@ -1,0 +1,17 @@
+HTTP/1.1 400 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json
+Transfer-Encoding: chunked
+Date: Mon, 31 Aug 2026 19:22:55 GMT
+Connection: close
+
+{"type":"https://secretariaonline.ufpr.br/errors/bad-request","title":"Dados inv├ílidos","status":400,"detail":"Aceite da pol├¡tica de privacidade ├® obrigat├│rio.","instance":"/auth/first-access","timestamp":"2026-08-31T16:22:55.819563900-03:00"}
+

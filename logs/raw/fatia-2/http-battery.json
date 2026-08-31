@@ -1,0 +1,78 @@
+[
+  {
+    "name": "dash-aluno",
+    "status": "200"
+  },
+  {
+    "name": "dash-aluno-as-prof",
+    "status": "403"
+  },
+  {
+    "name": "dash-sec-as-aluno",
+    "status": "403"
+  },
+  {
+    "name": "dash-prof",
+    "status": "200"
+  },
+  {
+    "name": "dash-sec",
+    "status": "200"
+  },
+  {
+    "name": "dash-egresso",
+    "status": "200"
+  },
+  {
+    "name": "dash-aluno-as-egresso",
+    "status": "403"
+  },
+  {
+    "name": "me-aluno",
+    "status": "200"
+  },
+  {
+    "name": "patch-me",
+    "status": "200"
+  },
+  {
+    "name": "password-wrong",
+    "status": "400"
+  },
+  {
+    "name": "notifications",
+    "status": "200"
+  },
+  {
+    "name": "fcm-post",
+    "status": "200"
+  },
+  {
+    "name": "fcm-del",
+    "status": "200"
+  },
+  {
+    "name": "data-export",
+    "status": "202"
+  },
+  {
+    "name": "avatar",
+    "status": "200"
+  },
+  {
+    "name": "logout",
+    "status": "200"
+  },
+  {
+    "name": "me-after-logout",
+    "status": "401"
+  },
+  {
+    "name": "fa-aceite-false",
+    "status": "400"
+  },
+  {
+    "name": "fa-weak",
+    "status": "400"
+  }
+]

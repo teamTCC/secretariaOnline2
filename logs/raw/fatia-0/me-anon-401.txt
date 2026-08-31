@@ -1,0 +1,27 @@
+GET /me HTTP/1.1
+Accept-Encoding: gzip, deflate
+Accept: */*
+Connection: keep-alive
+User-Agent: HTTPie/3.2.4
+Host: localhost:8080
+
+
+
+HTTP/1.1 401 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json;charset=UTF-8
+Content-Length: 197
+Date: Mon, 31 Aug 2026 15:22:16 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+Set-Cookie: XSRF-TOKEN=5f54a301-88e2-48a0-a80e-731366e24a3b; Max-Age=43200; Expires=Tue, 01 Sep 2026 03:22:16 GMT; Path=/
+
+{"type":"https://secretariaonline.ufpr.br/errors/unauthorized","title":"N├úo autenticado","status":401,"detail":"Token JWT inv├ílido ou expirado.","timestamp":"2026-08-31T12:22:16.019803900-03:00"}
