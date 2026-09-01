@@ -1,0 +1,48 @@
+﻿{
+    "descricao":  "Tipo rascunho fatia 7 HTTP",
+    "code":  "FATIA7_1788236883",
+    "formSchema":  {
+                       "properties":  {
+                                          "finalidade":  {
+                                                             "type":  "string",
+                                                             "enum":  [
+                                                                          "BOLSA",
+                                                                          "OUTRO"
+                                                                      ]
+                                                         }
+                                      },
+                       "type":  "object",
+                       "required":  [
+                                        "finalidade"
+                                    ]
+                   },
+    "prazoDias":  5,
+    "workflowJson":  {
+                         "states":  [
+                                        "RASCUNHO",
+                                        "ABERTA",
+                                        "EM_TRIAGEM",
+                                        "DEFERIDA",
+                                        "ARQUIVADA"
+                                    ],
+                         "initial":  "ABERTA",
+                         "transitions":  [
+                                             {
+                                                 "from":  "ABERTA",
+                                                 "to":  "EM_TRIAGEM",
+                                                 "action":  "ASSIGN",
+                                                 "requiresAuthority":  [
+                                                                           "request.deliberate"
+                                                                       ]
+                                             },
+                                             {
+                                                 "from":  "EM_TRIAGEM",
+                                                 "to":  "DEFERIDA",
+                                                 "action":  "DEFER",
+                                                 "requiresAuthority":  [
+                                                                           "request.deliberate"
+                                                                       ]
+                                             }
+                                         ]
+                     }
+}

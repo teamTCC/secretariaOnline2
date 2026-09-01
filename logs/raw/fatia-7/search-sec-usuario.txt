@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:27:50 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"query":"ana","results":[{"type":"USUARIO","id":"98fe1066-4c4c-4f20-b911-2941e0c921a0","title":"Ana Professora Demo","subtitle":"prof.ana@ufpr.br","href":"/usuarios/98fe1066-4c4c-4f20-b911-2941e0c921a0"},{"type":"USUARIO","id":"ba731d06-ad28-4998-9a53-e756ce1b789f","title":"Ana Egressa Demo","subtitle":"ana.egressa@ufpr.br","href":"/usuarios/ba731d06-ad28-4998-9a53-e756ce1b789f"},{"type":"USUARIO","id":"1bafbb82-a473-4170-8433-c13cebc22562","title":"Ana Aluno Demo","subtitle":"ana.aluno@ufpr.br","href":"/usuarios/1bafbb82-a473-4170-8433-c13cebc22562"}],"totalResults":3}
+

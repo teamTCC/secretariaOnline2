@@ -31,6 +31,21 @@ export function Shell() {
         <Link to="/login">Login</Link>
         <Link to="/dashboard">Dashboard</Link>
         <Link to="/solicitacoes">Solicitações</Link>
+        <Link to="/solicitacoes?estado=ABERTA">Fila</Link>
+        <Link to="/secretaria/nova-on-behalf">On-behalf</Link>
+        <Link to="/usuarios">Usuários</Link>
+        <Link to="/tarefas">Tarefas</Link>
+        <Link to="/relatorios">Relatórios</Link>
+        <Link to="/cursos/tads/config">Curso config</Link>
+        <Link to="/graduacoes">Colação</Link>
+        <Link to="/import">Import</Link>
+        <Link to="/export">Export</Link>
+        <Link to="/busca">Busca</Link>
+        <Link to="/admin/request-types">Request types</Link>
+        <Link to="/admin/roles">Roles</Link>
+        <Link to="/admin/outbox?status=PROCESSED">Outbox</Link>
+        <Link to="/admin/templates">Templates</Link>
+        <Link to="/admin/audit">Audit</Link>
         <Link to="/formativas">Formativas</Link>
         <Link to="/eventos">Eventos</Link>
         <Link to="/certificados">Certificados</Link>
@@ -43,6 +58,7 @@ export function Shell() {
         <Link to="/comissoes/caaf">CAAF</Link>
         <Link to="/comissoes/coe">COE</Link>
         <Link to="/faq">FAQ</Link>
+        <Link to="/suporte">Tickets staff</Link>
         <Link to="/me">Me</Link>
         <Link to="/contato">Contato</Link>
         <button type="button" disabled={logout.isPending} onClick={() => logout.mutate()}>

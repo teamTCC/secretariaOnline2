@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:28:13 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"content":[{"id":"1bafbb82-a473-4170-8433-c13cebc22562","nome":"Ana Aluno Demo","email":"ana.aluno@ufpr.br","grr":"GRR20210001","eligible":false,"bloqueios":[{"razao":"TCC","detalhe":"TCC n├úo est├í APROVADO."},{"razao":"HISTORICO","detalhe":"Hist├│rico incompleto: 0 de 5 disciplinas CONCLUIDA."},{"razao":"HORAS_FORMATIVAS","detalhe":"Horas formativas 4.0 < m├¡nimo 120.0."},{"razao":"SOLICITACOES","detalhe":"Existe solicita├º├úo em ABERTA, EM_DELIBERACAO ou EM_AJUSTE."}]}],"page":{"number":0,"size":20,"totalElements":1,"totalPages":1}}
+

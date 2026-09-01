@@ -1,0 +1,18 @@
+﻿HTTP/1.1 202 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:28:16 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"jobId":"25abd899-9cbe-4ff3-a9eb-7595340a9208","status":"PROCESSANDO","expiresAt":"2026-09-08T04:28:16.1239339Z","_links":{"self":"/exports/25abd899-9cbe-4ff3-a9eb-7595340a9208","download":"/exports/25abd899-9cbe-4ff3-a9eb-7595340a9208/download"}}
+

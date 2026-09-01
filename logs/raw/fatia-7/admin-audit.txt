@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:28:11 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"content":[{"id":"d3948ecc-ecb9-4001-bb5e-5b376910aeff","entityType":"RequestType","entityId":"95ba4747-1160-48e7-a826-cafeb9f054b5","action":"request_type.publish","actorId":"01a05940-ec31-70fa-8350-d42331ef541a","details":{"resultado":"PUBLISHED"},"createdAt":"2026-09-01T04:28:05.553414Z"},{"id":"224538af-cc85-4546-b8ae-4c041033bb08","entityType":"usuario","entityId":"98fe1066-4c4c-4f20-b911-2941e0c921a0","action":"LOGIN_SUCCESS","actorId":"98fe1066-4c4c-4f20-b911-2941e0c921a0","details":{"ip":"0:0:0:0:0:0:0:1","userAgent":"HTTPie/3.2.4","resultado":"OK"},"createdAt":"2026-09-01T04:27:33.660496Z"},{"id":"d9e2a946-940d-4b44-b1c7-83da6d4d3592","entityType":"usuario","entityId":"1bafbb82-a473-4170-8433-c13cebc22562","action":"LOGIN_SUCCESS","actorId":"1bafbb82-a473-4170-8433-c13cebc22562","details":{"ip":"0:0:0:0:0:0:0:1","userAgent":"HTTPie/3.2.4","resultado":"OK"},"createdAt":"2026-09-01T04:27:32.655437Z"},{"id":"9e12a9c0-4afa-4556-be94-943fbcf32a54","entityType":"usuario","entityId":"01a05940-ec31-70fa-8350-d42331ef541a","action":"LOGIN_SUCCESS","actorId":"01a05940-ec31-70fa-8350-d42331ef541a","details":{"ip":"0:0:0:0:0:0:0:1","userAgent":"HTTPie/3.2.4","resultado":"OK"},"createdAt":"2026-09-01T04:27:31.563267Z"},{"id":"7cd47d67-9ae8-4a41-af71-6f6e4074cbb0","entityType":"usuario","entityId":"26942516-ad2b-4316-bbb4-c146fa7628a3","action":"LOGIN_SUCCESS","actorId":"26942516-ad2b-4316-bbb4-c146fa7628a3","details":{"ip":"0:0:0:0:0:0:0:1","userAgent":"HTTPie/3.2.4","resultado":"OK"},"createdAt":"2026-09-01T04:27:30.546Z"}],"page":{"number":0,"size":5,"totalElements":76,"totalPages":16},"_links":{"self":"http://localhost:8080/admin/audit?page=0&size=5","first":"http://localhost:8080/admin/audit?page=0&size=5","last":"http://localhost:8080/admin/audit?page=15&size=5","next":"http://localhost:8080/admin/audit?page=1&size=5"}}
+

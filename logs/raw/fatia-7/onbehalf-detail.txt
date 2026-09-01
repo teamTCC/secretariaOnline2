@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:27:44 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"id":"d0146a17-a5ba-4580-a211-dc9ca18fbb68","numeroAnual":10,"ano":2026,"protocolo":"2026/0010","tipoCode":"DECLARACAO_MATRICULA","tipoDescricao":"Declara├º├úo de matr├¡cula","estado":"ABERTA","idSolicitante":"1bafbb82-a473-4170-8433-c13cebc22562","dados":{"finalidade":"BOLSA","observacoes":"Aberta pelo balcao fatia 7"},"formSchema":{"type":"object","required":["finalidade"],"properties":{"finalidade":{"enum":["BOLSA","CONVENIO","OUTRO"],"type":"string","x-ui":{"widget":"select"},"title":"Finalidade"},"observacoes":{"type":"string","x-ui":{"widget":"textarea"},"title":"Observa├º├Áes"}}},"prazoEm":"2026-09-04T04:27:43.732898Z","createdAt":"2026-09-01T04:27:43.747441Z","idRequestTypeVersion":"01a05940-ecf5-78c3-aa38-480fa50376d0","_links":{"self":"/requests/d0146a17-a5ba-4580-a211-dc9ca18fbb68","events":"/requests/d0146a17-a5ba-4580-a211-dc9ca18fbb68/events","attachments":"/requests/d0146a17-a5ba-4580-a211-dc9ca18fbb68/attachments","assign":"/requests/d0146a17-a5ba-4580-a211-dc9ca18fbb68/transitions"}}
+

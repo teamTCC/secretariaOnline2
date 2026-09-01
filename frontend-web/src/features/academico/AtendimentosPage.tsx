@@ -30,6 +30,11 @@ export function AtendimentosPage() {
   const [alias, setAlias] = useState(false)
   const [created, setCreated] = useState<unknown>()
   const [ack, setAck] = useState<unknown>()
+  const [idAluno, setIdAluno] = useState('1bafbb82-a473-4170-8433-c13cebc22562')
+  const [balcaoAssunto, setBalcaoAssunto] = useState('Revisão de matrícula')
+  const [balcaoDesc, setBalcaoDesc] = useState('Atendimento de balcão')
+  const [balcaoTipo, setBalcaoTipo] = useState('PRESENCIAL')
+  const [balcao, setBalcao] = useState<unknown>()
 
   const path = alias
     ? `/service-records?aluno=me${status ? `&status=${encodeURIComponent(status)}` : ''}&page=0&size=20`
@@ -60,12 +65,53 @@ export function AtendimentosPage() {
     },
   })
 
+  const balcaoCreate = useMutation({
+    mutationFn: () =>
+      api('/service-records', {
+        method: 'POST',
+        body: { idAluno, assunto: balcaoAssunto, tipo: balcaoTipo, descricao: balcaoDesc },
+      }),
+    onSuccess: (d) => {
+      setBalcao(d)
+      void qc.invalidateQueries({ queryKey: ['service-records'] })
+    },
+    onError: setBalcao,
+  })
+
   return (
     <Page title="atendimentos">
       <p>
         POST /me/service-records · GET /me/service-records · alias GET /service-records?aluno=me · _links.acknowledge só
-        PENDENTE_CIENCIA
+        PENDENTE_CIENCIA. Balcão: POST /service-records {`{ idAluno, assunto, tipo: PRESENCIAL }`} → PENDENTE_CIENCIA.
       </p>
+      <h2>balcão (secretaria)</h2>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          balcaoCreate.mutate()
+        }}
+      >
+        <label>
+          idAluno
+          <input value={idAluno} onChange={(e) => setIdAluno(e.target.value)} />
+        </label>
+        <label>
+          assunto
+          <input value={balcaoAssunto} onChange={(e) => setBalcaoAssunto(e.target.value)} />
+        </label>
+        <label>
+          descricao
+          <textarea value={balcaoDesc} onChange={(e) => setBalcaoDesc(e.target.value)} />
+        </label>
+        <label>
+          tipo
+          <input value={balcaoTipo} onChange={(e) => setBalcaoTipo(e.target.value)} />
+        </label>
+        <button type="submit" disabled={balcaoCreate.isPending}>
+          POST /service-records
+        </button>
+      </form>
+      <JsonPanel data={balcao} />
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -102,16 +148,18 @@ export function AtendimentosPage() {
           alias GET /service-records?aluno=me
         </label>
       </div>
-      {(list.isPending || schedule.isPending || acknowledge.isPending) && <p>carregando</p>}
+      {(list.isPending || schedule.isPending || acknowledge.isPending || balcaoCreate.isPending) && <p>carregando</p>}
       <ProblemBanner
         problem={
           isProblem(schedule.error)
             ? schedule.error
             : isProblem(acknowledge.error)
               ? acknowledge.error
-              : isProblem(list.error)
-                ? list.error
-                : null
+              : isProblem(balcaoCreate.error)
+                ? balcaoCreate.error
+                : isProblem(list.error)
+                  ? list.error
+                  : null
         }
       />
       {(list.data?.content ?? []).map((r) => {

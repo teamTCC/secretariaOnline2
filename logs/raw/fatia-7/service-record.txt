@@ -1,0 +1,18 @@
+﻿HTTP/1.1 201 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:28:18 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"id":"d873f053-a172-46be-ac57-e4dc1b348075","idAluno":"1bafbb82-a473-4170-8433-c13cebc22562","idSecretario":"b1540ee7-32ee-474a-9e66-2405d9e81762","assunto":"Balcao fatia 7","tipo":"PRESENCIAL","descricao":"HTTP","estado":"PENDENTE_CIENCIA","createdAt":"2026-09-01T04:28:18.2267707Z","_links":{"self":"/service-records/d873f053-a172-46be-ac57-e4dc1b348075"}}
+

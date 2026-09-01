@@ -59,6 +59,29 @@ export function uiPathFromHref(href: string): string {
   if (path === '/me/service-records' || path === '/service-records') return '/atendimentos'
   if (path === '/communications/me' || path === '/communications') return '/comunicados'
   if (path === '/faq') return '/faq'
+  if (path === '/support/tickets/mine') return '/faq'
+  if (path === '/support/tickets' || path.startsWith('/support/tickets/')) return '/suporte'
+  if (path === '/search') return `/busca${search}`
+  if (path === '/usuarios') return `/usuarios${search}`
+  const usuario = path.match(/^\/usuarios\/([0-9a-fA-F-]{36})$/)
+  if (usuario) return `/usuarios/${usuario[1]}`
+  if (path === '/tasks') return `/tarefas${search}`
+  if (path === '/reports/secretary') return '/relatorios?kind=secretary'
+  if (path === '/reports/coordinator') return '/relatorios?kind=coordinator'
+  const courseCfg = path.match(/^\/courses\/([^/]+)\/config$/)
+  if (courseCfg) return `/cursos/${courseCfg[1]}/config`
+  if (path === '/request-types' || path.startsWith('/request-types/')) return '/admin/request-types'
+  if (path === '/admin/roles' || path === '/admin/perfis' || path === '/admin/autoridades') return '/admin/roles'
+  if (path === '/admin/outbox' || path.startsWith('/admin/outbox/')) return `/admin/outbox${search}`
+  if (path === '/admin/audit') return `/admin/audit${search}`
+  if (path === '/imports' || path.startsWith('/imports/')) return '/import'
+  if (path === '/exports' || path.startsWith('/exports/')) return '/export'
+  if (path === '/graduations' || path === '/secretaria/egressos') return '/graduacoes'
+  const grad = path.match(/^\/graduations\/([0-9a-fA-F-]{36})/)
+  if (grad) return `/graduacoes?id=${grad[1]}`
+  if (path === '/communication-templates' || path.startsWith('/communication-templates/')) {
+    return '/admin/templates'
+  }
   if (path === '/internships' || path === '/internships/mine') return '/estagios'
   const intern = path.match(/^\/internships\/([0-9a-fA-F-]{36})(?:\/.*)?$/)
   if (intern) return `/estagios/${intern[1]}`

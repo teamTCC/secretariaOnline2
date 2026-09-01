@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:27:59 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"filtros":{"periodo":"2026-2","curso":"TADS","cursoId":"01a05940-ec36-75cc-ab53-d999ce0a7fa1"},"kpis":{"alunosAtivos":1,"egressos":1,"solicitacoesAbertas":8,"eventosAgendados":1},"solicitacoesPorTipo":[{"tipo":"SEGUNDA_CHAMADA","total":1},{"tipo":"ADIANTAMENTO_PERIODO","total":1},{"tipo":"DECLARACAO_MATRICULA","total":3},{"tipo":"HISTORICO_ESCOLAR","total":4},{"tipo":"AUTORIZACAO_IMAGEM","total":2},{"tipo":"TRANCAMENTO_DISCIPLINA","total":1}],"distribuicaoPorEstado":[{"estado":"RASCUNHO","total":2},{"estado":"ABERTA","total":8},{"estado":"DEFERIDA","total":2}],"evolucaoTemporal":[{"mes":"2026-08","total":11},{"mes":"2026-09","total":1}],"rankingCursos":[{"cursoId":"01a05940-ec36-75cc-ab53-d999ce0a7fa1","sigla":"TADS","total":12}]}
+

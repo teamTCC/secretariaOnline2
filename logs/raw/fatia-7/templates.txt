@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:28:11 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+[{"id":"01a05940-ecc2-7dce-a8af-ea117e4620b4","codigo":"solicitacoes.transicionada","titulo":"Atualiza├º├úo de solicita├º├úo","assunto":"Atualiza├º├úo na sua solicita├º├úo ÔÇö SecretariaOnline","corpo":"<html><body><h2>Sua solicita├º├úo foi atualizada</h2><p>Ol├í, <strong>{{nome}}</strong>!</p><p>A solicita├º├úo <strong>{{tipo}}</strong> mudou para o estado <strong>{{estadoNovo}}</strong>.</p>{{parecerHtml}}<p>Acesse o portal para ver os detalhes.</p><br><p>ÔÇö Equipe SecretariaOnline UFPR</p></body></html>","canal":"EMAIL","versao":1,"ativo":true,"variaveis":["nome","email","protocolo","eventoTitulo"]},{"id":"01a05940-ecc4-740b-b28d-4119dbfa9f8b","codigo":"atendimentos.created","titulo":"Atendimento registrado","assunto":"Novo atendimento registrado","corpo":"<html><body><h2>Atendimento registrado</h2><p>Ol├í, <strong>{{nome}}</strong>!</p><p>A secretaria registrou um atendimento: <strong>{{assunto}}</strong>.</p><p>Acesse <em>Meus atendimentos</em> para dar ci├¬ncia.</p><br><p>ÔÇö Equipe SecretariaOnline UFPR</p></body></html>","canal":"EMAIL","versao":1,"ativo":true,"variaveis":["nome","email","protocolo","eventoTitulo"]},{"id":"01a05940-ecc4-7025-87db-d3845986f37b","codigo":"graduations.confirmed","titulo":"Cola├º├úo de grau","assunto":"Cola├º├úo de grau confirmada","corpo":"<html><body><h2>Cola├º├úo de grau</h2><p>Ol├í, <strong>{{nome}}</strong>!</p><p>Sua cola├º├úo de grau foi confirmada. Seu perfil agora ├® de egresso.</p><br><p>ÔÇö Equipe SecretariaOnline UFPR</p></body></html>","canal":"EMAIL","versao":1,"ativo":true,"variaveis":["nome","email","protocolo","eventoTitulo"]},{"id":"01a05940-ecc4-7164-8dd8-8f7279cef1d9","codigo":"imports.completed","titulo":"Importa├º├úo CSV","assunto":"Importa├º├úo CSV conclu├¡da","corpo":"<html><body><h2>Importa├º├úo conclu├¡da</h2><p>Ol├í, <strong>{{nome}}</strong>!</p><p>O job de importa├º├úo terminou com status <strong>{{status}}</strong>.</p><br><p>ÔÇö Equipe SecretariaOnline UFPR</p></body></html>","canal":"EMAIL","versao":1,"ativo":true,"variaveis":["nome","email","protocolo","eventoTitulo"]},{"id":"01a05940-ecc4-72fc-af82-b32910a960c4","codigo":"exports.ready","titulo":"Exporta├º├úo pronta","assunto":"Exporta├º├úo pronta para download","corpo":"<html><body><h2>Exporta├º├úo pronta</h2><p>Ol├í, <strong>{{nome}}</strong>!</p><p>O arquivo <strong>{{kind}}</strong> est├í dispon├¡vel para download.</p><br><p>ÔÇö Equipe SecretariaOnline UFPR</p></body></html>","canal":"EMAIL","versao":1,"ativo":true,"variaveis":["nome","email","protocolo","eventoTitulo"]},{"id":"01a05940-ecc4-7088-a133-0e4610348ad5","codigo":"contato.recebido","titulo":"Contato p├║blico","assunto":"Nova mensagem de contato ÔÇö {{assunto}}","corpo":"<html><body><h2>Mensagem de contato</h2><p><strong>De:</strong> {{nome}} &lt;{{email}}&gt;</p><p><strong>Assunto:</strong> {{assunto}}</p><p>{{mensagem}}</p></body></html>","canal":"EMAIL","versao":1,"ativo":true,"variaveis":["nome","email","protocolo","eventoTitulo"]}]
+

@@ -1,0 +1,21 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:27:29 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+Set-Cookie: XSRF-TOKEN=0f8fbfd7-1bd3-42b8-b286-073f6344c010; Max-Age=43200; Expires=Tue, 01 Sep 2026 16:27:28 GMT; Path=/
+Set-Cookie: access_token=eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiI1NWRkYTFhZS0yNjUxLTRlNTItOTZkMS04NzgwNjYzZGNhYTYiLCJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwic3ViIjoiYjE1NDBlZTctMzJlZS00NzRhLTllNjYtMjQwNWQ5ZTgxNzYyIiwic2lkIjoiOWQzN2MxNTMtNzhjMy00ZWMxLThiOTktZDNiNzEzZTRiNjg0IiwiYXV0aG9yaXRpZXMiOlsiZXZlbnQubWFuYWdlIiwiZXhwb3J0LnJ1biIsInJlcXVlc3QuaW50ZXJuYWxfb3BlbiIsImF1ZGl0LnJlYWQiLCJkaXBsb21hLnJlZ2lzdGVyIiwicmVxdWVzdC5yZW9wZW4iLCJhdXRoLmZpcnN0X2FjY2VzcyIsInJlcXVlc3QuZGVsaWJlcmF0ZSIsInVzZXIuZXhwb3J0X293bl9kYXRhIiwiYWx1bW5pLmxpc3QiLCJjb21tdW5pY2F0aW9uLnB1Ymxpc2giLCJkYXNoYm9hcmQudmlld19zZWNyZXRhcnkiLCJyZXF1ZXN0LnZpZXdfY3Vyc28iLCJpbWFnZV9hdXRob3JpemF0aW9uLnJldmlldyIsInVzZXIudXBkYXRlX293bl9wcm9maWxlIiwidXNlci5yZXNldF9wYXNzd29yZCIsImNvbW11bmljYXRpb24ucmVhZCIsInRhc2subWFuYWdlIiwidXNlci5tYW5hZ2Vfc3R1ZGVudHMiLCJ1c2VyLnVwZGF0ZV9vd25fcGFzc3dvcmQiLCJyZXBvcnQudmlld19zZWNyZXRhcnkiLCJpbXBvcnQucnVuIl0sIm5vbWUiOiJTZWNyZXRhcmlhIERlbW8iLCJpYXQiOjE3ODgyMzY4NDksImV4cCI6MTc4ODIzNzc0OX0.UyHkrk8orG10tJhOAVcFgy3Ciws-MRR_ooVPCu8mcAuDuPUOSby9xckP8SMohgkFAne7hqR-4SfkPzubcUEoBiTQtKSaKQ7fZ-z04HD_ekyOVc4gwo5yWnBDu8eEVQx6bMFT95PF2GBFIvyxrXK4v0hpq3YSRP5yOymkoP01YPqU8Tbrj-1KA85FoAzeOPI7uTk7QWvyr9u8ZMAgW4kO3GXFXjPlouFZibzxYsF3yCYEoUzSu4cGacSwwULEZld6IcHLljEZmFrJu64M44DhJe7qPxZ4ssacdQusnky3oE12pVr-Hinmuuz_s4RTRfYD3UKbJNcF9nEmUrcQ_kxhrQ; Max-Age=900; Expires=Tue, 01 Sep 2026 04:42:29 GMT; Path=/; HttpOnly; SameSite=Lax
+Set-Cookie: refresh_token=2129085d236b40e18128a63858b9785373908126f52b4f0e968cfce581a92277; Max-Age=604800; Expires=Tue, 08 Sep 2026 04:27:29 GMT; Path=/auth; HttpOnly; SameSite=Lax
+
+{"mustChangePassword":false,"mustAcceptLgpd":false}
+

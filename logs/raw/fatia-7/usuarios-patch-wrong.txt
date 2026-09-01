@@ -1,0 +1,17 @@
+﻿HTTP/1.1 500 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:28:14 GMT
+Connection: close
+
+{"type":"https://secretariaonline.ufpr.br/errors/internal-error","title":"Erro interno","status":500,"detail":"Ocorreu um erro inesperado. Tente novamente ou contate o suporte.","instance":"/usuarios/1bafbb82-a473-4170-8433-c13cebc22562","timestamp":"2026-09-01T01:28:14.454564800-03:00","incidentId":"INC-2026-831a"}
+

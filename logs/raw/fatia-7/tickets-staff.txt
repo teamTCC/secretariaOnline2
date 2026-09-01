@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:28:19 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"content":[{"id":"cce04870-4f7c-4556-a9a8-34fe49c6eefd","idUsuario":"1bafbb82-a473-4170-8433-c13cebc22562","assunto":"Erro ao submeter atividade formativa","estado":"ABERTO","createdAt":"2026-09-01T01:58:46.976265Z"},{"id":"6793800d-0da3-4baf-b067-f3db8c96dc52","idUsuario":"1bafbb82-a473-4170-8433-c13cebc22562","assunto":"Fatia 4 UI ticket","estado":"ABERTO","createdAt":"2026-09-01T02:06:15.793365Z"}],"page":{"number":0,"size":20,"totalElements":2,"totalPages":1},"_links":{"self":"http://localhost:8080/support/tickets?page=0&size=20","first":"http://localhost:8080/support/tickets?page=0&size=20","last":"http://localhost:8080/support/tickets?page=0&size=20"}}
+

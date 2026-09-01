@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 04:28:00 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"filtros":{"periodo":"2026-2","curso":"TADS","cursoId":"01a05940-ec36-75cc-ab53-d999ce0a7fa1"},"kpis":{"tempoMedioDeliberacaoSegundos":140.75922,"taxaIndeferimento":0.0,"thresholdIndeferimento":0.3,"volumeFormativas":1,"taxaPresencaEventosAgendados":6,"tccEmAndamento":2,"estagiosSemSupervisor":2},"seriesFormativas":[{"categoria":"PALESTRA","total":1}],"evasaoPorPeriodo":[],"cargaPorDeliberador":[{"idAtor":"b1540ee7-32ee-474a-9e66-2405d9e81762","nome":"Secretaria Demo","deliberacoes":2}],"pendencias":[{"id":"a1f30f2a-886f-4460-a17d-adcbfaa24326","tipo":"DECLARACAO_MATRICULA","prazoEm":"2026-09-03T21:00:52.684348Z","href":"/requests/a1f30f2a-886f-4460-a17d-adcbfaa24326"},{"id":"940c0718-eedd-4154-b92a-f12ecf596ca7","tipo":"HISTORICO_ESCOLAR","prazoEm":"2026-09-05T21:23:24.240828Z","href":"/requests/940c0718-eedd-4154-b92a-f12ecf596ca7"},{"id":"98bd0d97-5bcc-4e7d-af7b-8f3303b49ecb","tipo":"AUTORIZACAO_IMAGEM","prazoEm":"2026-09-05T21:23:24.366061Z","href":"/requests/98bd0d97-5bcc-4e7d-af7b-8f3303b49ecb"},{"id":"8df44ccf-b90b-435b-9e48-3208947f6d5b","tipo":"SEGUNDA_CHAMADA","prazoEm":"2026-09-05T21:25:44.8758Z","href":"/requests/8df44ccf-b90b-435b-9e48-3208947f6d5b"},{"id":"35ebc71f-e0d1-41c5-8ce3-bc17ba3fbd32","tipo":"HISTORICO_ESCOLAR","prazoEm":"2026-09-05T21:28:17.873114Z","href":"/requests/35ebc71f-e0d1-41c5-8ce3-bc17ba3fbd32"},{"id":"633038e4-be7e-409a-9be1-a7fcbe7c28c8","tipo":"AUTORIZACAO_IMAGEM","prazoEm":"2026-09-05T21:40:12.550574Z","href":"/requests/633038e4-be7e-409a-9be1-a7fcbe7c28c8"},{"id":"5c1950ee-e5f3-490b-869b-016862a03e70","tipo":"TRANCAMENTO_DISCIPLINA","prazoEm":"2026-09-10T21:01:57.921436Z","href":"/requests/5c1950ee-e5f3-490b-869b-016862a03e70"},{"id":"82226825-8517-48b2-b877-04fcb1a20a30","tipo":"ADIANTAMENTO_PERIODO","prazoEm":"2026-09-15T21:23:24.401188Z","href":"/requests/82226825-8517-48b2-b877-04fcb1a20a30"}],"proximosEventos":[],"_links":{"self":"/reports/coordinator","curso":"/academico/relatorios/curso"}}
+

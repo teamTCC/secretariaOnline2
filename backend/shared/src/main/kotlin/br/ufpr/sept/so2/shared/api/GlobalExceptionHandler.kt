@@ -7,6 +7,7 @@ import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.AuthenticationException
 import org.springframework.validation.FieldError
 import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.web.HttpRequestMethodNotSupportedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -62,6 +63,15 @@ class GlobalExceptionHandler {
     @ExceptionHandler(NoSuchElementException::class, NoResourceFoundException::class)
     fun handleNotFound(ex: Exception): ProblemDetail =
         problemDetail(HttpStatus.NOT_FOUND, "Recurso não encontrado", ex.message ?: "O recurso solicitado não foi encontrado.", "not-found")
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
+    fun handleMethodNotAllowed(ex: HttpRequestMethodNotSupportedException): ProblemDetail =
+        problemDetail(
+            HttpStatus.METHOD_NOT_ALLOWED,
+            "Método não permitido",
+            ex.message ?: "Método HTTP não suportado neste path.",
+            "method-not-allowed",
+        )
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgument(ex: IllegalArgumentException): ProblemDetail =

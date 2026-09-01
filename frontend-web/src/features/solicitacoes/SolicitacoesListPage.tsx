@@ -89,6 +89,10 @@ export function SolicitacoesListPage() {
     <Page title="solicitacoes">
       <p>
         <Link to="/solicitacoes/nova">nova</Link>
+        {' · '}
+        <Link to="/solicitacoes?estado=ABERTA">fila ABERTA</Link>
+        {' · '}
+        <Link to="/secretaria/nova-on-behalf">on-behalf</Link>
       </p>
       <form
         onSubmit={(e) => {

@@ -1,0 +1,190 @@
+﻿[
+    {
+        "name":  "login-sec",
+        "status":  "200"
+    },
+    {
+        "name":  "login-coord",
+        "status":  "200"
+    },
+    {
+        "name":  "login-admin",
+        "status":  "200"
+    },
+    {
+        "name":  "login-aluno",
+        "status":  "200"
+    },
+    {
+        "name":  "login-prof",
+        "status":  "200"
+    },
+    {
+        "name":  "dash-sec",
+        "status":  "200"
+    },
+    {
+        "name":  "dash-sec-as-prof",
+        "status":  "403"
+    },
+    {
+        "name":  "usuarios-email-sec",
+        "status":  "200"
+    },
+    {
+        "name":  "usuarios-email-aluno-403",
+        "status":  "403"
+    },
+    {
+        "name":  "requests-types-sec",
+        "status":  "200"
+    },
+    {
+        "name":  "onbehalf-post",
+        "status":  "201"
+    },
+    {
+        "name":  "onbehalf-detail",
+        "status":  "200"
+    },
+    {
+        "name":  "bulk-defer-aberta",
+        "status":  "422"
+    },
+    {
+        "name":  "assign-then",
+        "status":  "200"
+    },
+    {
+        "name":  "defer-after-assign",
+        "status":  "200"
+    },
+    {
+        "name":  "search-aluno",
+        "status":  "200"
+    },
+    {
+        "name":  "search-sec-usuario",
+        "status":  "200"
+    },
+    {
+        "name":  "search-admin",
+        "status":  "200"
+    },
+    {
+        "name":  "tasks-sec",
+        "status":  "200"
+    },
+    {
+        "name":  "tarefas-wrong",
+        "status":  "404"
+    },
+    {
+        "name":  "task-create",
+        "status":  "201"
+    },
+    {
+        "name":  "reports-sec",
+        "status":  "200"
+    },
+    {
+        "name":  "reports-coord",
+        "status":  "200"
+    },
+    {
+        "name":  "course-config-coord",
+        "status":  "403"
+    },
+    {
+        "name":  "course-config-aluno-403",
+        "status":  "403"
+    },
+    {
+        "name":  "request-types-admin",
+        "status":  "200"
+    },
+    {
+        "name":  "request-types-aluno-403",
+        "status":  "403"
+    },
+    {
+        "name":  "rt-create",
+        "status":  "201"
+    },
+    {
+        "name":  "rt-publish",
+        "status":  "200"
+    },
+    {
+        "name":  "requests-types-aluno-after",
+        "status":  "200"
+    },
+    {
+        "name":  "outbox-pending",
+        "status":  "200"
+    },
+    {
+        "name":  "outbox-processed",
+        "status":  "200"
+    },
+    {
+        "name":  "admin-roles",
+        "status":  "200"
+    },
+    {
+        "name":  "admin-autoridades",
+        "status":  "200"
+    },
+    {
+        "name":  "admin-audit",
+        "status":  "200"
+    },
+    {
+        "name":  "templates",
+        "status":  "200"
+    },
+    {
+        "name":  "graduations",
+        "status":  "200"
+    },
+    {
+        "name":  "students-elig",
+        "status":  "200"
+    },
+    {
+        "name":  "usuarios-patch-wrong",
+        "status":  "500"
+    },
+    {
+        "name":  "usuarios-status",
+        "status":  "200"
+    },
+    {
+        "name":  "export-alunos",
+        "status":  "202"
+    },
+    {
+        "name":  "import-alunos",
+        "status":  "202"
+    },
+    {
+        "name":  "service-record",
+        "status":  "201"
+    },
+    {
+        "name":  "tickets-staff",
+        "status":  "200"
+    },
+    {
+        "name":  "tickets-aluno-403",
+        "status":  "403"
+    },
+    {
+        "name":  "faq",
+        "status":  "200"
+    },
+    {
+        "name":  "disciplinas-search",
+        "status":  "200"
+    }
+]
