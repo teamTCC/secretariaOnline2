@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../shared/api/client'
 import { hrefOf, normalizeLinks, uiPathFromHref } from '../../shared/api/hateoas'
 import { isProblem } from '../../shared/api/problem'
@@ -18,10 +18,14 @@ type Me = {
 
 type Pendencia = { id?: string; tipo?: string; estado?: string; _link?: string }
 
+type EventoHost = { id: string; titulo?: string; estado?: string }
+
 type Dashboard = {
   _links?: unknown
   _degraded?: boolean
   pendencias?: Pendencia[] | null
+  solicitacoesPendentes?: Pendencia[] | null
+  meusEventos?: EventoHost[] | null
 }
 
 const BFFS = ['aluno', 'professor', 'secretaria', 'egresso'] as const
@@ -133,9 +137,20 @@ export function DashboardPage() {
           </form>
           <h2>diploma</h2>
           <JsonPanel data={diploma} />
-          {data.pendencias?.length ? (
+          {data.meusEventos?.length ? (
             <ul>
-              {data.pendencias.map((p) => (
+              {data.meusEventos.map((e) => (
+                <li key={e.id}>
+                  <Link to={`/prof/eventos/${e.id}`}>
+                    {e.titulo} {e.estado} {e.id}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {[...(data.pendencias ?? []), ...(data.solicitacoesPendentes ?? [])].length ? (
+            <ul>
+              {[...(data.pendencias ?? []), ...(data.solicitacoesPendentes ?? [])].map((p) => (
                 <li key={p.id ?? p._link}>
                   <button type="button" disabled={!p._link} onClick={() => p._link && nav(uiPathFromHref(p._link))}>
                     {p.tipo ?? p.id} {p.estado} {p._link}

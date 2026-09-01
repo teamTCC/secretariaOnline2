@@ -1,0 +1,170 @@
+﻿[
+    {
+        "name":  "login-prof",
+        "status":  "200"
+    },
+    {
+        "name":  "login-aluno",
+        "status":  "200"
+    },
+    {
+        "name":  "login-admin",
+        "status":  "200"
+    },
+    {
+        "name":  "dash-prof",
+        "status":  "200"
+    },
+    {
+        "name":  "dash-prof-as-aluno",
+        "status":  "403"
+    },
+    {
+        "name":  "me-prof",
+        "status":  "200"
+    },
+    {
+        "name":  "events-host-me",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-create-SECRET_SINGLE",
+        "status":  "201"
+    },
+    {
+        "name":  "evt-detail-agendado",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-create-aluno-403",
+        "status":  "403"
+    },
+    {
+        "name":  "win-entry-SECRET_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-detail-andamento",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-aluno",
+        "status":  "200"
+    },
+    {
+        "name":  "entry-aluno",
+        "status":  "200"
+    },
+    {
+        "name":  "close-SECRET_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-detail-closed",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-create-SECRET_DUAL",
+        "status":  "201"
+    },
+    {
+        "name":  "win-entry-SECRET_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-create-QR_SINGLE",
+        "status":  "201"
+    },
+    {
+        "name":  "win-entry-QR_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-create-QR_DUAL",
+        "status":  "201"
+    },
+    {
+        "name":  "win-entry-QR_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "wrong-path-caaf-dashboard",
+        "status":  "404"
+    },
+    {
+        "name":  "formativa-post",
+        "status":  "201"
+    },
+    {
+        "name":  "caaf-pool-prof",
+        "status":  "200"
+    },
+    {
+        "name":  "caaf-pool-aluno-403",
+        "status":  "403"
+    },
+    {
+        "name":  "caaf-claim",
+        "status":  "200"
+    },
+    {
+        "name":  "caaf-claim-again",
+        "status":  "409"
+    },
+    {
+        "name":  "caaf-batch",
+        "status":  "200"
+    },
+    {
+        "name":  "caaf-stats",
+        "status":  "200"
+    },
+    {
+        "name":  "coe-pool-prof-403",
+        "status":  "403"
+    },
+    {
+        "name":  "coe-pool-aluno-403",
+        "status":  "403"
+    },
+    {
+        "name":  "internship-post",
+        "status":  "201"
+    },
+    {
+        "name":  "coe-pool-admin",
+        "status":  "200"
+    },
+    {
+        "name":  "usuarios-email-admin",
+        "status":  "200"
+    },
+    {
+        "name":  "usuarios-email-prof-403",
+        "status":  "403"
+    },
+    {
+        "name":  "coe-assign",
+        "status":  "200"
+    },
+    {
+        "name":  "coe-stats",
+        "status":  "200"
+    },
+    {
+        "name":  "comm-publish",
+        "status":  "201"
+    },
+    {
+        "name":  "comm-publish-nocurso",
+        "status":  "400"
+    },
+    {
+        "name":  "comm-publish-aluno-403",
+        "status":  "403"
+    },
+    {
+        "name":  "inbox-aluno",
+        "status":  "200"
+    }
+]

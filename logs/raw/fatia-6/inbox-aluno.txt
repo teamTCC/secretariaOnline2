@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 03:25:54 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"content":[{"deliveryId":"4a20354b-6e46-42b6-b4ac-05ccf111a875","idCommunication":"06bb0497-3b28-43cb-aed4-c0446651979c","canal":"IN_APP","status":"ENTREGUE","deliveredAt":"2026-09-01T03:25:51.107997Z","_links":{"self":"/communications/06bb0497-3b28-43cb-aed4-c0446651979c","read":"/communications/deliveries/4a20354b-6e46-42b6-b4ac-05ccf111a875/read"}},{"deliveryId":"d7d1d796-489d-4125-8307-07d6378b560a","idCommunication":"023597a9-e9c5-4a6f-a796-4d2c8d129bb7","canal":"IN_APP","status":"ENTREGUE","deliveredAt":"2026-09-01T02:07:12.556768Z","_links":{"self":"/communications/023597a9-e9c5-4a6f-a796-4d2c8d129bb7","read":"/communications/deliveries/d7d1d796-489d-4125-8307-07d6378b560a/read"}},{"deliveryId":"95adbcdc-2b50-4461-b8ed-28aae318ca0e","idCommunication":"c88891ed-dea5-436f-aad1-57833dba28d5","canal":"IN_APP","status":"ENTREGUE","deliveredAt":"2026-09-01T02:06:42.401594Z","_links":{"self":"/communications/c88891ed-dea5-436f-aad1-57833dba28d5","read":"/communications/deliveries/95adbcdc-2b50-4461-b8ed-28aae318ca0e/read"}},{"deliveryId":"e00ec5b0-4f9d-4798-984e-8d80b08f06df","idCommunication":"bb11a473-d80b-4e57-8286-1108b710a8f4","canal":"IN_APP","status":"ENTREGUE","deliveredAt":"2026-09-01T01:59:02.596897Z","readAt":"2026-09-01T01:59:05.441634Z","_links":{"self":"/communications/bb11a473-d80b-4e57-8286-1108b710a8f4"}},{"deliveryId":"c390964b-5da7-4e83-ab2f-e68d2bf77ab2","idCommunication":"844f9819-243b-44cd-9cbf-e7041fbc646b","canal":"IN_APP","status":"ENTREGUE","deliveredAt":"2026-09-01T01:58:58.725794Z","readAt":"2026-09-01T02:04:44.098786Z","_links":{"self":"/communications/844f9819-243b-44cd-9cbf-e7041fbc646b"}}],"page":{"number":0,"size":5,"totalElements":17,"totalPages":4}}
+

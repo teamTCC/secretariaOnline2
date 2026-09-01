@@ -1,0 +1,1 @@
+{"mensagem":"Janela de entrada aberta","closeAt":"2026-09-01T01:16:30.029168600-03:00","secret":"386147"}

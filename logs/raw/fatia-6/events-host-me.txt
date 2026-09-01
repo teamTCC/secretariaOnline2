@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 03:25:05 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"content":[{"id":"f5f0d272-4b85-4625-afaf-9ba4386c002c","titulo":"Fatia4 AGENDADO 409","attendanceMode":"SECRET_SINGLE","estado":"AGENDADO","chCreditadas":4.0,"inicioEm":"2026-09-01T00:58:27Z","fimEm":"2026-09-01T05:58:27Z"},{"id":"f346655e-1b16-4e88-8286-03a322c23726","titulo":"Fatia4 SECRET_SINGLE","attendanceMode":"SECRET_SINGLE","estado":"CONCLUIDO","chCreditadas":4.0,"inicioEm":"2026-09-01T00:58:27Z","fimEm":"2026-09-01T05:58:27Z"},{"id":"8e7a82d1-1d8d-4faf-8c5a-c5f885e9eda7","titulo":"Fatia4 SECRET_DUAL","attendanceMode":"SECRET_DUAL","estado":"CONCLUIDO","chCreditadas":4.0,"inicioEm":"2026-09-01T00:58:27Z","fimEm":"2026-09-01T05:58:27Z"},{"id":"b32db630-4a78-4810-8685-20b9260b7d30","titulo":"Fatia4 QR_SINGLE","attendanceMode":"QR_SINGLE","estado":"CONCLUIDO","chCreditadas":4.0,"inicioEm":"2026-09-01T00:58:27Z","fimEm":"2026-09-01T05:58:27Z"},{"id":"23e074ec-9736-4e64-98a5-99807dba68ae","titulo":"Fatia4 QR_DUAL","attendanceMode":"QR_DUAL","estado":"CONCLUIDO","chCreditadas":4.0,"inicioEm":"2026-09-01T00:58:27Z","fimEm":"2026-09-01T05:58:27Z"}],"page":{"number":0,"size":20,"totalElements":5,"totalPages":1}}
+

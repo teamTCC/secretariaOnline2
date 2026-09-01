@@ -65,16 +65,18 @@ class EventAttendanceQuery(
         val canHost = authorities.contains("event.host") || isOrganizador
         val estado = EventState.valueOf(event.estado)
 
-        if (canHost && estado == EventState.EM_ANDAMENTO) {
+        val mode = AttendanceMode.valueOf(event.attendanceMode)
+        if (canHost && estado != EventState.CONCLUIDO) {
             links["abrir-janela-entrada"] = "/events/$eventId/attendance/windows/entry"
-            val mode = AttendanceMode.valueOf(event.attendanceMode)
-            if (mode.isDual()) {
-                links["abrir-janela-saida"] = "/events/$eventId/attendance/windows/exit"
+            if (estado == EventState.EM_ANDAMENTO) {
+                if (mode.isDual()) {
+                    links["abrir-janela-saida"] = "/events/$eventId/attendance/windows/exit"
+                }
+                links["encerrar-evento"] = "/events/$eventId/close"
             }
-            links["encerrar-evento"] = "/events/$eventId/close"
         }
 
-        if (isOrganizador || (canManage && estado == EventState.AGENDADO)) {
+        if ((isOrganizador || canManage) && estado == EventState.AGENDADO) {
             links["editar"] = "/events/$eventId"
         }
 

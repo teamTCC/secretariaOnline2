@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 03:25:42 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"content":[{"id":"2df8219f-f137-4260-8040-b1326a5366e8","idAluno":"1bafbb82-a473-4170-8433-c13cebc22562","empresa":"Empresa XYZ Ltda.","cargo":"Dev Backend","cargaHorariaSemanal":20,"inicio":"2026-03-01"},{"id":"8c1257e3-2994-46ab-ad2e-2cb276f23e18","idAluno":"1bafbb82-a473-4170-8433-c13cebc22562","empresa":"Empresa COE Fatia6","cargo":"Dev","cargaHorariaSemanal":20,"inicio":"2026-03-01"}],"page":{"number":0,"size":20,"totalElements":2,"totalPages":1},"_links":{"self":"http://localhost:8080/commissions/coe/pool?page=0&size=20","first":"http://localhost:8080/commissions/coe/pool?page=0&size=20","last":"http://localhost:8080/commissions/coe/pool?page=0&size=20"}}
+

@@ -35,4 +35,10 @@ export const queryKeys = {
   tccsList: (estado?: string) => ['tccs', 'list', estado ?? ''] as const,
   tcc: (id: string) => ['tccs', 'detail', id] as const,
   diplomaUrl: (id: string) => ['graduations', 'diploma-url', id] as const,
+  eventosHost: (q?: Record<string, string | number | undefined>) =>
+    ['events', 'host', q ?? {}] as const,
+  caafPool: (page?: number) => ['commissions', 'caaf', 'pool', page ?? 0] as const,
+  caafStats: ['commissions', 'caaf', 'stats'] as const,
+  coePool: (page?: number) => ['commissions', 'coe', 'pool', page ?? 0] as const,
+  coeStats: ['commissions', 'coe', 'stats'] as const,
 }

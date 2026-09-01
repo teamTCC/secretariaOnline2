@@ -6,6 +6,11 @@ import { EventosAlunoPage } from '../features/academico/EventosAlunoPage'
 import { FaqPage } from '../features/academico/FaqPage'
 import { FormativasPage } from '../features/academico/FormativasPage'
 import { InboxPage } from '../features/academico/InboxPage'
+import { CaafPoolPage } from '../features/staff/CaafPoolPage'
+import { CoePoolPage } from '../features/staff/CoePoolPage'
+import { EventoHostDetailPage } from '../features/staff/EventoHostDetailPage'
+import { EventosHostPage } from '../features/staff/EventosHostPage'
+import { PublicarAvisoPage } from '../features/staff/PublicarAvisoPage'
 import { EstagioDetailPage } from '../features/vinculos/EstagioDetailPage'
 import { EstagiosPage } from '../features/vinculos/EstagiosPage'
 import { TccDetailPage } from '../features/vinculos/TccDetailPage'
@@ -66,6 +71,11 @@ export const router = createBrowserRouter([
           { path: '/estagios/:id', element: <EstagioDetailPage /> },
           { path: '/tccs', element: <TccsPage /> },
           { path: '/tccs/:id', element: <TccDetailPage /> },
+          { path: '/prof/eventos', element: <EventosHostPage /> },
+          { path: '/prof/eventos/:id', element: <EventoHostDetailPage /> },
+          { path: '/prof/comunicado', element: <PublicarAvisoPage /> },
+          { path: '/comissoes/caaf', element: <CaafPoolPage /> },
+          { path: '/comissoes/coe', element: <CoePoolPage /> },
         ],
       },
     ],

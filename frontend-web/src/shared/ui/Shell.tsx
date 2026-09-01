@@ -38,6 +38,10 @@ export function Shell() {
         <Link to="/comunicados">Inbox</Link>
         <Link to="/estagios">Estágios</Link>
         <Link to="/tccs">TCCs</Link>
+        <Link to="/prof/eventos">Host eventos</Link>
+        <Link to="/prof/comunicado">Publicar aviso</Link>
+        <Link to="/comissoes/caaf">CAAF</Link>
+        <Link to="/comissoes/coe">COE</Link>
         <Link to="/faq">FAQ</Link>
         <Link to="/me">Me</Link>
         <Link to="/contato">Contato</Link>

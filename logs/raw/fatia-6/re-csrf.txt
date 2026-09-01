@@ -1,0 +1,1 @@
+﻿{"token":"0da1ed4c-d68b-4880-8566-269326fcfa7e","headerName":"X-XSRF-TOKEN","parameterName":"_csrf"}

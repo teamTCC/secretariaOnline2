@@ -1,5 +1,6 @@
 package br.ufpr.sept.so2.modules.comunicacao.application
 
+import br.ufpr.sept.so2.modules.comunicacao.domain.CommunicationBusinessException
 import br.ufpr.sept.so2.modules.comunicacao.infrastructure.persistence.CommunicationDeliveryEntity
 import br.ufpr.sept.so2.modules.comunicacao.infrastructure.persistence.CommunicationDeliveryJpaRepository
 import br.ufpr.sept.so2.modules.comunicacao.infrastructure.persistence.CommunicationEntity
@@ -39,7 +40,9 @@ class PublishCommunicationUseCase(
             if (command.isAdmin) {
                 emptyMap()
             } else {
-                val cursoId = requireNotNull(command.cursoId) { "cursoId obrigatório para publicação de turma." }
+                val cursoId =
+                    command.cursoId
+                        ?: throw CommunicationBusinessException("cursoId obrigatório para publicação de turma.")
                 mapOf("cursoId" to cursoId.toString())
             }
 

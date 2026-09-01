@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 03:25:27 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"mensagem":"Janela de entrada aberta","closeAt":"2026-09-01T00:40:27.689092400-03:00","qrToken":"cd1ebd84c2d04083954ead75d2a87aff"}
+

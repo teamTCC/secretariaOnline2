@@ -23,3 +23,6 @@ enum class CommunicationType {
 
 class CommunicationNotFoundException(id: UUID) :
     NoSuchElementException("Comunicado não encontrado: $id")
+
+/** Semantic constraint (e.g. cursoId for publish_class) — maps to RFC 7807 422, not 400. */
+class CommunicationBusinessException(message: String) : RuntimeException(message)

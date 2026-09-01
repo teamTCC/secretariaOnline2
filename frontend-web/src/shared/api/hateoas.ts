@@ -41,9 +41,18 @@ export function uiPathFromHref(href: string): string {
   if (req) return `/solicitacoes/${req[1]}`
   if (path === '/requests') return '/solicitacoes'
   if (path === '/formativas' || path === '/formativas/minhas') return '/formativas'
-  const evSess = path.match(/^\/events\/([0-9a-fA-F-]{36})(?:\/attendance\/session)?$/)
+  const evSess = path.match(/^\/events\/([0-9a-fA-F-]{36})\/attendance\/session$/)
   if (evSess) return `/eventos/${evSess[1]}/presenca`
-  if (path === '/events') return `/eventos${search}`
+  const evHost = path.match(/^\/events\/([0-9a-fA-F-]{36})$/)
+  if (evHost) return `/prof/eventos/${evHost[1]}`
+  if (path === '/events') {
+    const q = search.startsWith('?') ? search.slice(1) : search
+    const params = new URLSearchParams(q)
+    if (params.get('audience')) return `/eventos${search}`
+    return `/prof/eventos${search}`
+  }
+  if (path.startsWith('/commissions/caaf')) return '/comissoes/caaf'
+  if (path.startsWith('/commissions/coe')) return '/comissoes/coe'
   if (path === '/certificates' || path === '/certificates/mine') return '/certificados'
   const certPub = path.match(/^\/publico\/verificar-certificado\/(.+)$/)
   if (certPub) return `/publico/verificar-certificado/${certPub[1]}`
