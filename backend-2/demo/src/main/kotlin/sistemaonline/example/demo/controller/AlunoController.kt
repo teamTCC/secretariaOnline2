@@ -6,8 +6,11 @@ import org.springframework.web.bind.annotation.*
 import sistemaonline.example.demo.model.Aluno
 import sistemaonline.example.demo.service.AlunoService
 
+import io.swagger.v3.oas.annotations.tags.Tag
+
 @RestController
 @RequestMapping("/api/alunos")
+@Tag(name = "Alunos", description = "Endpoints para gerenciamento de alunos")
 class AlunoController(private val service: AlunoService) {
 
     @GetMapping

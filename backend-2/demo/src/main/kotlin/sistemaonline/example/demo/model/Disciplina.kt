@@ -1,20 +1,23 @@
 package sistemaonline.example.demo.model
 
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-
 import io.swagger.v3.oas.annotations.media.Schema
+import jakarta.persistence.*
 
 @Entity
-data class Aluno(
+data class Disciplina(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Schema(accessMode = Schema.AccessMode.READ_ONLY)
     val id: Long? = null,
-    
+
     var nome: String,
     
-    var idade: Int
+    var codigo: String,
+       
+    var periodo: Int,
+    
+    @Column(name = "carga_horaria")
+    var cargaHoraria: Int,
+    
+    var ativa: Boolean = true
 )
