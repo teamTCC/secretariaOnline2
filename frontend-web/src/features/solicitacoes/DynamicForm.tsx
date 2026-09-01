@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useId } from 'react'
 import { api } from '../../shared/api/client'
 import { queryKeys } from '../../shared/api/queryKeys'
 
@@ -8,6 +9,7 @@ export type JsonSchema = {
   description?: string
   enum?: unknown[]
   format?: string
+  default?: unknown
   properties?: Record<string, JsonSchema>
   items?: JsonSchema
   required?: string[]
@@ -80,16 +82,17 @@ function EntitySelect({
   })
   const items = lookupItems(q.data)
   const str = typeof value === 'string' ? value : ''
+  const listId = useId()
   return (
     <label>
       {label}
       <input
-        list={`${label}-dl`}
+        list={listId}
         value={str}
         onChange={(e) => onChange(e.target.value)}
         placeholder="UUID — ou escolha na lista"
       />
-      <datalist id={`${label}-dl`}>
+      <datalist id={listId}>
         {items.map((it) => (
           <option key={it.id} value={it.id ?? ''}>
             {it.codigo} — {it.nome}
@@ -181,6 +184,8 @@ function Field({
         <input
           type="number"
           step={schema.type === 'integer' ? 1 : 'any'}
+          min={schema.minimum}
+          max={schema.maximum}
           value={typeof value === 'number' ? value : ''}
           onChange={(e) => {
             const n = e.target.value

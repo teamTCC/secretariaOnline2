@@ -37,6 +37,11 @@ export function SolicitacaoDetailPage() {
   const [last, setLast] = useState<unknown>()
   const [forcedAction, setForcedAction] = useState('DEFERIR')
 
+  const me = useQuery({
+    queryKey: queryKeys.me,
+    queryFn: () => api<{ metadata?: { idCurso?: string } }>('/me'),
+  })
+
   const detail = useQuery({
     queryKey: queryKeys.request(id),
     queryFn: () => api<Detail>(`/requests/${id}`),
@@ -69,7 +74,7 @@ export function SolicitacaoDetailPage() {
     void qc.invalidateQueries({ queryKey: queryKeys.requestEvents(id) })
     void qc.invalidateQueries({ queryKey: queryKeys.requestAttachments(id) })
     void qc.invalidateQueries({ queryKey: queryKeys.requestProtocol(id) })
-    void qc.invalidateQueries({ queryKey: queryKeys.requests({}) })
+    void qc.invalidateQueries({ queryKey: ['requests', 'list'] })
   }
 
   const transition = useMutation({
@@ -169,7 +174,7 @@ export function SolicitacaoDetailPage() {
           schema={schema}
           value={formValues}
           onChange={(v) => setDados(v)}
-          idCurso={undefined}
+          idCurso={me.data?.metadata?.idCurso}
         />
       ) : null}
       <p>anexos GET /requests/{id}/attachments</p>

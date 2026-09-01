@@ -147,6 +147,17 @@ class RequestDraftAttachmentIntegrationTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.estado").value("ABERTA"))
             .andExpect(jsonPath("$.protocolo").isString)
+
+        mockMvc.perform(get("/requests/$draftId/events").with(alunoAuth()))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].tipo").value("ABERTURA"))
+            .andExpect(jsonPath("$[0].estadoNovo").value("ABERTA"))
+    }
+
+    @Test
+    fun `POST draft duas vezes no mesmo curso e ano retorna 201`() {
+        createDraft(emptyMap())
+        createDraft(emptyMap())
     }
 
     @Test

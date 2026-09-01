@@ -43,7 +43,13 @@ interface RequestJpaRepository : JpaRepository<RequestEntity, UUID> {
         pageable: Pageable,
     ): Page<RequestEntity>
 
-    @Query("SELECT MAX(r.numeroAnual) FROM RequestEntity r WHERE r.ano = :ano AND r.idCurso = :idCurso")
+    @Query(
+        """
+        SELECT MAX(r.numeroAnual) FROM RequestEntity r
+        WHERE r.ano = :ano AND r.idCurso = :idCurso
+          AND r.estado <> 'RASCUNHO' AND r.numeroAnual > 0
+        """,
+    )
     fun findMaxNumeroAnual(
         @Param("ano") ano: Short,
         @Param("idCurso") idCurso: UUID,
@@ -81,7 +87,12 @@ interface RequestJpaRepository : JpaRepository<RequestEntity, UUID> {
         @Param("concluded") concluded: Boolean,
     )
 
-    @Query("SELECT r FROM RequestEntity r WHERE r.numeroAnual = :numeroAnual AND r.ano = :ano")
+    @Query(
+        """
+        SELECT r FROM RequestEntity r
+        WHERE r.numeroAnual = :numeroAnual AND r.ano = :ano AND r.estado <> 'RASCUNHO'
+        """,
+    )
     fun findByNumeroAnualAndAno(
         @Param("numeroAnual") numeroAnual: Int,
         @Param("ano") ano: Short,

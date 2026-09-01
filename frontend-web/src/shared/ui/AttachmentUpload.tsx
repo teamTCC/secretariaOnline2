@@ -59,6 +59,7 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady 
       setNomeOriginal(file.name)
       setContentType(ct)
       setTamanhoBytes(file.size)
+      let putOk = false
       let put: unknown = 'sem PUT'
       try {
         const res = await fetch(presign.uploadUrl, {
@@ -66,12 +67,13 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady 
           body: file,
           headers: { 'Content-Type': ct },
         })
+        putOk = res.ok
         put = { status: res.status, ok: res.ok }
         if (!res.ok) put = { status: res.status, hint: 'CORS/MinIO — cole storageKey após PUT via HTTPie' }
       } catch (e) {
         put = {
           error: e instanceof Error ? e.message : String(e),
-          hint: 'PUT falhou (CORS). Use uploadUrl abaixo e confirme depois.',
+          hint: 'PUT falhou (CORS). Use uploadUrl abaixo e o botão incluir/confirm depois.',
         }
       }
       const att: AttachmentInput = {
@@ -83,7 +85,7 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady 
         tamanhoBytes: file.size,
       }
       let confirm: unknown
-      if (requestId) {
+      if (requestId && putOk) {
         try {
           confirm = await api(`/requests/${requestId}/attachments/confirm`, {
             method: 'POST',
@@ -93,7 +95,7 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady 
           confirm = e
         }
       }
-      onReady?.(att)
+      if (putOk) onReady?.(att)
       setLast({ presign, put, confirm, att })
     } catch (e) {
       setLast(e)
@@ -168,7 +170,24 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady 
         <button type="button" disabled={pending || !storageKey} onClick={() => void confirmOnly()}>
           POST confirm
         </button>
-      ) : null}
+      ) : (
+        <button
+          type="button"
+          disabled={pending || !storageKey || !sha256}
+          onClick={() =>
+            onReady?.({
+              storageKey,
+              sha256,
+              nomeOriginal: nomeOriginal || 'arquivo',
+              contentType,
+              categoria,
+              tamanhoBytes: tamanhoBytes || 1,
+            })
+          }
+        >
+          incluir no POST
+        </button>
+      )}
       <JsonPanel data={last} />
     </fieldset>
   )

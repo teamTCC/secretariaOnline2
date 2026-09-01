@@ -3,6 +3,8 @@ package br.ufpr.sept.so2.modules.solicitacoes.application
 import br.ufpr.sept.so2.modules.solicitacoes.domain.AttachmentPolicy
 import br.ufpr.sept.so2.modules.solicitacoes.domain.FormSchemaValidator
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestAttachmentJpaRepository
+import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestEventEntity
+import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestEventJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestJpaRepository
 import br.ufpr.sept.so2.modules.solicitacoes.infrastructure.persistence.RequestTypeJpaRepository
 import br.ufpr.sept.so2.shared.outbox.OutboxEventPublisher
@@ -28,6 +30,7 @@ class SubmitDraftUseCase(
     private val requestTypeRepo: RequestTypeJpaRepository,
     private val outboxPublisher: OutboxEventPublisher,
     private val attachmentRepo: RequestAttachmentJpaRepository,
+    private val requestEventRepo: RequestEventJpaRepository,
 ) {
     @Transactional
     fun execute(command: SubmitDraftCommand): SubmitDraftResult {
@@ -56,6 +59,16 @@ class SubmitDraftUseCase(
         entity.prazoEm = OffsetDateTime.now().plusDays(requestType.prazoDias.toLong())
 
         val saved = requestRepo.save(entity)
+
+        requestEventRepo.save(
+            RequestEventEntity(
+                idRequest = saved.id,
+                tipo = "ABERTURA",
+                estadoAnterior = "RASCUNHO",
+                estadoNovo = "ABERTA",
+                idAtor = command.idSolicitante,
+            ),
+        )
 
         outboxPublisher.enqueue(
             eventType = "solicitacoes.aberta",

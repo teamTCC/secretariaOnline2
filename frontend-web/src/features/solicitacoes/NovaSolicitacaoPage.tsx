@@ -10,6 +10,14 @@ import { Page } from '../../shared/ui/Page'
 import { ProblemBanner } from '../../shared/ui/ProblemBanner'
 import { DynamicForm, requiredAttachments, type JsonSchema } from './DynamicForm'
 
+function defaultsFromSchema(schema: JsonSchema): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, field] of Object.entries(schema.properties ?? {})) {
+    if (field && field.default !== undefined) out[k] = field.default
+  }
+  return out
+}
+
 type TypeRow = {
   id: string
   code: string
@@ -52,6 +60,8 @@ export function NovaSolicitacaoPage() {
     queryFn: () => api<Curso[]>('/academico/cursos'),
   })
 
+  const schema = type.data?.formSchema ?? types.data?.find((t) => t.code === code)?.formSchema
+
   useEffect(() => {
     if (seededCurso || !me.data) return
     const fromMe = me.data.metadata?.idCurso
@@ -61,7 +71,21 @@ export function NovaSolicitacaoPage() {
     }
   }, [me.data, seededCurso])
 
-  const schema = type.data?.formSchema ?? types.data?.find((t) => t.code === code)?.formSchema
+  useEffect(() => {
+    if (!schema) return
+    setDados((prev) => {
+      const defs = defaultsFromSchema(schema)
+      let changed = false
+      const next = { ...prev }
+      for (const [k, v] of Object.entries(defs)) {
+        if (!(k in next)) {
+          next[k] = v
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [code, schema])
   const cats = schema ? requiredAttachments(schema) : []
   const extraCats = [...new Set([...cats, ...pendingAtts.map((a) => a.categoria)])]
 
@@ -84,13 +108,13 @@ export function NovaSolicitacaoPage() {
           detail: 'Selecione idCurso (GET /academico/cursos)',
         }
       }
-      const body = {
+      const body: Record<string, unknown> = {
         idRequestType,
         idCurso,
         dados,
         attachments: pendingAtts,
-        idSolicitanteOnBehalf: onBehalf || null,
       }
+      if (onBehalf) body.idSolicitanteOnBehalf = onBehalf
       if (mode === 'draft') {
         if (draftId) {
           return api<Created>(`/requests/${draftId}/draft`, { method: 'PATCH', body: { dados } })
