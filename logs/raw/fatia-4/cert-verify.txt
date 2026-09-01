@@ -1,0 +1,19 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 01:59:54 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+Set-Cookie: XSRF-TOKEN=34536dc9-c8f0-4b04-8370-a57ebbe61483; Max-Age=43200; Expires=Tue, 01 Sep 2026 13:59:54 GMT; Path=/
+
+{"valido":true,"hashSha256":"f477a8e0c2452701c1c242c370bb82f00029a9ff46a19cbd582e5fe35785edb7","chCreditadas":4.0,"issuedAt":"2026-09-01T01:59:21.392999Z","idEvento":"f346655e-1b16-4e88-8286-03a322c23726","origem":"EVENTO","integridadePdf":true,"verificacaoAssinatura":"ED25519_VALID","ephemeralKey":true,"_links":{"jwks":"/.well-known/jwks.json"}}
+

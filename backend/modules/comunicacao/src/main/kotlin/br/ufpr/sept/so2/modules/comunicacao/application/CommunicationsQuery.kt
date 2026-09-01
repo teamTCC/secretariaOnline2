@@ -39,6 +39,13 @@ class CommunicationsQuery(
                 status = d.status,
                 deliveredAt = d.deliveredAt,
                 readAt = d.readAt,
+                links =
+                    buildMap {
+                        put("self", "/communications/${d.idCommunication}")
+                        if (d.readAt == null) {
+                            put("read", "/communications/deliveries/${d.id}/read")
+                        }
+                    },
             )
         }
 

@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 01:58:48 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"uploadUrl":"http://localhost:9000/secretaria-docs/formativas/orphan/2bdff48f-e357-4917-80f6-fe525029af02_comprovante.pdf?Content-Type=application%2Fpdf&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260901%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260901T015848Z&X-Amz-Expires=1800&X-Amz-SignedHeaders=host&X-Amz-Signature=c9dac4d95c4955dafd0aab12e9cef4d013dd4311ffaff90e47ab9eae5619ba34","storageKey":"formativas/orphan/2bdff48f-e357-4917-80f6-fe525029af02_comprovante.pdf"}
+

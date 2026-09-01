@@ -31,6 +31,12 @@ export function Shell() {
         <Link to="/login">Login</Link>
         <Link to="/dashboard">Dashboard</Link>
         <Link to="/solicitacoes">Solicitações</Link>
+        <Link to="/formativas">Formativas</Link>
+        <Link to="/eventos">Eventos</Link>
+        <Link to="/certificados">Certificados</Link>
+        <Link to="/atendimentos">Atendimentos</Link>
+        <Link to="/comunicados">Inbox</Link>
+        <Link to="/faq">FAQ</Link>
         <Link to="/me">Me</Link>
         <Link to="/contato">Contato</Link>
         <button type="button" disabled={logout.isPending} onClick={() => logout.mutate()}>

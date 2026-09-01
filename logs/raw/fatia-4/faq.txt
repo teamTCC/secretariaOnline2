@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 01:58:45 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+[{"id":"01a05940-ec6c-76b4-a3dc-d557952d9b20","categoria":"GERAL","pergunta":"Como exportar meus dados pessoais (LGPD)?","resposta":"Acesse Perfil ÔåÆ Privacidade ÔåÆ Exportar meus dados. O sistema ir├í gerar um arquivo JSON com todos os seus dados cadastrais e enviar├í o link de download por e-mail. O link expira em 24 horas.","ordem":1},{"id":"01a05940-ec6c-7fd9-9ebb-0a610b12198e","categoria":"CONTA","pergunta":"Como alterar minha senha?","resposta":"Acesse Perfil ÔåÆ Seguran├ºa ÔåÆ Alterar Senha. Voc├¬ precisar├í informar sua senha atual. Caso tenha esquecido, utilize a op├º├úo \"Esqueci minha senha\" na tela de login.","ordem":1},{"id":"01a05940-ec68-7dc4-9bba-2bcf0ea5f059","categoria":"SOLICITACOES","pergunta":"Como abrir uma solicita├º├úo de reaproveitamento de disciplina?","resposta":"Acesse o menu Solicita├º├Áes ÔåÆ Nova Solicita├º├úo ÔåÆ selecione \"Reaproveitamento de Disciplina\". Preencha o formul├írio com o c├│digo da disciplina cursada anteriormente e anexe o hist├│rico escolar.","ordem":1},{"id":"01a05940-ec6c-7370-a604-c26ed14522cd","categoria":"ESTAGIO","pergunta":"Quais documentos s├úo necess├írios para declarar um est├ígio?","resposta":"S├úo necess├írios: Termo de compromisso de est├ígio assinado pela empresa e pela UFPR, ap├│lice de seguro, e plano de atividades. Todos os documentos devem ser digitalizados em PDF.","ordem":1},{"id":"01a05940-ec6c-7c29-a48f-821c19d97cb2","categoria":"TCC","pergunta":"Como registrar meu TCC no sistema?","resposta":"Acesse o menu TCC ÔåÆ Novo TCC. Informe o t├¡tulo provis├│rio, ├írea de concentra├º├úo e seu orientador. A confirma├º├úo pelo orientador ├® feita automaticamente por e-mail.","ordem":1},{"id":"01a05940-ec6c-7d54-9ea1-9211fa42e032","categoria":"FORMATIVAS","pergunta":"Quantas horas formativas s├úo necess├írias para concluir o curso?","resposta":"O total de horas exigidas varia por curso. Consulte a grade curricular do seu curso ou acesse o painel do aluno para ver seu progresso atual.","ordem":1},{"id":"01a05940-ec6c-71e1-9b39-ffa68a1d493b","categoria":"SOLICITACOES","pergunta":"Qual o prazo para resposta da secretaria ap├│s abertura de solicita├º├úo?","resposta":"O prazo padr├úo ├® de 10 dias ├║teis. Voc├¬ receber├í um e-mail quando houver atualiza├º├úo no status.","ordem":2},{"id":"01a05940-ec6c-705a-9305-e3a83689bed8","categoria":"CONTA","pergunta":"Como ativar notifica├º├Áes no aplicativo mobile?","resposta":"Ap├│s instalar o aplicativo, acesse Perfil ÔåÆ Notifica├º├Áes e ative as notifica├º├Áes de interesse. Certifique-se de que as permiss├Áes de notifica├º├úo est├úo habilitadas no seu dispositivo.","ordem":2}]
+

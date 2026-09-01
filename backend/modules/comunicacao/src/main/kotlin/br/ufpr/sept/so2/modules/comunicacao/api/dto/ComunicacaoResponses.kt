@@ -1,6 +1,7 @@
 package br.ufpr.sept.so2.modules.comunicacao.api.dto
 
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonProperty
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -24,6 +25,7 @@ data class CommunicationDeliveryResponse(
     val status: String,
     val deliveredAt: OffsetDateTime?,
     val readAt: OffsetDateTime?,
+    @JsonProperty("_links") val links: Map<String, String> = emptyMap(),
 )
 
 @JsonInclude(JsonInclude.Include.NON_NULL)

@@ -112,8 +112,10 @@ class EventAttendanceQuery(
         val links = linkedMapOf("self" to "/events/$eventId/attendance/session")
         val isInProgress = estado == EventState.EM_ANDAMENTO
         val entryDone = session?.entryConfirmedAt != null
+        val entryWindowActive = isInProgress && hasActiveWindow(event.validationWindows, AttendancePhase.ENTRY)
+        val exitWindowActive = isInProgress && hasActiveWindow(event.validationWindows, AttendancePhase.EXIT)
 
-        if (isInProgress && !entryDone) {
+        if (entryWindowActive && !entryDone) {
             if (mode.isQr()) {
                 links["confirmar-entrada"] = "/events/$eventId/attendance/qr/validate"
             } else {
@@ -121,7 +123,7 @@ class EventAttendanceQuery(
             }
         }
 
-        if (isInProgress && mode.isDual() && entryDone && session?.exitConfirmedAt == null) {
+        if (exitWindowActive && mode.isDual() && entryDone && session?.exitConfirmedAt == null) {
             if (mode.isQr()) {
                 links["confirmar-saida"] = "/events/$eventId/attendance/qr/validate"
             } else {
@@ -146,5 +148,19 @@ class EventAttendanceQuery(
     ): AttendancePhase {
         val session = sessionRepo.findByIdEventoAndIdAluno(eventId, alunoId).orElse(null)
         return if (session?.entryConfirmedAt == null) AttendancePhase.ENTRY else AttendancePhase.EXIT
+    }
+
+    private fun hasActiveWindow(
+        windows: List<Map<String, Any>>,
+        phase: AttendancePhase,
+    ): Boolean {
+        val now = java.time.OffsetDateTime.now()
+        return windows.any { w ->
+            (w["phase"] as? String) == phase.name &&
+                runCatching {
+                    java.time.OffsetDateTime.parse(w["openAt"] as String).isBefore(now) &&
+                        java.time.OffsetDateTime.parse(w["closeAt"] as String).isAfter(now)
+                }.getOrDefault(false)
+        }
     }
 }

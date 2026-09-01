@@ -17,6 +17,8 @@ type Props = {
   requestId?: string
   categoria: string
   onReady?: (att: AttachmentInput) => void
+  /** override — formativas: `/formativas/comprovantes/presigned-url` */
+  presignPath?: string
 }
 
 async function sha256Hex(file: File): Promise<string> {
@@ -24,7 +26,7 @@ async function sha256Hex(file: File): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady }: Props) {
+export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady, presignPath }: Props) {
   const [categoria, setCategoria] = useState(categoriaProp)
   const [file, setFile] = useState<File | null>(null)
   const [pending, setPending] = useState(false)
@@ -49,9 +51,9 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady 
         sizeBytes: file.size,
         categoria,
       }
-      const path = requestId
-        ? `/requests/${requestId}/attachments/upload-url`
-        : '/requests/attachments/presigned-url'
+      const path =
+        presignPath ??
+        (requestId ? `/requests/${requestId}/attachments/upload-url` : '/requests/attachments/presigned-url')
       const presign = await api<Presign>(path, { method: 'POST', body })
       setUploadUrl(presign.uploadUrl)
       setStorageKey(presign.storageKey)

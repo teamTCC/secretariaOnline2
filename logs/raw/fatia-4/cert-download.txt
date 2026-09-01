@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 01:59:53 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"downloadUrl":"http://localhost:9000/secretaria-docs/certificates/eventos/f346655e-1b16-4e88-8286-03a322c23726/1bafbb82-a473-4170-8433-c13cebc22562.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260901%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260901T015953Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&X-Amz-Signature=03d13c6abc663d3b3a256e9ab7f005922b1ad2710ff61a2a75a419fd51d9a545"}
+

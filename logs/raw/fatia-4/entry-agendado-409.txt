@@ -1,0 +1,18 @@
+﻿HTTP/1.1 409 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/problem+json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 01:59:13 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"type":"https://secretariaonline.ufpr.br/errors/conflict","title":"Conflito de estado","status":409,"detail":"Evento n├úo est├í em andamento.","instance":"/events/f5f0d272-4b85-4625-afaf-9ba4386c002c/attendance/entry","timestamp":"2026-08-31T22:59:13.032989800-03:00"}
+

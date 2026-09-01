@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 01:59:52 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+[{"id":"472680e5-7d33-4c7d-a7a5-b281b2926f1b","idEvento":"f346655e-1b16-4e88-8286-03a322c23726","origem":"EVENTO","hashSha256":"f477a8e0c2452701c1c242c370bb82f00029a9ff46a19cbd582e5fe35785edb7","chCreditadas":4.0,"issuedAt":"2026-09-01T01:59:21.392999Z","_links":{"download":"/certificates/472680e5-7d33-4c7d-a7a5-b281b2926f1b/download-url","verify":"/publico/verificar-certificado/f477a8e0c2452701c1c242c370bb82f00029a9ff46a19cbd582e5fe35785edb7"}},{"id":"c524e7eb-35b1-4faa-9635-eccc58563e87","idEvento":"8e7a82d1-1d8d-4faf-8c5a-c5f885e9eda7","origem":"EVENTO","hashSha256":"5b913b0ad4d40ed1a7cef76353156750b7dde41b4128ba907a82bba9c45f5e8f","chCreditadas":4.0,"issuedAt":"2026-09-01T01:59:32.882485Z","_links":{"download":"/certificates/c524e7eb-35b1-4faa-9635-eccc58563e87/download-url","verify":"/publico/verificar-certificado/5b913b0ad4d40ed1a7cef76353156750b7dde41b4128ba907a82bba9c45f5e8f"}},{"id":"b335fc80-13d7-49b6-80d1-c4b46d4011b3","idEvento":"b32db630-4a78-4810-8685-20b9260b7d30","origem":"EVENTO","hashSha256":"49464aaa8115e58c45c72407e14e3265d129153d26a81ae5a43f806648c1b2ec","chCreditadas":4.0,"issuedAt":"2026-09-01T01:59:40.439833Z","_links":{"download":"/certificates/b335fc80-13d7-49b6-80d1-c4b46d4011b3/download-url","verify":"/publico/verificar-certificado/49464aaa8115e58c45c72407e14e3265d129153d26a81ae5a43f806648c1b2ec"}},{"id":"f7fc8bfc-4188-451b-a2cb-d7ec749a5ac8","idEvento":"23e074ec-9736-4e64-98a5-99807dba68ae","origem":"EVENTO","hashSha256":"dc755204497741ab1cf97a29ff7d14b35db417ccfd6fac1afa67f012947040b3","chCreditadas":4.0,"issuedAt":"2026-09-01T01:59:51.267799Z","_links":{"download":"/certificates/f7fc8bfc-4188-451b-a2cb-d7ec749a5ac8/download-url","verify":"/publico/verificar-certificado/dc755204497741ab1cf97a29ff7d14b35db417ccfd6fac1afa67f012947040b3"}}]
+

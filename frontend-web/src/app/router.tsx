@@ -1,4 +1,11 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { AtendimentosPage } from '../features/academico/AtendimentosPage'
+import { CertificadosPage } from '../features/academico/CertificadosPage'
+import { EventoSessaoPage } from '../features/academico/EventoSessaoPage'
+import { EventosAlunoPage } from '../features/academico/EventosAlunoPage'
+import { FaqPage } from '../features/academico/FaqPage'
+import { FormativasPage } from '../features/academico/FormativasPage'
+import { InboxPage } from '../features/academico/InboxPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { NovaSolicitacaoPage } from '../features/solicitacoes/NovaSolicitacaoPage'
 import { SolicitacaoDetailPage } from '../features/solicitacoes/SolicitacaoDetailPage'
@@ -43,6 +50,14 @@ export const router = createBrowserRouter([
           { path: '/solicitacoes', element: <SolicitacoesListPage /> },
           { path: '/solicitacoes/nova', element: <NovaSolicitacaoPage /> },
           { path: '/solicitacoes/:id', element: <SolicitacaoDetailPage /> },
+          { path: '/formativas', element: <FormativasPage /> },
+          { path: '/eventos', element: <EventosAlunoPage /> },
+          { path: '/eventos/:id/presenca', element: <EventoSessaoPage /> },
+          { path: '/certificados', element: <CertificadosPage /> },
+          { path: '/atendimentos', element: <AtendimentosPage /> },
+          { path: '/comunicados', element: <InboxPage /> },
+          { path: '/faq', element: <FaqPage /> },
+          { path: '/suporte', element: <FaqPage /> },
         ],
       },
     ],

@@ -40,6 +40,16 @@ export function uiPathFromHref(href: string): string {
   const req = path.match(/^\/requests\/([0-9a-fA-F-]{36})$/)
   if (req) return `/solicitacoes/${req[1]}`
   if (path === '/requests') return '/solicitacoes'
+  if (path === '/formativas' || path === '/formativas/minhas') return '/formativas'
+  const evSess = path.match(/^\/events\/([0-9a-fA-F-]{36})(?:\/attendance\/session)?$/)
+  if (evSess) return `/eventos/${evSess[1]}/presenca`
+  if (path === '/events') return `/eventos${search}`
+  if (path === '/certificates' || path === '/certificates/mine') return '/certificados'
+  const certPub = path.match(/^\/publico\/verificar-certificado\/(.+)$/)
+  if (certPub) return `/publico/verificar-certificado/${certPub[1]}`
+  if (path === '/me/service-records' || path === '/service-records') return '/atendimentos'
+  if (path === '/communications/me' || path === '/communications') return '/comunicados'
+  if (path === '/faq') return '/faq'
   return `${path}${search}`
 }
 

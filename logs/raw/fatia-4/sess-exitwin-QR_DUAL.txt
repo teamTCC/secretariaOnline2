@@ -1,0 +1,18 @@
+﻿HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 01:59:49 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"idEvento":"23e074ec-9736-4e64-98a5-99807dba68ae","estado":"EM_ANDAMENTO","attendanceMode":"QR_DUAL","entryConfirmedAt":"2026-09-01T01:59:47.030847Z","isComplete":false,"_links":{"self":"/events/23e074ec-9736-4e64-98a5-99807dba68ae/attendance/session","confirmar-saida":"/events/23e074ec-9736-4e64-98a5-99807dba68ae/attendance/qr/validate"}}
+

@@ -1,0 +1,246 @@
+﻿[
+    {
+        "name":  "faq",
+        "status":  "200"
+    },
+    {
+        "name":  "ticket-post",
+        "status":  "201"
+    },
+    {
+        "name":  "ticket-mine",
+        "status":  "200"
+    },
+    {
+        "name":  "formativa-presign",
+        "status":  "200"
+    },
+    {
+        "name":  "formativa-put",
+        "status":  "200"
+    },
+    {
+        "name":  "formativa-post",
+        "status":  "201"
+    },
+    {
+        "name":  "formativa-minhas",
+        "status":  "200"
+    },
+    {
+        "name":  "formativa-resumo",
+        "status":  "200"
+    },
+    {
+        "name":  "atend-agendar",
+        "status":  "201"
+    },
+    {
+        "name":  "atend-sec",
+        "status":  "201"
+    },
+    {
+        "name":  "atend-me-pendente",
+        "status":  "200"
+    },
+    {
+        "name":  "atend-alias",
+        "status":  "200"
+    },
+    {
+        "name":  "atend-ack",
+        "status":  "200"
+    },
+    {
+        "name":  "comm-publish",
+        "status":  "201"
+    },
+    {
+        "name":  "inbox",
+        "status":  "200"
+    },
+    {
+        "name":  "unread",
+        "status":  "200"
+    },
+    {
+        "name":  "inbox-read",
+        "status":  "204"
+    },
+    {
+        "name":  "inbox-after-read",
+        "status":  "200"
+    },
+    {
+        "name":  "unread-after",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-create-SECRET_SINGLE",
+        "status":  "201"
+    },
+    {
+        "name":  "evt-audience",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-agendado",
+        "status":  "200"
+    },
+    {
+        "name":  "entry-agendado-409",
+        "status":  "409"
+    },
+    {
+        "name":  "evt-create-SECRET_SINGLE",
+        "status":  "201"
+    },
+    {
+        "name":  "sess-before-SECRET_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "win-entry-SECRET_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-open-SECRET_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "entry-SECRET_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-after-entry-SECRET_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "close-SECRET_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-create-SECRET_DUAL",
+        "status":  "201"
+    },
+    {
+        "name":  "sess-before-SECRET_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "win-entry-SECRET_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-open-SECRET_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "entry-SECRET_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-after-entry-SECRET_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "win-exit-SECRET_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-exitwin-SECRET_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "exit-SECRET_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "close-SECRET_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-create-QR_SINGLE",
+        "status":  "201"
+    },
+    {
+        "name":  "sess-before-QR_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "win-entry-QR_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-open-QR_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "entry-QR_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-after-entry-QR_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "close-QR_SINGLE",
+        "status":  "200"
+    },
+    {
+        "name":  "evt-create-QR_DUAL",
+        "status":  "201"
+    },
+    {
+        "name":  "sess-before-QR_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "win-entry-QR_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-open-QR_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "entry-QR_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-after-entry-QR_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "win-exit-QR_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "sess-exitwin-QR_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "exit-QR_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "close-QR_DUAL",
+        "status":  "200"
+    },
+    {
+        "name":  "certs-mine",
+        "status":  "200"
+    },
+    {
+        "name":  "cert-download",
+        "status":  "200"
+    },
+    {
+        "name":  "cert-idor",
+        "status":  "404"
+    },
+    {
+        "name":  "cert-verify",
+        "status":  "200"
+    }
+]
