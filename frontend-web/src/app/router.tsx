@@ -6,6 +6,10 @@ import { EventosAlunoPage } from '../features/academico/EventosAlunoPage'
 import { FaqPage } from '../features/academico/FaqPage'
 import { FormativasPage } from '../features/academico/FormativasPage'
 import { InboxPage } from '../features/academico/InboxPage'
+import { EstagioDetailPage } from '../features/vinculos/EstagioDetailPage'
+import { EstagiosPage } from '../features/vinculos/EstagiosPage'
+import { TccDetailPage } from '../features/vinculos/TccDetailPage'
+import { TccsPage } from '../features/vinculos/TccsPage'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
 import { NovaSolicitacaoPage } from '../features/solicitacoes/NovaSolicitacaoPage'
 import { SolicitacaoDetailPage } from '../features/solicitacoes/SolicitacaoDetailPage'
@@ -58,6 +62,10 @@ export const router = createBrowserRouter([
           { path: '/comunicados', element: <InboxPage /> },
           { path: '/faq', element: <FaqPage /> },
           { path: '/suporte', element: <FaqPage /> },
+          { path: '/estagios', element: <EstagiosPage /> },
+          { path: '/estagios/:id', element: <EstagioDetailPage /> },
+          { path: '/tccs', element: <TccsPage /> },
+          { path: '/tccs/:id', element: <TccDetailPage /> },
         ],
       },
     ],

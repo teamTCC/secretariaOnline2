@@ -1,0 +1,20 @@
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 02:54:40 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+Set-Cookie: XSRF-TOKEN=5a6b38e8-3d7f-47c2-95fd-ae6eeace89ca; Max-Age=43200; Expires=Tue, 01 Sep 2026 14:54:39 GMT; Path=/
+Set-Cookie: access_token=eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiJkMmZlMzEyOC1iMTdkLTRhYTEtOGE1Ny04YWYyNWI4YTFmNTgiLCJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwic3ViIjoiMWJhZmJiODItYTQ3My00MTcwLTg0MzMtYzEzY2ViYzIyNTYyIiwic2lkIjoiNDMzZTg4MWItMWFkNS00NGM5LTk1OWMtODhmNWFmNjk2ODdiIiwiYXV0aG9yaXRpZXMiOlsiYXR0ZW5kYW5jZS5jaGVja19pbiIsInRjYy52aWV3X293biIsImZvcm1hdGl2ZS52aWV3X293biIsImF0dGVuZGFuY2Uudmlld19vcGVuIiwiZGFzaGJvYXJkLnZpZXdfb3duIiwidXNlci51cGRhdGVfb3duX3Byb2ZpbGUiLCJ1c2VyLnVwZGF0ZV9vd25fcGFzc3dvcmQiLCJjZXJ0aWZpY2F0ZS52aWV3X293biIsImF1dGguZmlyc3RfYWNjZXNzIiwic2VydmljZV9yZWNvcmQudmlld19vd24iLCJmb3JtYXRpdmUuc3VibWl0IiwiaW50ZXJuc2hpcC51cGxvYWRfZG9jX293biIsInJlcXVlc3Qudmlld19vd24iLCJ1c2VyLmV4cG9ydF9vd25fZGF0YSIsImludGVybnNoaXAudmlld19vd24iLCJyZXF1ZXN0Lm9wZW4iLCJ0Y2MudXBsb2FkX2ZpbmFsIiwiY29tbXVuaWNhdGlvbi5yZWFkIl0sIm5vbWUiOiJBbmEgQWx1bm8gRGVtbyIsImlhdCI6MTc4ODIzMTI4MCwiZXhwIjoxNzg4MjMyMTgwfQ.iNSFaIKA1EEc2wNfAfWaX5_j4eBS1pP56-ICLaGXPUYIn-Jy2DFPa8X1BWSoRkP_mx21fufTPRcjEoUv_c-7Yg15Gm-FRGlPoPVZCsS8im9MdU4ofpIO8GQPne4iwgX113FVmM1pL4ejt3_BXBgb6FGTocdn5NfGPdUNNQDcC5vv5-pgdRy3SF_pKawS1nWHUPzSo92N34nBXUmS2QKwthGQkYiQY5lz3xqavTIcCTEkuXJh3YMHkFax2oT_hXDIRQqEe4x0tL2cuXGPB4cdIfBi1ebdhOw4bNjuugFgflgcE6zhGVG-e1O4y2b4xMwk-A63cEXN5mwK_xk_vFRs5Q; Max-Age=900; Expires=Tue, 01 Sep 2026 03:09:40 GMT; Path=/; HttpOnly; SameSite=Lax
+Set-Cookie: refresh_token=276d31f92407428bb8dfbaba642e1ab72cbf1dfa4c754a2f8bf7cbb5a61fa832; Max-Age=604800; Expires=Tue, 08 Sep 2026 02:54:40 GMT; Path=/auth; HttpOnly; SameSite=Lax
+
+{"mustChangePassword":false,"mustAcceptLgpd":false}

@@ -13,12 +13,18 @@ export type AttachmentInput = {
 
 type Presign = { uploadUrl: string; storageKey: string }
 
+type PresignCtx = { file: File; hash: string; categoria: string }
+
 type Props = {
   requestId?: string
   categoria: string
   onReady?: (att: AttachmentInput) => void
   /** override — formativas: `/formativas/comprovantes/presigned-url` */
   presignPath?: string
+  /** internships/TCC: body diferente de `{ filename, contentType }` */
+  buildPresignBody?: (ctx: PresignCtx) => unknown
+  confirmPath?: string
+  buildConfirmBody?: (att: AttachmentInput) => unknown
 }
 
 async function sha256Hex(file: File): Promise<string> {
@@ -26,7 +32,15 @@ async function sha256Hex(file: File): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady, presignPath }: Props) {
+export function AttachmentUpload({
+  requestId,
+  categoria: categoriaProp,
+  onReady,
+  presignPath,
+  buildPresignBody,
+  confirmPath,
+  buildConfirmBody,
+}: Props) {
   const [categoria, setCategoria] = useState(categoriaProp)
   const [file, setFile] = useState<File | null>(null)
   const [pending, setPending] = useState(false)
@@ -44,13 +58,15 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady,
     try {
       const hash = await sha256Hex(file)
       const ct = file.type || 'application/pdf'
-      const body = {
-        filename: file.name,
-        contentType: ct,
-        sha256: hash,
-        sizeBytes: file.size,
-        categoria,
-      }
+      const body = buildPresignBody
+        ? buildPresignBody({ file, hash, categoria })
+        : {
+            filename: file.name,
+            contentType: ct,
+            sha256: hash,
+            sizeBytes: file.size,
+            categoria,
+          }
       const path =
         presignPath ??
         (requestId ? `/requests/${requestId}/attachments/upload-url` : '/requests/attachments/presigned-url')
@@ -87,12 +103,9 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady,
         tamanhoBytes: file.size,
       }
       let confirm: unknown
-      if (requestId && putOk) {
+      if (putOk && (confirmPath || requestId)) {
         try {
-          confirm = await api(`/requests/${requestId}/attachments/confirm`, {
-            method: 'POST',
-            body: att,
-          })
+          confirm = await postConfirm(att)
         } catch (e) {
           confirm = e
         }
@@ -106,8 +119,18 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady,
     }
   }
 
+  async function postConfirm(att: AttachmentInput) {
+    if (confirmPath) {
+      return api(confirmPath, {
+        method: 'POST',
+        body: buildConfirmBody ? buildConfirmBody(att) : att,
+      })
+    }
+    return api(`/requests/${requestId}/attachments/confirm`, { method: 'POST', body: att })
+  }
+
   async function confirmOnly() {
-    if (!requestId || !storageKey || !sha256) return
+    if ((!requestId && !confirmPath) || !storageKey || !sha256) return
     setPending(true)
     try {
       const att: AttachmentInput = {
@@ -118,10 +141,7 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady,
         categoria,
         tamanhoBytes: tamanhoBytes || 1,
       }
-      const confirm = await api(`/requests/${requestId}/attachments/confirm`, {
-        method: 'POST',
-        body: att,
-      })
+      const confirm = await postConfirm(att)
       onReady?.(att)
       setLast({ confirm, att })
     } catch (e) {
@@ -152,7 +172,7 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady,
       />
       <div className="row">
         <button type="button" disabled={pending || !file} onClick={() => void presignAndPut()}>
-          {requestId ? 'presign + PUT + confirm' : 'presign órfão + PUT'}
+          {requestId || confirmPath ? 'presign + PUT + confirm' : 'presign órfão + PUT'}
         </button>
       </div>
       <p>fallback CORS — cole storageKey após PUT manual</p>
@@ -168,7 +188,7 @@ export function AttachmentUpload({ requestId, categoria: categoriaProp, onReady,
         sha256
         <input value={sha256} onChange={(e) => setSha256(e.target.value)} />
       </label>
-      {requestId ? (
+      {requestId || confirmPath ? (
         <button type="button" disabled={pending || !storageKey} onClick={() => void confirmOnly()}>
           POST confirm
         </button>

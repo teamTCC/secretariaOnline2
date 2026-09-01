@@ -25,7 +25,9 @@ class EncerrarEstagioUseCase(
 ) {
     fun conclude(command: ConcludeEstagioCommand): EstagioEncerradoResult {
         val internship = internshipRepo.findById(command.id).orElseThrow { EstagioNotFoundException(command.id) }
-        require(internship.estado == "EM_ANDAMENTO") { "Estágio não está EM_ANDAMENTO." }
+        if (internship.estado != "EM_ANDAMENTO") {
+            throw IllegalStateException("Estágio não está EM_ANDAMENTO.")
+        }
         internship.estado = "CONCLUIDO"
         if (internship.fim == null) internship.fim = LocalDate.now()
         internshipRepo.save(internship)

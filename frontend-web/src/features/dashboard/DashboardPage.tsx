@@ -1,13 +1,14 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../shared/api/client'
-import { normalizeLinks, uiPathFromHref } from '../../shared/api/hateoas'
+import { hrefOf, normalizeLinks, uiPathFromHref } from '../../shared/api/hateoas'
 import { isProblem } from '../../shared/api/problem'
 import { queryKeys } from '../../shared/api/queryKeys'
 import { HateoasBar } from '../../shared/ui/HateoasBar'
 import { JsonPanel } from '../../shared/ui/JsonPanel'
 import { Page } from '../../shared/ui/Page'
 import { ProblemBanner } from '../../shared/ui/ProblemBanner'
+import { useState } from 'react'
 
 type Me = {
   roles?: string[]
@@ -55,6 +56,15 @@ export function DashboardPage() {
   })
 
   const data = dash.data
+  const links = normalizeLinks(data?._links)
+  const [graduationId, setGraduationId] = useState(params.get('diploma') ?? '')
+  const [diploma, setDiploma] = useState<unknown>()
+
+  const diplomaUrl = useMutation({
+    mutationFn: (gid: string) => api(`/graduations/${gid}/diploma-url`),
+    onSuccess: setDiploma,
+    onError: setDiploma,
+  })
 
   return (
     <Page title="Dashboard">
@@ -93,10 +103,36 @@ export function DashboardPage() {
       {data ? (
         <>
           <HateoasBar
-            links={normalizeLinks(data._links)}
-            onAction={(_rel, href) => nav(uiPathFromHref(href))}
+            links={links}
+            onAction={(rel, href) => {
+              if (rel === 'download') {
+                void api(href).then(setDiploma).catch(setDiploma)
+                return
+              }
+              nav(uiPathFromHref(href))
+            }}
           />
           <p>degraded: {String(Boolean(data._degraded))}</p>
+          <p>
+            novaSolicitacao: {hrefOf(links, 'novaSolicitacao') ?? '(ausente)'}
+            {perfil === 'egresso' ? ' — egresso não abre solicitação' : ''}
+          </p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (graduationId) diplomaUrl.mutate(graduationId)
+            }}
+          >
+            <label>
+              GET /graduations/:id/diploma-url (colação fatia 7)
+              <input value={graduationId} onChange={(e) => setGraduationId(e.target.value)} />
+            </label>
+            <button type="submit" disabled={diplomaUrl.isPending || !graduationId}>
+              diploma-url
+            </button>
+          </form>
+          <h2>diploma</h2>
+          <JsonPanel data={diploma} />
           {data.pendencias?.length ? (
             <ul>
               {data.pendencias.map((p) => (

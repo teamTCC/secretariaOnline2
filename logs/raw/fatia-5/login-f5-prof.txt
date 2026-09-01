@@ -1,0 +1,20 @@
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 02:54:41 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+Set-Cookie: XSRF-TOKEN=a7a930fb-35db-487b-a3d3-3e863ec8decc; Max-Age=43200; Expires=Tue, 01 Sep 2026 14:54:41 GMT; Path=/
+Set-Cookie: access_token=eyJhbGciOiJSUzI1NiJ9.eyJqdGkiOiIxOWUzNWMyYi03MmY4LTRlZTQtYTg5YS03NzE0OWQzMzRiMjEiLCJpc3MiOiJzZWNyZXRhcmlhLW9ubGluZS0yIiwic3ViIjoiOThmZTEwNjYtNGM0Yy00ZjIwLWI5MTEtMjk0MWUwYzkyMWEwIiwic2lkIjoiMGMyN2IyOTgtMDZhNy00YTU5LWFmMTQtZGEzZDkzM2Y2ZDViIiwiYXV0aG9yaXRpZXMiOlsiZGFzaGJvYXJkLnZpZXdfc2VsZl9wcm9mZXNzb3IiLCJjb21tdW5pY2F0aW9uLnB1Ymxpc2hfY2xhc3MiLCJldmVudC5tYW5hZ2UiLCJ0Y2Muc3VwZXJ2aXNlIiwiYXV0aC5maXJzdF9hY2Nlc3MiLCJmb3JtYXRpdmUucmV2aWV3IiwidXNlci51cGRhdGVfb3duX3Bhc3N3b3JkIiwidXNlci51cGRhdGVfb3duX3Byb2ZpbGUiLCJpbnRlcm5zaGlwLnN1cGVydmlzZSIsImNvbW11bmljYXRpb24ucmVhZCIsImV2ZW50Lmhvc3QiLCJyZXF1ZXN0LmRlbGliZXJhdGUiLCJyZXF1ZXN0LnZpZXdfY3Vyc28iLCJ0Y2MuZXhhbWluZSJdLCJub21lIjoiQW5hIFByb2Zlc3NvcmEgRGVtbyIsImlhdCI6MTc4ODIzMTI4MSwiZXhwIjoxNzg4MjMyMTgxfQ.KQFT_uP8VndFcDUb7gT1Muo-yPah1-UXzGwx1SoKZgul89sUGSKNaOOZJUk5rnGpJY13ozd7ozVISk5_B9fh6jOruOYppkAPvNx84yF-tqJhjdm1Apfmswn00OybxUiH0qVqPobcJHnjj1ZzHqE526OAXftAITJvH5TEju3_Rdfl8m7z88bjfRcUET4mlcmBS0TE3-UvhCJfl138fx0bXqYSvzB3pvMXV7SmWN_y4ugsq_Hfxcoy5WVx1N65-xygDMMSqLAxOtMNhhg0oOvw40wA9_l9tX0iQ3vlgSibmgjpYtV_6k8w3BJg2-6_QXNjBClNUWEVil_auTk9aoLZag; Max-Age=900; Expires=Tue, 01 Sep 2026 03:09:41 GMT; Path=/; HttpOnly; SameSite=Lax
+Set-Cookie: refresh_token=718debb3524d4811b612f6974e85563a269c19695eea4ec9993cecd1c97d2051; Max-Age=604800; Expires=Tue, 08 Sep 2026 02:54:41 GMT; Path=/auth; HttpOnly; SameSite=Lax
+
+{"mustChangePassword":false,"mustAcceptLgpd":false}

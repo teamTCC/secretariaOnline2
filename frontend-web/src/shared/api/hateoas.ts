@@ -50,6 +50,14 @@ export function uiPathFromHref(href: string): string {
   if (path === '/me/service-records' || path === '/service-records') return '/atendimentos'
   if (path === '/communications/me' || path === '/communications') return '/comunicados'
   if (path === '/faq') return '/faq'
+  if (path === '/internships' || path === '/internships/mine') return '/estagios'
+  const intern = path.match(/^\/internships\/([0-9a-fA-F-]{36})(?:\/.*)?$/)
+  if (intern) return `/estagios/${intern[1]}`
+  if (path === '/tccs' || path === '/tccs/mine') return '/tccs'
+  const tcc = path.match(/^\/tccs\/([0-9a-fA-F-]{36})(?:\/.*)?$/)
+  if (tcc) return `/tccs/${tcc[1]}`
+  const diploma = path.match(/^\/graduations\/([0-9a-fA-F-]{36})\/diploma-url$/)
+  if (diploma) return `/dashboard?diploma=${diploma[1]}`
   return `${path}${search}`
 }
 

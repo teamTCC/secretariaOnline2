@@ -50,7 +50,7 @@ class EstagioQuery(
         }
         val links = linkedMapOf("self" to "/internships/$id", "documents" to "/internships/$id/documents")
         if (canReview || isSupervisor) links["update"] = "/internships/$id"
-        if (canReview) links["conclude"] = "/internships/$id/conclude"
+        if (canReview && internship.estado == "EM_ANDAMENTO") links["conclude"] = "/internships/$id/conclude"
         return toDetail(internship, links)
     }
 

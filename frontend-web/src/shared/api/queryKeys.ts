@@ -28,4 +28,11 @@ export const queryKeys = {
   inboxUnread: ['communications', 'unread'] as const,
   faq: (categoria?: string) => ['faq', categoria ?? ''] as const,
   ticketsMine: ['support', 'tickets', 'mine'] as const,
+  internshipsMine: (page?: number) => ['internships', 'mine', page ?? 0] as const,
+  internship: (id: string) => ['internships', 'detail', id] as const,
+  internshipDocs: (id: string) => ['internships', 'documents', id] as const,
+  tccsMine: ['tccs', 'mine'] as const,
+  tccsList: (estado?: string) => ['tccs', 'list', estado ?? ''] as const,
+  tcc: (id: string) => ['tccs', 'detail', id] as const,
+  diplomaUrl: (id: string) => ['graduations', 'diploma-url', id] as const,
 }

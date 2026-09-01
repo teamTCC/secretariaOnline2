@@ -1,0 +1,18 @@
+HTTP/1.1 200 
+Vary: Origin
+Vary: Access-Control-Request-Method
+Vary: Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+X-Frame-Options: DENY
+Content-Type: application/json
+Transfer-Encoding: chunked
+Date: Tue, 01 Sep 2026 02:55:31 GMT
+Keep-Alive: timeout=60
+Connection: keep-alive
+
+{"kpis":{"horasFormativas":{"atual":0.0,"requerido":120.0,"percentual":0.0},"atendimentosPendentes":0},"pendencias":[],"eventos":[],"ultimasSolicitacoes":[{"id":"a1f30f2a-886f-4460-a17d-adcbfaa24326","tipo":"DECLARACAO_MATRICULA","estado":"ABERTA","createdAt":"2026-08-31T21:00:30.628022Z"},{"id":"5c1950ee-e5f3-490b-869b-016862a03e70","tipo":"TRANCAMENTO_DISCIPLINA","estado":"ABERTA","createdAt":"2026-08-31T21:01:57.923543Z"},{"id":"ecb7f27e-597b-4ceb-97fc-a3f1622d0fbc","tipo":"DECLARACAO_MATRICULA","estado":"DEFERIDA","createdAt":"2026-08-31T20:59:02.070711Z"},{"id":"940c0718-eedd-4154-b92a-f12ecf596ca7","tipo":"HISTORICO_ESCOLAR","estado":"ABERTA","createdAt":"2026-08-31T21:23:24.268566Z"},{"id":"98bd0d97-5bcc-4e7d-af7b-8f3303b49ecb","tipo":"AUTORIZACAO_IMAGEM","estado":"ABERTA","createdAt":"2026-08-31T21:23:24.368597Z"}],"_links":{"self":"/bff/dashboard/aluno","novaSolicitacao":"/requests/types","formativas":"/formativas/minhas","eventos":"/events?audience=me"}}
+

@@ -1,0 +1,1 @@
+{"id":"ba731d06-ad28-4998-9a53-e756ce1b789f","nome":"Ana Egressa Demo","email":"ana.egressa@ufpr.br","ativo":true,"metadata":{"aceite_lgpd_em":"2026-08-31T16:20:20.983547600-03:00"},"roles":["EGRESSO"],"_links":{"self":"/me","update-profile":"/me","change-password":"/me/password","notifications":"/me/notifications","data-export":"/me/data-export"}}

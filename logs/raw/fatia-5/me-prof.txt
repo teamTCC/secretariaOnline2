@@ -1,0 +1,1 @@
+{"id":"98fe1066-4c4c-4f20-b911-2941e0c921a0","nome":"Ana Professora Demo","email":"prof.ana@ufpr.br","ativo":true,"metadata":{"aceite_lgpd_em":"2026-08-31T16:20:07.488419100-03:00"},"roles":["PROFESSOR"],"_links":{"self":"/me","update-profile":"/me","change-password":"/me/password","notifications":"/me/notifications","data-export":"/me/data-export"}}

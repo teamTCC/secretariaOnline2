@@ -36,6 +36,8 @@ export function Shell() {
         <Link to="/certificados">Certificados</Link>
         <Link to="/atendimentos">Atendimentos</Link>
         <Link to="/comunicados">Inbox</Link>
+        <Link to="/estagios">Estágios</Link>
+        <Link to="/tccs">TCCs</Link>
         <Link to="/faq">FAQ</Link>
         <Link to="/me">Me</Link>
         <Link to="/contato">Contato</Link>
