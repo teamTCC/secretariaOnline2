@@ -149,7 +149,7 @@ Então a ordem de tab é: nova senha → confirmar senha → checkbox LGPD → l
 
 ```http
 POST /auth/first-access
-Authorization: Bearer {accessToken}
+Cookie: access_token={jwt}
 Content-Type: application/json
 
 {

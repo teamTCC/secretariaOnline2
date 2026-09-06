@@ -65,7 +65,7 @@ sequenceDiagram
     end
 
     Aluno->>WebApp: acessa /eventos
-    WebApp->>JwtFilter: GET /events?audience=me (Bearer)
+    WebApp->>JwtFilter: GET /events?audience=me (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + attendance.view_open ✓
     JwtFilter->>EventsController: repassa (alunoId)
     EventsController->>Postgres: SELECT event JOIN audience JOIN attendance_record (situacaoPresenca por aluno) ORDER BY scheduledStart ASC
@@ -150,7 +150,9 @@ sequenceDiagram
     AttendanceController->>ConfirmAttendanceUseCase: execute(cmd)
     ConfirmAttendanceUseCase->>Postgres: SELECT janela_ativa + pin_hash + devicePolicy WHERE eventId=:id AND now() WITHIN janela
     Postgres-->>ConfirmAttendanceUseCase: {attendanceMode: SECRET_SINGLE, pin_hash, devicePolicy: BIND|NONE}
-    ConfirmAttendanceUseCase->>Postgres: BEGIN; INSERT attendance_record {alunoId, eventId, deviceUuid, fase, pin_ok=true} + INSERT outbox_event + COMMIT
+    ConfirmAttendanceUseCase->>Postgres: BEGIN; INSERT attendance_record {alunoId, eventId, deviceUuid, fase, pin_ok=true}
+    ConfirmAttendanceUseCase->>Outbox: OutboxEventPublisher.enqueue(presenca.confirmed)
+    ConfirmAttendanceUseCase->>Postgres: COMMIT
     AttendanceController-->>WebApp: 200 OK {situacaoAluno: COMPLETA, _links}
     WebApp-->>Aluno: DS/AlertBanner success "Presença registrada!" + badge "Presença completa" na lista)
 ```
@@ -193,7 +195,9 @@ sequenceDiagram
     AttendanceController->>ConfirmAttendanceUseCase: execute(cmd)
     ConfirmAttendanceUseCase->>Postgres: SELECT janela_ENTRADA ativa + pin_entrada_hash + attendanceMode
     Postgres-->>ConfirmAttendanceUseCase: {attendanceMode: SECRET_DUAL, pin_hash, entrada_existente: null}
-    ConfirmAttendanceUseCase->>Postgres: BEGIN; INSERT attendance_record {alunoId, eventId, deviceUuid, fase, pin_ok=true} + INSERT outbox_event + COMMIT
+    ConfirmAttendanceUseCase->>Postgres: BEGIN; INSERT attendance_record {alunoId, eventId, deviceUuid, fase, pin_ok=true}
+    ConfirmAttendanceUseCase->>Outbox: OutboxEventPublisher.enqueue(presenca.confirmed)
+    ConfirmAttendanceUseCase->>Postgres: COMMIT
     AttendanceController-->>WebApp: 200 OK {situacaoAluno: PARCIAL, _links.confirmar-saida}
     WebApp-->>Aluno: "Entrada registrada. Confirme a saída quando solicitado pelo organizador."
 ```

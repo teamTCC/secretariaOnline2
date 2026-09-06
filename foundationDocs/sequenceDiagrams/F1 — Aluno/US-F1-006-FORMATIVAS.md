@@ -60,7 +60,7 @@ sequenceDiagram
     end
 
     Aluno->>WebApp: acessa /formativas
-    WebApp->>JwtFilter: GET /formative-entries?aluno=me (Bearer)
+    WebApp->>JwtFilter: GET /formative-entries?aluno=me (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + formative.view_own ✓
     JwtFilter->>FormativeController: repassa (alunoId)
     FormativeController->>Postgres: SELECT formative_entry WHERE aluno_id=:alunoId ORDER BY created_at DESC
@@ -106,7 +106,7 @@ sequenceDiagram
     FormativeController->>SubmitFormativeUseCase: execute(cmd)
     SubmitFormativeUseCase->>Postgres: BEGIN; SELECT formative_activity WHERE id=:atividadeId AND curso_id=:cursoId
     SubmitFormativeUseCase->>Postgres: INSERT formative_entry {estado=SUBMETIDA, horas_declaradas, comprovante_key=:key}
-    SubmitFormativeUseCase->>Postgres: INSERT outbox_event(formativas.submitted, entryId, alunoId, cursoId)
+    SubmitFormativeUseCase->>Outbox: OutboxEventPublisher.enqueue(formativas.submitted)
     FormativeController-->>WebApp: 201 Created {id, _links}
     WebApp-->>Aluno: redireciona /formativas/:id + DS/Toast "Atividade enviada para análise da CAAF."
 ```

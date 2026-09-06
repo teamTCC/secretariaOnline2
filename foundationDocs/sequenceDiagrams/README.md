@@ -1,8 +1,10 @@
 # Diagramas de sequência — SecretariaOnline2
 
-
-
 Repositório de **saída** dos diagramas gerados pelo prompt `promptParaGerarDiagramasDeSequencia.md`.
+
+**As-built (2026-08):** os diagramas desta campanha foram alinhados ao backend real. Contrato: [`foundationDocs/analysis/as-built-backend.md`](../analysis/as-built-backend.md) (vence sobre a análise de 2026-06 onde divergirem). Convenções Mermaid: `.cursor/skills/fullstack-sequence-diagrams` (`participant`, sem `%%{init}%%`, sem `<br/>`, sem `Note over`).
+
+---
 
 
 
@@ -82,7 +84,7 @@ Usada por **Modo fila** (Loop / Cursor Automation). O agente processa **um** ite
 
 |------:|----|---------------|--------|------------|
 
-| 0 | 10.1 | `transversal/10.1-outbox-notificacao.md` | feito | 10.1a (Fase TX) + 10.1b (Dispatch multicanal) |
+| 0 | 10.1 | `transversal/10.1-outbox-notificacao.md` | feito | 10.1a (OutboxEventPublisher.enqueue) + 10.1b (dispatch) + 10.1c (?ott= → POST /auth/ott) |
 
 | 0 | 10.4 | `transversal/10.4-certificado-emissao.md` | feito | 10.4a (render + sign + persist + outbox) |
 
@@ -100,7 +102,7 @@ Usada por **Modo fila** (Loop / Cursor Automation). O agente processa **um** ite
 
 |------:|----|-------------------------|---------------|--------|------------|
 
-| 1 | US-F0-001 | `HUs/F0 — Público/US-F0-001-LOGIN.md` | `F0/US-F0-001-LOGIN.md` | feito | F0.1-a..f (6 diagramas) |
+| 1 | US-F0-001 | `HUs/F0 — Público/US-F0-001-LOGIN.md` | `F0/US-F0-001-LOGIN.md` | feito | F0.1-a..h — cookies Set-Cookie; F0.1-g/h POST /auth/ott; as-built 2026-08 |
 
 | 2 | US-F0-002 | `HUs/F0 — Público/US-F0-002-RECUPERAR-SENHA.md` | `F0/US-F0-002-RECUPERAR-SENHA.md` | feito | F0.2-a (happy path) · F0.2-b (e-mail inexistente) · F0.2-c (429) · DRY → 10.1 |
 
@@ -136,7 +138,7 @@ Usada por **Modo fila** (Loop / Cursor Automation). O agente processa **um** ite
 
 | 18 | US-F1-011 | `HUs/F1 — Aluno/US-F1-011-ATENDIMENTOS.md` | `F1/US-F1-011-ATENDIMENTOS.md` | feito | F1.20-D01 (lista+filtro status) · F1.20-D02 (POST acknowledge+audit_log+IDOR guard) |
 
-| 19 | US-F2-001 | `HUs/F2 — Egresso/US-F2-001-DASHBOARD-EGRESSO.md` | `F2/US-F2-001-DASHBOARD-EGRESSO.md` | feito | F2.1-D01 (GET /alumni/me) · F2.1-D02 (download diploma MinIO) · F2.1-D03 (reemitir certificado) · F2.1-D04 (403 rota aluno) · DRY → US-F1-003, US-F1-010, US-F5-005 |
+| 19 | US-F2-001 | `HUs/F2 — Egresso/US-F2-001-DASHBOARD-EGRESSO.md` | `F2/US-F2-001-DASHBOARD-EGRESSO.md` | feito | F2.1-D01 GET /bff/dashboard/egresso (Query+ports+60s) · D02/D03 lacunas alumni · D04 403 · DRY → US-F1-003, US-F1-010, US-F5-005 |
 
 | 20 | US-F3-001 | `HUs/F3 — Professor/US-F3-001-DASHBOARD.md` | `F3/US-F3-001-DASHBOARD.md` | feito | F3.1-D01 (happy path cache MISS) · F3.1-D02 (degradação graciosa) · DRY → F1.1-D01 (blueprint DashboardA) · 10.1 (outbox) |
 

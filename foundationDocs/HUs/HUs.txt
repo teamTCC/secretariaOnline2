@@ -168,7 +168,7 @@ Pré-condições: conta ativa, senha_alterada = true, menos de 5 tentativas no �
 Notas:
 Passo 1: identificador aceita e-mail @ufpr.br, e-mail pessoal ou GRR numérico — normalizado antes do SELECT (RN-F0.1-01).
 Passo 6: Argon2id substitui o MD5 legado; auto-call representa verificação local no UseCase, sem round-trip à DB (RN-F0.1-02).
-Passo 10: WebApp armazena accessToken em memória e refreshToken em cookie httpOnly + SameSite=Lax; mobile: Keychain/Keystore (RN-F0.1-03).
+Passo 10: WebApp usa cookies HttpOnly access_token + refresh_token (JSON só mustChangePassword + mustAcceptLgpd); sessão Redis auth:session:<sid>; mobile: Keychain/Keystore (RN-F0.1-03).
 Lacunas: nenhuma.
 
 F0.1-b — Login → primeiro acesso (mustChangePassword)

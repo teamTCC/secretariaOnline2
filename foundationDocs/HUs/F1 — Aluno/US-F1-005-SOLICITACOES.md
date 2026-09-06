@@ -64,7 +64,8 @@
 
 | ID | Regra |
 |----|-------|
-| **RN-F1.9-01** | Todos os botões da ActionBar são derivados **exclusivamente** de `_links` na resposta de `GET /requests/{id}`. A UI não conhece o workflow interno — ela renderiza apenas os links disponíveis. |
+| **RN-F1.9-01** | Todos os botões da ActionBar são derivados **exclusivamente** de `_links` na resposta de `GET /requests/{id}`. `_links` é `Map<String,String>` (rel → URL). A UI não usa HAL `{ href }` nem `EntityModel`. |
+| **RN-F1.9-01a** | GET detalhe carrega `formSchema` da **versão da instância** (`idRequestTypeVersion` / `request.id_request_type_version`, snapshot `V019`). Publicar tipo novo não altera formulário de solicitações já abertas. |
 | **RN-F1.9-02** | Estado `EM_AJUSTE`: o link `editar` reabre o wizard no Passo 2 pré-preenchido. |
 | **RN-F1.9-03** | Estado `DELIBERADA`: o link `gerar-protocolo` dispara `POST /requests/{id}/protocol` e gera PDF com QR para `/publico/verificar-protocolo/:id`. |
 | **RN-F1.9-04** | A timeline de eventos (`request_event`) é exibida em **ordem reversa** (mais recente no topo) com tipo, data/hora e texto do evento. |
@@ -174,30 +175,59 @@ Então exibe botão "Gerar protocolo" na ActionBar
 
 ---
 
-## 5. Fora de escopo
+## 5. Contrato de API (detalhe)
+
+```http
+GET /requests/{id}
+Cookie: access_token={jwt}
+```
+
+```json
+{
+  "id": "...",
+  "protocolo": "2026-0042",
+  "tipoCode": "ADIANTAMENTO_PERIODO",
+  "estado": "EM_AJUSTE",
+  "dados": {},
+  "formSchema": {},
+  "idRequestTypeVersion": "...",
+  "_links": {
+    "self": "/requests/{id}",
+    "events": "/requests/{id}/events",
+    "attachments": "/requests/{id}/attachments",
+    "update-draft": "/requests/{id}/draft"
+  }
+}
+```
+
+`_links` = objeto de strings (não `{ rel: { href } }`). `formSchema` vem do snapshot da versão da instância (V019).
+
+## 6. Fora de escopo
 
 - Solicitação de revisão de decisão após indeferimento — prevista se `workflow_json` do tipo permitir, implementada junto com o tipo específico
 - Cancelamento de solicitação pelo aluno — depende do workflow do tipo
 
 ---
 
-## 6. Definição de Pronto (DoD)
+## 7. Definição de Pronto (DoD)
 
 - [ ] Frames Figma aprovados: Lista (loaded + empty), Wizard (3 passos), Detalhe
 - [ ] DynamicForm renderiza corretamente a partir de form_schema de ao menos 3 tipos diferentes
 - [ ] SHA-256 de anexo calculado no browser e validado no backend
 - [ ] Rascunho local funcional via PWA storage
-- [ ] Todas as ações em F1.9 derivadas exclusivamente de _links HATEOAS
+- [ ] Todas as ações em F1.9 derivadas exclusivamente de `_links` (strings, não HAL href)
+- [ ] Detalhe usa `formSchema` da versão stampada (`idRequestTypeVersion`)
 - [ ] Geração de protocolo PDF com QR funcional
 
 ---
 
-## 7. Referências
+## 8. Referências
 
 | Recurso | Link / Caminho |
 |---------|---------------|
 | Specs de tela | `telasFigma/telas1/F1.7-*.md`, `F1.8-*.md`, `F1.9-*.md` |
 | Fluxo F1.2, F1.3 | `foundationDocs/analysis/fluxos_por_perfil.md` §2 F1.2, F1.3 |
+| As-built backend | `foundationDocs/analysis/as-built-backend.md` |
 | Módulo workflow | `agents/workflow-engine-specialist.md` |
 | Página Figma F1 | [Telas / F1 — Aluno](https://www.figma.com/design/y1ZC44ThrXH0CIpEWZITh6/secretariaOnline2?node-id=48-339) |
 | Frame F1.7 principal | [F1.7 — Solicitações / Loaded / Desktop](https://www.figma.com/design/y1ZC44ThrXH0CIpEWZITh6/secretariaOnline2?node-id=60-1452) |

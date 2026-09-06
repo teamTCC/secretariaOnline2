@@ -1,0 +1,49 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    validate-on-migrate: true
+
+  mail:
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+logging:
+  level:
+    root: INFO
+    br.ufpr.sept.so2: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+
+# Dev defaults (override via .env or env vars for real keys)
+security:
+  jwt:
+    private-key: ${SECURITY_JWT_PRIVATE_KEY:PLACEHOLDER_REPLACE_ME}
+    public-key: ${SECURITY_JWT_PUBLIC_KEY:PLACEHOLDER_REPLACE_ME}
+
+# Dev cookie settings — Secure=false so HttpOnly cookies work on plain HTTP (localhost)
+app:
+  security:
+    cookie:
+      secure: false
+      same-site: Lax

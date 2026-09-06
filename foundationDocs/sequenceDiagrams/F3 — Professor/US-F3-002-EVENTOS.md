@@ -253,7 +253,7 @@ sequenceDiagram
     EventController->>CloseEventUC: execute(eventId)
     CloseEventUC->>Postgres: BEGIN TX
     CloseEventUC->>Postgres: UPDATE event SET estado=CONCLUIDO, closedAt=now()
-    CloseEventUC->>Postgres: INSERT outbox_event (type=events.closed, payload={eventId})
+    CloseEventUC->>Outbox: OutboxEventPublisher.enqueue(events.closed)
     CloseEventUC->>Postgres: COMMIT
     CloseEventUC-->>EventController: EventDto (CONCLUIDO)
     EventController-->>WebApp: 200 {estado: CONCLUIDO, _links: []}

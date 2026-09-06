@@ -62,7 +62,7 @@ sequenceDiagram
     participant Postgres
 
     Usuário->>WebApp: navega para /suporte (Bearer; JwtFilter ✓)
-    WebApp->>SupportController: GET /support/faq?perfil=ALUNO (Bearer)
+    WebApp->>SupportController: GET /support/faq?perfil=ALUNO (cookie access_token)
     SupportController->>SupportUseCase: getFaq(perfil=ALUNO)
     SupportUseCase->>Postgres: SELECT faq_items WHERE ativa=true ORDER BY perfil_ordem ASC
     Postgres-->>SupportUseCase: [FaqItemDto] (ordenado por relevância de perfil)
@@ -101,7 +101,7 @@ sequenceDiagram
     SupportController->>CreateTicketUseCase: createTicket(userId, assunto, mensagem)
     CreateTicketUseCase->>Postgres: BEGIN TX
     CreateTicketUseCase->>Postgres: INSERT request (type=SUPORTE_TECNICO, estado=ABERTA, student_id, dados)
-    CreateTicketUseCase->>Postgres: INSERT outbox_event (support.ticket_created)
+    CreateTicketUseCase->>Outbox: OutboxEventPublisher.enqueue(support.ticket_created)
     CreateTicketUseCase->>Postgres: COMMIT → gera numero=SUP-2025-042
     Postgres-->>CreateTicketUseCase: {id, numero: "SUP-2025-042"}
     CreateTicketUseCase-->>SupportController: TicketDto {id, numero}

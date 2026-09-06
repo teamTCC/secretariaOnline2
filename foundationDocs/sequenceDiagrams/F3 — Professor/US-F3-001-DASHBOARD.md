@@ -2,7 +2,7 @@
 
 | HU | Tela | Capability | API primária | Fonte |
 |----|------|------------|--------------|-------|
-| US-F3-001 | F3.1 — `/inicio` | `dashboard.view_self_professor` | `GET /bff/dashboard/professor` | `HUs/F3 — Professor/US-F3-001-DASHBOARD.md` · `fluxos_por_perfil.md` §4 F3.1 |
+| US-F3-001 | F3.1 — `/inicio` | `dashboard.view_self_professor` | `GET /bff/dashboard/professor` | `HUs/F3 — Professor/US-F3-001-DASHBOARD.md` · `fluxos_por_perfil.md` §4 F3.1 · `as-built-backend.md` §3 |
 
 ---
 
@@ -50,8 +50,8 @@
 ## F3.1-D01 — Carregamento inicial do dashboard (happy path — cache MISS)
 
 **Escopo:** happy path — professor acessa `/inicio`; cache Redis expirado ou ausente  
-**Atores:** Professor, WebApp, JwtFilter, DashboardBFF, Redis, Postgres  
-**Pré-condições:** professor autenticado com `dashboard.view_self_professor`; access token válido; capabilities podem incluir `event.manage`, `request.deliberate` e opcionalmente `formative.review`
+**Atores:** Professor, WebApp, JwtFilter, DashboardProfessorController, DashboardProfessorQuery, Redis  
+**Pré-condições:** professor autenticado com `dashboard.view_self_professor`; cookie `access_token` válido
 
 ```mermaid
 sequenceDiagram
@@ -62,33 +62,30 @@ sequenceDiagram
     end
     box #fff8ee Servidor
         participant JwtFilter
-        participant DashboardBFF
+        participant DashCtrl as DashboardProfessorController
+        participant Query as DashboardProfessorQuery
         participant Redis
-        participant Postgres
+        participant Ports
     end
 
     Professor->>WebApp: navega para /inicio
-    WebApp->>WebApp: TanStack Query monta query [dashboard-professor]
-    WebApp->>JwtFilter: GET /bff/dashboard/professor (Bearer)
-    JwtFilter->>JwtFilter: valida JWT + dashboard.view_self_professor ✓
-    JwtFilter->>DashboardBFF: repassa (professorId, authorities[])
-    DashboardBFF->>Redis: GET dashboard:{professorId}
-    Redis-->>DashboardBFF: MISS
-    DashboardBFF->>Postgres: SELECT kpis, filaSolicitacoes (canDeliberate=true), meusEventos
-    DashboardBFF->>Postgres: SELECT formativasCaaf IF formative.review in authorities
-    Postgres-->>DashboardBFF: dados agregados (formativasCaaf=null se sem capability)
-    DashboardBFF->>Redis: SET dashboard:{professorId} TTL=30s
-    DashboardBFF-->>WebApp: 200 {…}
-    WebApp->>WebApp: useActions(_links) → CTAs condicionais por bloco
-    WebApp-->>Professor: dashboard (KpiRow, Fila, Eventos, CAAF se != null)
+    WebApp->>JwtFilter: GET /bff/dashboard/professor (cookie access_token)
+    JwtFilter->>DashCtrl: JWT ok + dashboard.view_self_professor ✓
+    DashCtrl->>Query: execute(professorId)
+    Query->>Redis: GET bff-dashboard professor:{id}
+    Redis-->>Query: MISS
+    Query->>Ports: SolicitacaoDashboardPort + PresencaDashboardPort
+    Ports-->>Query: solicitacoesPendentes, meusEventos
+    Query->>Redis: PUT bff-dashboard professor:{id} TTL=60s
+    Query-->>DashCtrl: DashboardProfessorResponse
+    DashCtrl-->>WebApp: 200 {_links strings, pendencias[]._link}
+    WebApp-->>Professor: dashboard (Eventos, Fila, QuickTiles)
 ```
 
 **Notas:**
-- Passos 8–9: o BFF executa as queries em paralelo (coroutines / `Promise.all`); a query de `formativasCaaf` só é disparada se `formative.review` estiver nas `authorities[]` extraídas do JWT — professores sem vínculo à CAAF nunca recebem esse bloco (RN-F3.1-03).
-- Passo 10: `formativasCaaf=null` é retornado no JSON quando a capability está ausente; o frontend interpreta `null` como ausência do bloco — sem renderização, sem placeholder.
-- Passo 12: `meusEventos[].estado=EM_ANDAMENTO` aciona badge "Em andamento" e `_links.operar` disponibiliza o CTA "Operar evento" somente nos cards ativos (CA-03). O `useActions` oculta o botão se o link estiver ausente (RN-F3.1-05).
-- Passo 12: `kpis.slaUrgentes` conta solicitações com `prazo_em < now + 24h`; o KpiCard exibe badge warning no client-side (CA-02 — DRY, sem HTTP extra).
-- `filaSolicitacoes` é filtrada no BFF por `canDeliberate=true` para o `professorId` corrente — um professor não vê solicitações atribuídas a outro (RN-F3.1-04).
+- Cache name `bff-dashboard`, chave `professor:{id}`, TTL **60 s**. Sem JPA no BFF.
+- `_links` strings (`self`, `novoEvento`, `meusEventos`). Itens de pendência usam `_link`.
+- Auth: cookie `access_token` (Bearer fallback). Ports as-built: `SolicitacaoDashboardPort`, `PresencaDashboardPort` (estágio/TCC não estão neste Query).
 
 **Lacunas:** nenhuma.
 
@@ -97,8 +94,8 @@ sequenceDiagram
 ## F3.1-D02 — Degradação graciosa (módulo de solicitações indisponível)
 
 **Escopo:** erro parcial de módulo — CA-04, RN-F3.1-06  
-**Atores:** Professor, WebApp, JwtFilter, DashboardBFF, SolicitacoesQuery, EventosQuery  
-**Pré-condições:** módulo de solicitações lança timeout ou 503; módulos de eventos e KPIs respondem normalmente
+**Atores:** Professor, WebApp, JwtFilter, DashboardProfessorQuery, SolicitacaoDashboardPort, PresencaDashboardPort  
+**Pré-condições:** módulo de solicitações lança timeout; presença responde
 
 ```mermaid
 sequenceDiagram
@@ -109,27 +106,24 @@ sequenceDiagram
     end
     box #fff8ee Servidor
         participant JwtFilter
-        participant DashboardBFF
-        participant SolicitacoesQuery
-        participant EventosQuery
+        participant Query as DashboardProfessorQuery
+        participant SolPort as SolicitacaoDashboardPort
+        participant EvPort as PresencaDashboardPort
     end
 
     Professor->>WebApp: navega para /inicio
-    WebApp->>JwtFilter: GET /bff/dashboard/professor (Bearer)
-    JwtFilter->>JwtFilter: valida JWT + dashboard.view_self_professor ✓
-    JwtFilter->>DashboardBFF: repassa (professorId)
-    DashboardBFF->>SolicitacoesQuery: SELECT filaSolicitacoes, kpis.pendentes (timeout 3s)
-    DashboardBFF->>EventosQuery: SELECT meusEventos, kpis.eventosHoje (paralelo)
-    SolicitacoesQuery-->>DashboardBFF: timeout / erro interno
-    EventosQuery-->>DashboardBFF: dados OK
-    DashboardBFF-->>WebApp: 200 {kpis, filaSolicitacoes: null, meusEventos, _links}
-    WebApp->>WebApp: useActions(_links) + marca bloco solicitacoes como degradado
-    WebApp-->>Professor: dashboard parcial + DS/AlertBanner warning em "Fila de solicitações"
+    WebApp->>JwtFilter: GET /bff/dashboard/professor (cookie access_token)
+    JwtFilter->>Query: JWT ok + dashboard.view_self_professor ✓
+    Query->>SolPort: findPendentesDeliberacao
+    Query->>EvPort: findByOrganizador (paralelo)
+    SolPort-->>Query: timeout / erro interno
+    EvPort-->>Query: meusEventos OK
+    Query-->>WebApp: 200 {solicitacoesPendentes:null, _degraded:true, _links}
+    WebApp-->>Professor: dashboard parcial + DS/AlertBanner na fila
 ```
 
 **Notas:**
-- Passo 9: o BFF retorna `HTTP 200` mesmo com módulo parcialmente degradado; `filaSolicitacoes: null` sinaliza ao frontend que o bloco deve exibir `DS/AlertBanner warning` (RN-F3.1-06). Os blocos de eventos e formativas CAAF (se aplicável) renderizam normalmente.
-- Passo 10: `DS/AlertBanner` exibe "Não foi possível carregar as solicitações no momento." — CA-04. O professor conserva acesso a todos os demais blocos.
-- O BFF usa `try/catch` isolado por sub-query dentro do agregador; a falha de um módulo não cancela os demais (mesma política de F1.1-D03).
+- HTTP 200 com `_degraded=true`; bloco degradado **não** vai para Redis.
+- Controller omite (delega 1:1). Mesma política de F1.1-D03.
 
 **Lacunas:** nenhuma.

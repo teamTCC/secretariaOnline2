@@ -65,7 +65,7 @@ sequenceDiagram
     end
 
     Professor->>WebApp: acessa /comunicacao/publicar
-    WebApp->>JwtFilter: GET /communications/audiences (Bearer)
+    WebApp->>JwtFilter: GET /communications/audiences (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + communication.publish_class ✓
     JwtFilter->>CommunicationController: repassa (professorId)
     CommunicationController->>Postgres: SELECT turmas, cursos WHERE professor=professorId
@@ -110,7 +110,7 @@ sequenceDiagram
     PublishCommunicationUC->>Postgres: BEGIN TX
     PublishCommunicationUC->>Postgres: valida audienciaId IN professor.audiences ✓ (RN-F3.8-01)
     PublishCommunicationUC->>Postgres: INSERT communication (titulo, corpo, audienciaId, prioridade, expiraEm, publicadoPor)
-    PublishCommunicationUC->>Postgres: INSERT outbox_event (type=comunicacao.published, {communicationId, audienciaId})
+    PublishCommunicationUC->>Outbox: OutboxEventPublisher.enqueue(comunicacao.published)
     PublishCommunicationUC->>Postgres: COMMIT
     PublishCommunicationUC-->>CommunicationController: CommunicationDto {id, titulo, _links}
     CommunicationController-->>WebApp: 201 Created {id, titulo, _links}

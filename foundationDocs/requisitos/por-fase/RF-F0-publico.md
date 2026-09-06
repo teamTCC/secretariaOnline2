@@ -32,37 +32,38 @@
 | **Ator(es)** | A1 Visitante; A2 Aluno; A3 Egresso; A4 Professor; A7 Secretaria; A8 Coordenador; A9 Admin |
 | **Módulo** | F0 — Público |
 | **Rastreio HU** | US-F0-001 |
-| **Rastreio UC** | UC-AUT-01 |
+| **Rastreio UC** | UC-AUT-01 (relacionado: UC-AUT-07) |
 | **Tela** | F0.1 `/login` |
-| **API** | `POST /auth/login` |
+| **API** | `POST /auth/login` (relacionado: `POST /auth/ott`) |
 | **Legado** | RF-01 (T01 `logarUsuario.jsp`) |
 
-**Descrição:** O sistema deve permitir que usuários cadastrados autentiquem-se informando identificador (e-mail institucional `@ufpr.br`, e-mail pessoal cadastrado ou GRR) e senha, recebendo tokens de acesso em caso de sucesso e sendo direcionados ao fluxo adequado conforme o estado da conta.
+**Descrição:** O sistema deve permitir que usuários cadastrados autentiquem-se informando identificador (e-mail institucional `@ufpr.br`, e-mail pessoal cadastrado ou GRR) e senha. Tokens **não** retornam no JSON: cookies HttpOnly `access_token` (Path=/) e `refresh_token` (Path=/auth) + sessão Redis `auth:session:<sid>`. JSON 200: apenas `mustChangePassword` e `mustAcceptLgpd`.
 
 **Pré-condições:**
-- O visitante acessa `/login` sem JWT válido.
+- O visitante acessa `/login` sem JWT válido (cookie `access_token` ausente ou expirado).
 - A conta do usuário existe e está ativa no sistema (quando as credenciais forem válidas).
 
 **Pós-condições:**
-- Credenciais válidas com `senha_alterada = true` → emissão de access token (15 min) e refresh token (7 dias) + redirecionamento para `/inicio`.
+- Credenciais válidas com `senha_alterada = true` → cookies de sessão + JSON `{ mustChangePassword, mustAcceptLgpd }` + redirecionamento para `/inicio`.
 - Credenciais válidas com `senha_alterada = false` → resposta com `mustChangePassword: true` + redirecionamento para `/primeiro-acesso` (RF-F1-002).
 - Credenciais inválidas ou conta bloqueada → HTTP 401 com mensagem genérica anti-enumeração.
 - Toda tentativa registrada em `audit_log` (`iam.login_success` ou `iam.login_failed`).
 
 **Critérios de aceitação:**
 1. Identificador aceita e-mail `@ufpr.br`, e-mail pessoal ou GRR numérico; backend normaliza antes da busca (RN-F0.1-01).
-2. Verificação de senha exclusivamente com Argon2id; nenhum hash MD5 gerado ou comparado (RN-F0.1-02).
-3. Sucesso com senha já alterada: `POST /auth/login` retorna 200 com `accessToken`, `refreshToken` e `mustChangePassword: false`; web armazena access em memória e refresh em cookie `httpOnly; Secure; SameSite=Lax`; mobile em Keychain/Keystore (RN-F0.1-03, RN-F0.1-05).
+2. Verificação de senha conforme RNF-SEC-01 (Argon2id obrigatório); qualquer uso de MD5, SHA-1 ou bcrypt para senhas é proibido e detectado por regra detekt.
+3. Sucesso com senha já alterada: `POST /auth/login` retorna HTTP 200 com JSON `{ mustChangePassword, mustAcceptLgpd }` (sem `accessToken`/`refreshToken` no body). Cookies HttpOnly `access_token` e `refresh_token`; sessão Redis `auth:session:<sid>` (claim JWT `sid`). Fallback Bearer apenas no filtro JWT.
 4. Sucesso com primeiro acesso pendente: resposta com `mustChangePassword: true`; frontend bloqueia dashboard e redireciona para `/primeiro-acesso`; navegação para `/inicio` impossível até troca de senha (RN-F0.1-04).
 5. Credenciais inválidas (senha errada, identificador inexistente, conta inativa ou bloqueada): HTTP 401 RFC 7807 com mensagem genérica `"Credenciais inválidas. Verifique seus dados e tente novamente."` sem revelar qual caso ocorreu (RN-F0.1-08); campo identificador mantido, senha limpa.
 6. Rate limit: 6ª tentativa em menos de 1 minuto para o mesmo par IP + identificador → HTTP 429 com mensagem `"Muitas tentativas. Aguarde antes de tentar novamente."` (RN-F0.1-06, RN-F0.1-09).
 7. Após 10 falhas consecutivas para o mesmo identificador: conta bloqueada por 15 minutos; resposta externa idêntica à de credencial inválida; evento interno `iam.account_blocked` em auditoria (RN-F0.1-07).
 8. Campos vazios: validação frontend impede chamada à API; exibe erro inline e foco no primeiro campo inválido.
 9. Links de navegação: "Esqueci minha senha" → `/recuperar-senha`; "Contato" → `/contato`; "Verificar protocolo ou certificado" → `/publico/verificar-protocolo`.
-10. Reuso de refresh token rotacionado invalida todas as sessões do usuário (RN-F0.1-10).
-11. Acessibilidade: tab order lógico, `aria-live="polite"` em erros, contraste ≥ 4,5:1; responsivo em 375px com alvos touch ≥ 44px.
+10. Reuso de refresh token rotacionado detectado como sinal de comprometimento: todas as sessões do usuário são invalidadas e evento `iam.suspicious_token_reuse` é registrado em auditoria (conforme mecanismo RNF-SEC-03).
+11. Acessibilidade e responsividade conforme RNF-UX-01 (WCAG 2.1 AA), RNF-UX-02 (≥ 375px) e RNF-UX-03 (navegação por teclado).
+12. Relacionado — exchange OTT: `POST /auth/ott` (`ExchangeOttUseCase`, UC-AUT-07) troca JWT de deep-link (`?ott=`) por sessão + cookies; mesmo JSON do login; replay → 401 (RN-F0.1-13).
 
-**Regras de negócio relacionadas:** RN-F0.1-01 a RN-F0.1-12
+**Regras de negócio relacionadas:** RN-F0.1-01 a RN-F0.1-13
 
 **Dependências:** RF-F1-002 (primeiro acesso), RNF-SEC-01, RNF-SEC-02, RNF-SEC-03, RNF-SEC-04, RNF-SEC-09, RNF-DES-03, RNF-CON-03, RNF-UX-01, RNF-UX-02, RNF-UX-03
 
@@ -146,7 +147,7 @@
 5. Confirmação divergente: validação frontend impede submit; mensagem `"As senhas não coincidem"`.
 6. Reset bem-sucedido: `POST /auth/reset-password` retorna 200; JTI na blacklist; sessões invalidadas; redirecionamento para `/login` com banner success (RN-F0.3-08 a RN-F0.3-11).
 7. Medidor de força atualiza em 4 níveis conforme critérios cumpridos (CA-02).
-8. Requisitos validados no backend, não apenas no frontend (DoD US-F0-003).
+8. Validação de todos os requisitos de senha obrigatória no backend, não apenas no frontend — princípio de defesa em profundidade (RNF-MAN-05 §Clean Architecture; segurança nunca depende exclusivamente do cliente).
 
 **Regras de negócio relacionadas:** RN-F0.3-01 a RN-F0.3-11
 
@@ -318,4 +319,4 @@
 
 ---
 
-*Última atualização: 2026-06-23 — Etapa 2 concluída*
+*Última atualização: 2026-08-29 — as-built: cookies HttpOnly (sem tokens no JSON), sessão Redis sid, POST /auth/ott*

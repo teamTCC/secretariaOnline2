@@ -71,7 +71,7 @@ sequenceDiagram
     end
 
     Secretaria->>WebApp: acessa /secretaria/atendimentos
-    WebApp->>JwtFilter: GET /service-record-categories (Bearer, service_record.create ✓)
+    WebApp->>JwtFilter: GET /service-record-categories (cookie access_token, service_record.create ✓)
     JwtFilter->>ServiceController: repassa (secretariaId)
     ServiceController->>Postgres: SELECT categorias WHERE ativo=true ORDER BY nome
     Postgres-->>ServiceController: [{id, nome}]
@@ -125,7 +125,8 @@ sequenceDiagram
     MinIO-->>WebApp: 200 (ETag)
     WebApp->>JwtFilter: POST /service-records {alunoId, categoriaId, assunto, resposta, storage_key}
     JwtFilter->>ServiceController: repassa (secretariaId, service_record.create ✓)
-    ServiceController->>Postgres: BEGIN TX — INSERT service_record + INSERT outbox_event(atendimento.registrado)
+    ServiceController->>Postgres: BEGIN TX — INSERT service_record
+    ServiceController->>Outbox: OutboxEventPublisher.enqueue(atendimento.registrado)
     ServiceController->>Postgres: COMMIT
     ServiceController-->>WebApp: 201 {id, numero=AT-2025-001, _links}
     WebApp-->>Secretaria: toast "Atendimento registrado" (aluno notificado async via 10.1b)
@@ -133,7 +134,7 @@ sequenceDiagram
 
 **Notas:**
 - Passos 2–8 (fase MinIO): padrão presigned PUT idêntico a F1.8-D03. O `storage_key` retornado no passo 6 é incluído como `anexoUrl` no POST do passo 9; o arquivo já está no MinIO antes de criar o registro — objeto sem registro é removido por TTL-based cleanup.
-- Passo 11: TX atômica — `INSERT service_record` + `INSERT outbox_event` em COMMIT único (padrão 10.1a). `numero` gerado atomicamente (`AT-{ano}-{seq}`).
+- Passo 11: TX atômica — `INSERT service_record` + `OutboxEventPublisher.enqueue` em COMMIT único (padrão 10.1a). `numero` gerado atomicamente (`AT-{ano}-{seq}`).
 - Passo 14: `OutboxDispatcher` processa `atendimento.registrado` → envia e-mail ao aluno com assunto, resposta e link para `/meus-atendimentos` (US-F1-011). DRY → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1b.
 - **Sem anexo (CA-F5-007-03):** passos 2–8 omitidos; `POST /service-records` sem `storage_key`; mesmo TX e outbox — DRY, sem diagrama separado.
 

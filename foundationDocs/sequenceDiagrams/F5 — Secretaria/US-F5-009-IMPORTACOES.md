@@ -67,7 +67,7 @@ sequenceDiagram
     end
 
     Secretaria->>WebApp: seleciona kind "alunos" e clica "Baixar modelo"
-    WebApp->>JwtFilter: GET /imports/templates/alunos (Bearer)
+    WebApp->>JwtFilter: GET /imports/templates/alunos (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + import.run ✓
     JwtFilter->>ImportController: repassa (kind=alunos)
     ImportController->>ImportTemplateUC: execute(kind)
@@ -160,7 +160,7 @@ sequenceDiagram
     ConfirmImportUC->>Postgres: BEGIN TX lote 1/1
     ConfirmImportUC->>Postgres: INSERT/UPSERT dados × 500 (lote 1/1, kind=alunos)
     ConfirmImportUC->>Postgres: UPDATE import_job SET status=SUCCESS, importados=500
-    ConfirmImportUC->>Postgres: INSERT outbox_event (imports.completed, {jobId, SUCCESS, importados: 500})
+    ConfirmImportUC->>Outbox: OutboxEventPublisher.enqueue(imports.completed)
     ConfirmImportUC->>Postgres: INSERT audit_log (operadorId, kind, checksum, 500, SUCCESS)
     ConfirmImportUC->>Postgres: COMMIT
     ConfirmImportUC-->>ImportController: {status: SUCCESS, importados: 500, falhas: 0}
@@ -205,7 +205,7 @@ sequenceDiagram
     ConfirmImportUC->>Postgres: TX lote 1 — INSERT 1.000 linhas → COMMIT OK
     ConfirmImportUC->>Postgres: TX lote 2 — INSERT 1.000 linhas → DB error → ROLLBACK
     ConfirmImportUC->>Postgres: UPDATE import_job SET status=PARTIAL, importados=1000
-    ConfirmImportUC->>Postgres: INSERT outbox_event (imports.completed, PARTIAL) + COMMIT
+    ConfirmImportUC->>Outbox: OutboxEventPublisher.enqueue(imports.completed)
     ConfirmImportUC-->>ImportController: {PARTIAL, importados: 1000, falhas: 1500}
     ImportController-->>WebApp: 200 {status: PARTIAL, importados: 1000, falhas: 1500}
     WebApp-->>Secretaria: DS/AlertBanner warning "1.000 importados, 1.500 não processados (erro no lote 2)"

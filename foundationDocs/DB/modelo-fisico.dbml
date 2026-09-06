@@ -2,8 +2,9 @@
 // FIGURA 4 — Modelo físico do banco de dados transacional — SecretariaOnline2
 // FONTE: Os autores (2026).
 // Gerado: Etapa 4 — derivado de foundationDocs/DB/modelo-logico.dbml
-// Tabelas: 31 (29 domínio + refresh_token + jti_blacklist)
-// Observação: nenhuma tabela do modelo lógico foi removida.
+// Overlay as-built 2026-08-29: M3 = Flyway V004+V018+V019 (sem request_line_item).
+// schema_completo.sql permanece trilha 2026-06 (31 tabelas, line_item não migrada).
+// Runtime: backend/app/src/main/resources/db/migration/ V001–V019 (~45 tabelas).
 // =============================================================================
 
 Project secretariaonline2_fisico {
@@ -169,106 +170,102 @@ Table calendario_academico [note: "CHECK: dt_fim >= dt_ini"] {
 }
 
 // =============================================================================
-// M3 — Solicitações / Workflow Engine
+// M3 — Solicitações / Workflow Engine (as-built Flyway V004+V018+V019)
 // =============================================================================
 
-Table request_type [note: "I3: form_schema + workflow_json como JSONB, sem tabelas auxiliares"] {
+Table request_type [note: "V004: form_schema + workflow_json JSONB; sem interna/required_auth"] {
   id            uuid         [pk, not null, default: `uuid_generate_v7()`]
-  code          varchar(50)  [unique, not null]
+  code          varchar(60)  [unique, not null]
   descricao     varchar(200) [not null]
-  prazo_dias    integer      [not null, default: 15]
-  interna       boolean      [not null, default: false]
-  form_schema   jsonb        [not null]
-  workflow_json jsonb        [not null]
-  required_auth jsonb        [not null, default: `'[]'::jsonb`]
+  form_schema   jsonb        [not null, default: `'{}'::jsonb`]
+  workflow_json jsonb        [not null, default: `'{}'::jsonb`]
+  prazo_dias    integer      [not null, default: 10]
   ativo         boolean      [not null, default: true]
+  created_at    timestamptz  [not null, default: `now()`]
+  updated_at    timestamptz  [not null, default: `now()`]
 
   Indexes {
     code [name: "idx_request_type_code", unique]
-    ativo [name: "idx_request_type_ativo"]
-    form_schema [name: "idx_request_type_form_schema_gin", type: gin]
-    workflow_json [name: "idx_request_type_workflow_json_gin", type: gin]
+  }
+}
+
+Table request_type_version [note: "V019 — snapshot imutável no publish"] {
+  id              uuid         [pk, not null, default: `uuid_generate_v7()`]
+  id_request_type uuid         [not null, ref: > request_type.id]
+  version         integer      [not null]
+  form_schema     jsonb        [not null]
+  workflow_json   jsonb        [not null]
+  published_at    timestamptz  [not null, default: `now()`]
+  created_at      timestamptz  [not null, default: `now()`]
+  updated_at      timestamptz  [not null, default: `now()`]
+
+  Indexes {
+    (id_request_type, version) [unique]
+    id_request_type [name: "idx_request_type_version_type"]
   }
 }
 
 Table request {
-  id              uuid         [pk, not null, default: `uuid_generate_v7()`]
-  numero_anual    integer      [not null]
-  ano             smallint     [not null]
-  id_solicitante  uuid         [not null, ref: > usuario.id]
-  id_request_type uuid         [not null, ref: > request_type.id]
-  id_curso        uuid         [not null, ref: > curso.id]
-  estado          varchar(50)  [not null]
-  dados           jsonb        [not null, default: `'{}'::jsonb`]
-  created_at      timestamptz  [not null, default: `now()`]
-  updated_at      timestamptz  [not null, default: `now()`]
-  concluded_at    timestamptz
-  prazo_em        timestamptz  [not null]
+  id                       uuid         [pk, not null, default: `uuid_generate_v7()`]
+  numero_anual             integer      [not null]
+  ano                      smallint     [not null]
+  id_request_type          uuid         [not null, ref: > request_type.id]
+  request_type_code        varchar(60)  [not null]
+  id_solicitante           uuid         [not null, ref: > usuario.id]
+  id_curso                 uuid         [not null, ref: > curso.id]
+  estado                   varchar(30)  [not null, default: "ABERTA"]
+  dados                    jsonb        [not null, default: `'{}'::jsonb`, note: "linhas por disciplina — sem tabela request_line_item"]
+  parecer                  text
+  prazo_em                 timestamptz
+  concluded_at             timestamptz
+  deleted_at               timestamptz
+  id_request_type_version  uuid         [ref: > request_type_version.id, note: "V019"]
+  created_at               timestamptz  [not null, default: `now()`]
+  updated_at               timestamptz  [not null, default: `now()`]
 
   Indexes {
-    (ano, numero_anual) [name: "uk_request_ano_numero_anual", unique]
+    (numero_anual, ano, id_curso) [name: "uk_request_numero_ano_curso", unique]
     id_solicitante [name: "idx_request_solicitante"]
     id_request_type [name: "idx_request_tipo"]
     id_curso [name: "idx_request_curso"]
-    estado [name: "idx_request_estado"]
-    (id_curso, estado) [name: "idx_request_curso_estado"]
-    prazo_em [name: "idx_request_prazo_abertas", note: "partial WHERE concluded_at IS NULL"]
-    dados [name: "idx_request_dados_gin", type: gin]
+    estado [name: "idx_request_estado", note: "partial WHERE deleted_at IS NULL"]
+    (id_curso, estado) [name: "idx_request_curso_estado", note: "partial WHERE deleted_at IS NULL"]
+    prazo_em [name: "idx_request_prazo", note: "partial WHERE concluded_at IS NULL AND deleted_at IS NULL"]
+    dados [name: "idx_request_dados", type: gin]
+    id_request_type_version [name: "idx_request_type_version_fk"]
   }
 }
 
 Table request_event {
   id              uuid         [pk, not null, default: `uuid_generate_v7()`]
-  id_request      uuid         [not null, ref: > request.id, note: "ON DELETE CASCADE (composição)"]
-  id_ator         uuid         [ref: > usuario.id]
+  id_request      uuid         [not null, ref: > request.id]
   tipo            varchar(50)  [not null]
-  estado_anterior varchar(50)
-  estado_novo     varchar(50)
+  estado_anterior varchar(30)  [not null]
+  estado_novo     varchar(30)  [not null]
+  id_ator         uuid         [not null, ref: > usuario.id]
   parecer         text
-  metadata        jsonb        [not null, default: `'{}'::jsonb`]
-  at              timestamptz  [not null, default: `now()`]
+  created_at      timestamptz  [not null, default: `now()`]
+  updated_at      timestamptz  [not null, default: `now()`, note: "V018"]
 
   Indexes {
-    id_ator [name: "idx_request_event_ator"]
-    (id_request, at) [name: "idx_request_event_req_at_desc", note: "desc em SQL físico"]
+    id_request [name: "idx_request_event_request"]
   }
 }
 
-Table request_line_item {
-  id            uuid         [pk, not null, default: `uuid_generate_v7()`]
-  id_request    uuid         [not null, ref: > request.id, note: "ON DELETE CASCADE (composição)"]
-  id_disciplina uuid         [ref: > disciplina.id]
-  operacao      varchar(20)
-  turma         varchar(10)
-  estado        varchar(30)  [not null, default: "PENDENTE"]
-  parecer       text
-  metadata      jsonb        [not null, default: `'{}'::jsonb`]
-
-  Indexes {
-    id_request [name: "idx_request_line_item_request"]
-    id_disciplina [name: "idx_request_line_item_disciplina"]
-    estado [name: "idx_request_line_item_estado"]
-  }
-}
-
-Table request_attachment [note: "I11 confirmado: status PENDING/CONFIRMED"] {
+Table request_attachment [note: "V004: content_type; sem uploaded_by/status (I11-a não materializada)"] {
   id            uuid          [pk, not null, default: `uuid_generate_v7()`]
-  id_request    uuid          [not null, ref: > request.id, note: "ON DELETE CASCADE (composição)"]
-  categoria     varchar(50)   [not null]
-  nome_original varchar(255)  [not null]
+  id_request    uuid          [not null, ref: > request.id]
+  categoria     varchar(100)  [not null]
   storage_key   varchar(500)  [not null]
-  mime_type     varchar(100)  [not null]
+  sha256        varchar(64)   [not null]
+  nome_original varchar(300)  [not null]
+  content_type  varchar(100)  [not null]
   tamanho_bytes bigint        [not null]
-  sha256        char(64)      [not null]
-  uploaded_by   uuid          [not null, ref: > usuario.id]
-  status        varchar(20)   [not null, default: "CONFIRMED", note: "CHECK recomendado: status IN ('PENDING','CONFIRMED')"]
-  uploaded_at   timestamptz   [not null, default: `now()`]
+  created_at    timestamptz   [not null, default: `now()`]
+  updated_at    timestamptz   [not null, default: `now()`, note: "V018"]
 
   Indexes {
     id_request [name: "idx_request_attachment_request"]
-    uploaded_by [name: "idx_request_attachment_uploaded_by"]
-    status [name: "idx_request_attachment_status"]
-    sha256 [name: "idx_request_attachment_sha256"]
   }
 }
 

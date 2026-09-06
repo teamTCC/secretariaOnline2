@@ -4,7 +4,7 @@
 **Versão:** 1.0  
 **Data:** 2026-06-23  
 **Gerado a partir de:** US-F1-001 a US-F1-011; `fluxos_por_perfil.md` §2; `telas.md` §3; `legenda_siglas_casos_de_uso_por_ator.md`; `mvp_v1_walking_skeleton_aluno.md`; `endpoints_canonicos_presenca_eventos_v4.md`  
-**Total RF neste arquivo:** 14 (11 HUs → 14 capacidades)
+**Total RF neste arquivo:** 15 (11 HUs → 15 capacidades)
 
 ---
 
@@ -17,6 +17,7 @@
 | RF-F1-003-a | Editar dados pessoais do perfil | US-F1-003 | UC-AUT-05 | F1.3 `/perfil` | P2 |
 | RF-F1-003-b | Trocar senha e gerenciar sessões ativas | US-F1-003 | UC-AUT-05 | F1.4 `/perfil/seguranca` | P2 |
 | RF-F1-003-c | Configurar preferências de notificação | US-F1-003 | UC-AUT-06 | F1.5 `/perfil/notificacoes` | P2 |
+| RF-F1-003-d | Exportar dados pessoais (portabilidade LGPD) | US-F1-003 | UC-AUT-05 | F1.3 `/perfil` (seção Privacidade) | P2 |
 | RF-F1-004 | Visualizar e gerenciar comunicações recebidas | US-F1-004 | UC-COM-01 | F1.6 `/comunicacao` | P2 |
 | RF-F1-005-a | Listar solicitações acadêmicas próprias | US-F1-005 | UC-SOL-03 | F1.7 `/solicitacoes` | P2 |
 | RF-F1-005-b | Abrir solicitação via wizard dinâmico | US-F1-005 | UC-SOL-01 | F1.8 `/solicitacoes/nova` | P1 |
@@ -59,7 +60,7 @@
 1. `GET /bff/dashboard/aluno` retorna saudação, KPIs (horas formativas validadas/requeridas, solicitações abertas, eventos hoje, certificados), pendências (máx. 3), últimas solicitações (máx. 5), próximos eventos (máx. 3), prazos, último parecer e `_links` (RN-F1.1-01 a RN-F1.1-06).
 2. Durante carregamento: `DS/Skeleton` por bloco; após 200 OK renderiza conteúdo completo (CA-01).
 3. KpiCard de horas formativas exibe `validadas / requeridas` com barra de progresso (CA-02).
-4. Pendências exibem CTA derivado de `_links` do item; seção vazia com `DS/EmptyState` quando ausente (CA-03, CA-06).
+4. Pendências exibem CTA derivado de `PendenciaItem._link` (string; não `_links.acao.href`); seção vazia com `DS/EmptyState` quando ausente (CA-03, CA-06).
 5. Solicitações com `prazo_em < now` exibem data em `status/danger` (CA-04, RN-F1.1-04).
 6. Eventos com janela ativa exibem badge "Janela aberta" quando aplicável (RN-F1.1-05).
 7. Degradação graciosa: falha em um módulo exibe `DS/AlertBanner` warning na seção afetada sem bloquear demais seções (CA-05).
@@ -221,6 +222,48 @@
 **Regras de negócio relacionadas:** RN-F1.5-01 a RN-F1.5-04
 
 **Dependências:** RF-TR-007, RNF-UX-05
+
+---
+
+### RF-F1-003-d — Exportar dados pessoais (portabilidade LGPD)
+
+| Campo | Valor |
+|-------|-------|
+| **ID** | RF-F1-003-d |
+| **Nome** | Exportar dados pessoais (portabilidade LGPD) |
+| **Prioridade** | P2 |
+| **Ator(es)** | A2 Aluno; A3 Egresso (mesma tela) |
+| **Módulo** | F1 — Aluno |
+| **Rastreio HU** | US-F1-003 (direito de portabilidade — LGPD Art. 18, III) |
+| **Rastreio UC** | UC-AUT-05 |
+| **Tela** | F1.3 `/perfil` (seção "Privacidade e Dados") |
+| **API** | `POST /me/data-export`; `GET /me/data-export/:jobId` |
+| **Legado** | — (lacuna funcional identificada na revisão de classificação) |
+
+> **Origem:** Este RF foi criado na revisão de classificação de 2026-08-09, quando o item (c) do RNF-LGL-01 foi identificado como uma capacidade funcional observável (tela + API + fluxo) indevidamente documentada como atributo de qualidade.
+
+**Descrição:** O sistema deve permitir que o titular dos dados pessoais solicite e baixe um arquivo contendo todos os dados pessoais armazenados sobre ele, em cumprimento ao direito de portabilidade da LGPD (Art. 18, III). O arquivo deve ser gerado de forma assíncrona e disponibilizado para download por link temporário.
+
+**Pré-condições:**
+- Aluno autenticado com capability `user.export_own_data`.
+
+**Pós-condições:**
+- Arquivo JSON ou CSV gerado com dados pessoais do usuário; link de download válido por 24 horas; evento `lgpd.data_export_requested` registrado em `audit_log`.
+
+**Critérios de aceitação:**
+1. Botão "Exportar meus dados" visível na seção "Privacidade e Dados" da tela `/perfil`; somente exibido quando `_links.export-data` estiver presente na resposta do BFF.
+2. `POST /me/data-export` retorna 202 com `jobId`; banner informativo: "Sua solicitação foi recebida. O arquivo estará disponível em alguns minutos."
+3. `GET /me/data-export/:jobId` retorna status `PENDING`, `READY` ou `EXPIRED`; quando `READY`, inclui URL pré-assinada MinIO válida por 24 h.
+4. Conteúdo do arquivo inclui: dados cadastrais, e-mails de contato, histórico de solicitações (números e tipos, sem conteúdo interno), registros de presença em eventos, preferências de notificação e data de aceite LGPD.
+5. **Não inclui:** dados acadêmicos de terceiros, histórico de auditoria de outros usuários, dados de saúde ou outros dados sensíveis além do necessário.
+6. Arquivo no formato JSON estruturado com seções nomeadas por domínio; alternativa CSV disponível via parâmetro `?format=csv`.
+7. Máximo 1 exportação por usuário por período de 24 horas; nova solicitação dentro do período retorna HTTP 429 com link para download do arquivo anterior se ainda válido.
+8. Arquivo eliminado do armazenamento após expiração de 24 horas (TTL MinIO/S3).
+9. Evento `lgpd.data_export_requested` registrado em `audit_log` com `id_ator`, timestamp e IP conforme RNF-LGL-01.
+
+**Regras de negócio relacionadas:** Lei 13.709/2018 Art. 18, III; RN-F1.3-01 (campos exibidos no perfil)
+
+**Dependências:** RNF-LGL-01, RNF-POR-03, RNF-SEC-08, RF-TR-004, RNF-UX-05
 
 ---
 
@@ -611,4 +654,4 @@
 
 ---
 
-*Última atualização: 2026-06-23 — Etapa 3 concluída*
+*Última atualização: 2026-08-09 — RF-F1-003-d adicionado (exportação de dados pessoais LGPD — lacuna funcional identificada na revisão de classificação RNF/RF)*

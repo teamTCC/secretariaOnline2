@@ -6,6 +6,8 @@
 **Escopo:** Modernização do sistema legado *Secretaria Online* (Java EE/JSP/PostgreSQL) para a nova **SecretariaOnline2** (Kotlin + Spring Boot + React + React Native + PostgreSQL).
 **Contexto:** TCC — UFPR SEPT
 
+> **As-built (código, 2026-08-29):** a implementação real está em [`as-built-backend.md`](as-built-backend.md). Onde este documento (intenção de design, 2026-06) divergir, **o as-built vence** para contratos HTTP e persistência: cookies HttpOnly (`access_token` + `refresh_token`) e JSON sem tokens; leituras `*Query` / escritas `*UseCase`; BFF via **ports**; Flyway `V001`–`V019`; `_links`/`_link` como strings (pasta `assembler/` não obrigatória); ArchUnit existe no backend.
+
 > Esta análise foi construída a partir de leitura direta do código-fonte (670 arquivos, 330 servlets, 53 DAOs, 64 models, 158 JSPs) e dos documentos de referência em `analise/` (`levantamento_requisitos.txt`, `diagrama_conceitual.txt`, `fluxo_de_telas.txt`, `telas.txt`, `tree_prompts.txt`, `arquivos_requisitos.csv`), respeitando as diretrizes em `a_new_app_design/sugestoes_de_design.txt`.
 
 ---

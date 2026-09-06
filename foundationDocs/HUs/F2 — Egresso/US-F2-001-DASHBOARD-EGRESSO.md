@@ -157,7 +157,7 @@ Então os campos read-only possuem atributo aria-readonly="true" ou são renderi
 **Request:**
 ```http
 GET /alumni/me
-Authorization: Bearer {accessToken}
+Cookie: access_token={jwt}
 ```
 
 **Response (200 OK):**

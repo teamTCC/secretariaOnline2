@@ -1,6 +1,12 @@
 ---
 ## FKs cross-módulo — mapa completo
 
+**As-built (2026-08-29):** FKs **live** = Flyway V001–V019. Fonte: `foundationDocs/analysis/as-built-backend.md` §5.  
+`request_line_item` **não existe** no Flyway — a FK `id_disciplina` abaixo **não é live**.  
+`request_attachment.uploaded_by` **não existe** no V004.
+
+### Live (Flyway) — origem 2026-06 ainda válida
+
 | Coluna origem | Módulo origem | → Tabela destino | Módulo destino |
 |---|---|---|---|
 | `usuario.id_curso` | M1 IAM | `curso.id` | M2 Acadêmico |
@@ -9,8 +15,6 @@
 | `request.id_solicitante` | M3 Solicitações | `usuario.id` | M1 IAM |
 | `request.id_curso` | M3 Solicitações | `curso.id` | M2 Acadêmico |
 | `request_event.id_ator` | M3 Solicitações | `usuario.id` | M1 IAM |
-| `request_line_item.id_disciplina` | M3 Solicitações | `disciplina.id` | M2 Acadêmico |
-| `request_attachment.uploaded_by` | M3 Solicitações | `usuario.id` | M1 IAM |
 | `formative_activity.id_curso` | M4 Formativas | `curso.id` | M2 Acadêmico |
 | `formative_entry.id_aluno` | M4 Formativas | `usuario.id` | M1 IAM |
 | `formative_entry.reviewed_by` | M4 Formativas | `usuario.id` | M1 IAM |
@@ -33,6 +37,37 @@
 | `certificate.id_formativa` | M9 Certificados | `formative_entry.id` | M4 Formativas |
 | `audit_log.id_ator` | M9 Auditoria | `usuario.id` | M1 IAM (nullable) |
 
-**Padrão dominante:** M1 (`usuario`) e M2 (`curso`) são os dois hubs — praticamente todos os módulos apontam para eles. O merge (Etapa 3) precisa garantir que as declarações `Ref:` intra-módulo não colidam com as cross-módulo.
+### Live (Flyway) — mesmo módulo (V019)
 
-Pronto para Etapa 3 (merge → `modelo-logico.dbml`).
+| Coluna origem | Módulo | → Tabela destino | Notas |
+|---|---|---|---|
+| `request.id_request_type_version` | M3 Solicitações | `request_type_version.id` | mesmo módulo; nullable |
+| `request_type_version.id_request_type` | M3 Solicitações | `request_type.id` | UNIQUE (`id_request_type`, `version`) |
+
+### Não live (trilha 2026-06 apenas)
+
+| Coluna origem | Motivo |
+|---|---|
+| `request_line_item.id_disciplina` → `disciplina.id` | Tabela **não migrada**. Linhas em `request.dados` JSONB. |
+| `request_attachment.uploaded_by` → `usuario.id` | Coluna **ausente** no V004. |
+
+### Extras as-built (V012, V014, V015) — FKs para IAM/Acadêmico
+
+| Coluna origem | → Destino |
+|---|---|
+| `service_record.id_secretario` / `id_aluno` | `usuario.id` (`id_secretario` nullable após V015) |
+| `support_ticket.id_usuario` / `id_atendente` | `usuario.id` |
+| `device_fcm_token.id_usuario` | `usuario.id` |
+| `graduation_record.id_aluno` / `delivered_by` | `usuario.id` |
+| `graduation_record.id_curso` | `curso.id` |
+| `graduation_record.id_periodo` | `periodo_letivo.id` (V015) |
+| `secretary_task.id_assignee` | `usuario.id` |
+| `import_job.id_ator` / `export_job.id_ator` | `usuario.id` |
+| `communication_template_revision.id_autor` | `usuario.id` |
+| `historico_escolar.id_aluno` | `usuario.id` |
+| `historico_escolar.id_disciplina` | `disciplina.id` |
+| `certificate.id_activity` | `formative_activity.id` (V015) |
+
+**Padrão dominante:** M1 (`usuario`) e M2 (`curso`) são os dois hubs. Overlay as-built não inventa tabelas além do Flyway.
+
+Pronto para Etapa 3 (merge → `modelo-logico.dbml`) — M3 overlay já alinhado a V004+V019.

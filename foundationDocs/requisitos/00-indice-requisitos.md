@@ -76,7 +76,7 @@ foundationDocs/requisitos/
 | Fase / escopo | HUs | RFs gerados | Arquivo |
 |---------------|----:|:-----------:|---------|
 | F0 — Público | 7 | 7 | `por-fase/RF-F0-publico.md` |
-| F1 — Aluno | 11 | 14 | `por-fase/RF-F1-aluno.md` |
+| F1 — Aluno | 11 | 15 | `por-fase/RF-F1-aluno.md` |
 | F2 — Egresso | 1 | 1 | `por-fase/RF-F2-egresso.md` |
 | F3 — Professor | 7 | 9 | `por-fase/RF-F3-professor.md` |
 | F4 — Comissões | 2 | 2 | `por-fase/RF-F4-comissoes.md` |
@@ -85,9 +85,9 @@ foundationDocs/requisitos/
 | F7 — Admin | 7 | 8 | `por-fase/RF-F7-admin.md` |
 | F8 — Cross-cutting | 2 | 2 | `por-fase/RF-F8-cross-cutting.md` |
 | Transversais | — | 8 | `por-fase/RF-TR-transversais.md` |
-| **Total** | **51** | **71** | 10 arquivos |
+| **Total** | **51** | **72** | 10 arquivos |
 
-Subdivisões DEC-001: US-F1-003 (3), US-F1-005 (3), US-F3-002 (2), US-F3-003 (2), US-F5-002 (3), US-F5-004 (3), US-F5-005 (2), US-F5-008 (2), US-F7-002 (2).
+Subdivisões DEC-001: US-F1-003 (4 — inclui RF-F1-003-d), US-F1-005 (3), US-F3-002 (2), US-F3-003 (2), US-F5-002 (3), US-F5-004 (3), US-F5-005 (2), US-F5-008 (2), US-F7-002 (2).
 
 ### 2.2 Requisitos Não Funcionais (RNF) — confirmado
 
@@ -141,6 +141,7 @@ Arquivo: `02-requisitos-nao-funcionais.md`
 | US-F1-003 | Perfil — dados pessoais | RF-F1-003-a | UC-AUT-05 | F1.3 `/perfil` | P2 | ✅ |
 | US-F1-003 | Perfil — segurança/sessões | RF-F1-003-b | UC-AUT-05 | F1.4 `/perfil/seguranca` | P2 | ✅ |
 | US-F1-003 | Perfil — notificações | RF-F1-003-c | UC-AUT-06 | F1.5 `/perfil/notificacoes` | P2 | ✅ |
+| US-F1-003 | Perfil — exportação LGPD | RF-F1-003-d | UC-AUT-05 | F1.3 `/perfil` (Privacidade) | P2 | ✅ |
 | US-F1-004 | Comunicação | RF-F1-004 | UC-COM-01 | F1.6 `/comunicacao` | P2 | ✅ |
 | US-F1-005 | Solicitações — listar | RF-F1-005-a | UC-SOL-03 | F1.7 `/solicitacoes` | P2 | ✅ |
 | US-F1-005 | Solicitações — abrir wizard | RF-F1-005-b | UC-SOL-01 | F1.8 `/solicitacoes/nova` | P1 | ✅ |
@@ -251,7 +252,7 @@ Arquivo: `02-requisitos-nao-funcionais.md`
 | Métrica | Meta | Atual |
 |---------|:----:|:-----:|
 | HUs com ≥ 1 RF mapeado | 51/51 (100%) | **51/51 (100%)** ✅ |
-| RF gerados (funcional) | ~75–90 | **71** (63 fase + 8 TR) |
+| RF gerados (funcional) | ~75–90 | **72** (64 fase + 8 TR) |
 | RNF gerados | ~35–45 | **42** ✅ |
 | RNF com métrica verificável | 100% | **100%** ✅ |
 | RF P0 cobrindo walking skeleton (MVP v1) | 100% | **100%** ✅ |
@@ -313,7 +314,8 @@ Conforme PROMPT §7:
 | CONF-004 | RNF-SEC-04 atualizado: **5 tentativas/min** (US-F0-001), não 15 min; bloqueio de conta 10 falhas/15 min documentado |
 | Q-004 | RF-TR-008 canônico para presença; fases F1/F3/F5 referenciam |
 | Contagem RF | Confirmado **71** (63 fase + 8 TR) — dentro da faixa estimada |
+| Revisão classificação | **2026-08-09** — 6 RNFs corrigidos; 4 CAs de RFs corrigidos; RF-F1-003-d criado (LGPD exportação); total RF **72** (DEC-005) |
 
 ---
 
-*Última atualização: 2026-06-23 — Etapa 12 concluída — campanha de requisitos encerrada*
+*Última atualização: 2026-08-09 — Revisão de classificação RNF×RF; RF-F1-003-d adicionado (LGPD exportação); total RF 71 → 72; contadores e matriz F1 atualizados*

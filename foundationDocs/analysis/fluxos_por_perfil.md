@@ -24,20 +24,21 @@ A seção 12 deste arquivo tem **diagramas Mermaid** consolidados por fluxo.
 
 ### F0.1 Login
 
-- **Trigger**: visitante acessa qualquer URL sem JWT válido → middleware redireciona para `/login`.
+- **Trigger**: visitante acessa qualquer URL sem cookie `access_token` válido → middleware redireciona para `/login`.
 - **Fluxo principal**:
   1. Usuário digita identificador (email/GRR) e senha.
   2. Cliente envia `POST /auth/login`.
   3. Backend rate-limita por IP+identificador (Bucket4j, 5 tentativas/min).
   4. Verifica usuário ativo, hash Argon2id correto, conta não bloqueada.
-  5. Emite **access token** (JWT 15 min) + **refresh token** (7 dias, rotativo).
-  6. Se `usuario.senha_alterada=false` → resposta inclui `mustChangePassword=true`.
-  7. Cliente armazena tokens (web: cookie httpOnly + memória; mobile: Keychain/Keystore).
+  5. Emite **access token** (JWT 15 min, claim `sid`) + **refresh token** (7 dias, rotativo) **somente em cookies** HttpOnly (`access_token` Path=/; `refresh_token` Path=/auth). Cria sessão Redis `auth:session:<sid>`.
+  6. JSON 200 contém só `mustChangePassword` e `mustAcceptLgpd` — **sem** tokens no body.
+  7. Cliente usa cookies (web); fallback `Authorization: Bearer`; mobile: Keychain/Keystore.
 - **Eventos emitidos**: `iam.login_success` ou `iam.login_failed`.
 - **Auditoria**: ator, IP, UA, resultado.
 - **Sub-fluxos**:
   - **Bloqueio**: 10 falhas consecutivas → conta bloqueada por 15 min; aviso ao usuário sem detalhar.
   - **Reuso de refresh token**: se token rotativo for re-apresentado, todas as sessões do usuário são invalidadas (defesa contra roubo de cookie).
+  - **Exchange OTT (deep-link)**: e-mail com `?ott=` → `POST /auth/ott` `{ "token": "<jwt>" }` (`ExchangeOttUseCase`) → mesmo contrato do login + cookies; replay JTI → 401. Não é “login com senha”.
   - **Login com SSO institucional UFPR** (futuro): SAML/OIDC opcional via flag.
 
 ### F0.2 Recuperação de senha
@@ -71,6 +72,7 @@ Mapa mental:
 - **Entrada**: Login → (1ª vez? `/primeiro-acesso`) → `/inicio`.
 - **Pilares de atividade do aluno**: Solicitações, Formativas, Estágio, TCC, Eventos, Certificados, Comunicação, Atendimentos.
 - **Cross-cutting**: Perfil, Notificações, Suporte.
+- **Dashboard**: `GET /bff/dashboard/aluno` (`DashboardAlunoQuery` + ports). Cache Redis **60 s**. `_links` strings; pendências usam `_link`. Cookie `access_token`.
 
 ### F1.1 Primeiro acesso (forçado)
 
@@ -193,8 +195,9 @@ Mapa mental:
 
 ### F3.1 Login e dashboard
 
-- Igual a F0.1.
-- `/inicio` agrega via `GET /bff/dashboard/professor`: solicitações para deliberar, **atalhos de formativas só para membros CAAF**, estágios sob orientação/COE, TCCs em banca, comunicações para publicar, **eventos em que é organizador** (atalhos para F3.2).
+- Igual a F0.1 (cookies + sessão Redis; OTT via `POST /auth/ott` quando o e-mail trouxer `?ott=`).
+- `/inicio` agrega via `GET /bff/dashboard/professor` (`DashboardProfessorQuery` + ports, **não** SQL no BFF): solicitações para deliberar, **atalhos de formativas só para membros CAAF**, estágios sob orientação/COE, TCCs em banca, comunicações para publicar, **eventos em que é organizador** (atalhos para F3.2).
+- **Cache Redis 60 s** (`bff-dashboard`, chave `professor:{id}`). Mesmo TTL no dashboard aluno (`aluno:{id}`).
 
 ### F3.2 Presença em eventos (professor — gestão v4.1)
 
@@ -218,14 +221,14 @@ Mapa mental:
 
 - **Trigger**: secretaria encaminha solicitação ao professor (via fluxo de transição, automático conforme `request_type.workflow_json`) ou scheduler de notificação SLA.
 - **Fluxo principal**:
-  1. Backend gera JWT 1-uso (audience=`request-action`, sub=professor.id, claims={requestId}), TTL 7d, JTI único.
-  2. Outbox: `solicitacoes.assigned_to_user` → email com template `REQUEST_NEEDS_ACTION` contendo URL `https://app/solicitacoes/{id}/deliberar?token=JWT`.
-  3. Professor clica → backend valida JWT, abre tela com flag `viaDeepLink=true`.
-  4. Se professor não estiver logado, abre tela em modo "leitura preview"; ao tentar agir, cliente força login (e mantém o `requestId` para continuar).
+  1. Backend gera JWT 1-uso (audience=`request:{uuid}`, sub=professor.id), JTI único.
+  2. Outbox: `solicitacoes.assigned_to_user` via `OutboxEventPublisher.enqueue(...)` → email com template `REQUEST_NEEDS_ACTION` contendo URL `https://app/solicitacoes/{id}/deliberar?ott=JWT`.
+  3. Professor clica → cliente chama `POST /auth/ott` `{ "token": "<jwt>" }` se não houver sessão; cookies + Redis sid.
+  4. Tela de deliberação com `_links` (strings).
   5. Professor vê detalhes + ações (deferir, indeferir, solicitar ajustes, encaminhar) via `_links`.
   6. Cliente envia `POST /requests/{id}/transitions {action: 'DEFER', parecer: '...'}`.
   7. Backend valida que (a) authority confere com `Transition.requiresAuthority`, (b) `guard` do workflow é satisfeito, (c) JTI ainda válido.
-  8. Aplica transição → grava `request_event` → outbox `solicitacoes.deliberated`.
+  8. Aplica transição → grava `request_event` → `OutboxEventPublisher` `solicitacoes.deliberated`.
 - **Sub-fluxos**:
   - **Encaminhar para outro professor**: `action='FORWARD' targetUserId=...`. Sistema gera novo JWT 1-uso para o destinatário.
   - **Solicitar ajustes ao aluno**: estado vai para `EM_AJUSTE`; aluno recebe push.
@@ -450,7 +453,7 @@ sequenceDiagram
     UC->>DB: BEGIN TX
     UC->>DB: UPDATE request SET estado='DELIBERADA'
     UC->>DB: INSERT request_event
-    UC->>DB: INSERT outbox_event(event_type='solicitacoes.deliberated')
+    UC->>DB: OutboxEventPublisher.enqueue(solicitacoes.deliberated)
     UC->>DB: COMMIT
 
     loop a cada 5s
@@ -582,7 +585,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     L[Login] --> H[/inicio Professor/]
-    EM[(Email com deep-link)] -->|JWT 1-uso| DL[/solicitacoes/:id/deliberar?token=/]
+    EM[(Email com deep-link)] -->|JWT 1-uso + POST /auth/ott| DL[/solicitacoes/:id/deliberar?ott=/]
     H --> EV[/professor/eventos - gestão e operação v4.1/]
     H --> Q1[/solicitacoes?to=me/]
     H --> Q2[/formativas?to=me (CAAF)/]

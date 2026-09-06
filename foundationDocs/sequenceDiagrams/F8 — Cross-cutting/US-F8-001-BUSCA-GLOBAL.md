@@ -46,44 +46,37 @@ Nenhuma — US-F8-001 não replica fluxo de outra HU (busca cross-cutting é ún
 ## F8.1-D01 — Busca com debounce + fan-out paralelo + resultados agrupados (happy path)
 
 **Escopo:** happy path — usuário digita ≥ 2 chars; API retorna resultados em pelo menos um índice  
-**Atores:** Usuário autenticado (qualquer perfil), WebApp  
-**Pré-condições:** JWT válido; pg_trgm habilitado em `students`, `requests`, `events`, `users`
+**Atores:** Usuário autenticado (qualquer perfil), WebApp, SearchController, SearchQuery  
+**Pré-condições:** JWT válido (cookie `access_token`)
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Usuário
     participant WebApp
-    participant SearchController
-    participant SearchUseCase
-    participant Postgres
+    participant SC as SearchController
+    participant Query as SearchQuery
+    participant IamPort as IamBffReadPort
+    participant ReqPort as SolicitacaoBffReadPort
 
     Usuário->>WebApp: digita "joão" no DS/CommandPalette (≥2 chars)
     WebApp->>WebApp: debounce 200ms; exibe skeleton Loading
-    WebApp->>SearchController: GET /search?q=joão&limit=5 (Bearer)
-    SearchController->>SearchUseCase: search("joão", capabilities)
-    par fan-out paralelo — 4 índices
-        SearchUseCase->>Postgres: SELECT alunos ILIKE %joão% LIMIT 5 (pg_trgm)
-        Postgres-->>SearchUseCase: [alunos: 3 resultados]
-    and
-        SearchUseCase->>Postgres: SELECT requests ILIKE %joão% LIMIT 5 (filtrado por capabilities)
-        Postgres-->>SearchUseCase: [solicitacoes: 2 resultados]
-    and
-        SearchUseCase->>Postgres: SELECT eventos ILIKE %joão% LIMIT 5 (pg_trgm)
-        Postgres-->>SearchUseCase: [eventos: 1 resultado]
-    and
-        SearchUseCase->>Postgres: SELECT users ILIKE %joão% LIMIT 5 (apenas se user.manage_all)
-        Postgres-->>SearchUseCase: [usuarios: 0 resultados]
-    end
-    SearchUseCase-->>SearchController: SearchResultDto (capability-scoped)
-    SearchController-->>WebApp: 200 {alunos[3], solicitacoes[2], eventos[1], usuarios:[]}
-    WebApp-->>Usuário: DS/SearchResultGroup agrupado por tipo
+    WebApp->>SC: GET /search?q=joão&size=5 (cookie access_token)
+    SC->>Query: execute(q, types, page, size)
+    Query->>IamPort: search (se user.manage_*)
+    Query->>ReqPort: search (escopo view_own ou view_curso)
+    IamPort-->>Query: usuarios[]
+    ReqPort-->>Query: requests[]
+    Query-->>SC: SearchResponse
+    SC-->>WebApp: 200 {query, results[], totalResults}
+    WebApp-->>Usuário: DS/SearchResultGroup agrupado por type
 ```
 
 **Notas:**
-- Passo 5–12: as 4 queries são executadas em paralelo dentro de `SearchUseCase`; cada uma aplica sua própria cláusula de capability antes de rodar (ver D02 para detalhe FGAC).
-- O índice `users` só é consultado se o token carregar `user.manage_all`; caso contrário retorna `[]` sem tocar a tabela.
-- `pg_trgm` (GIN) em `students.nome`, `events.titulo` viabiliza ILIKE eficiente; `requests` busca por número de protocolo e tipo.
+- Ports omitidos: `PresencaBffReadPort.searchByTitulo`, `AcademicoReadPort.searchCursos`. Sem Postgres no BFF.
+- Params as-built: `q`, `types` (USUARIO,EVENTO,REQUEST,CURSO), `page`, `size` (default 10, max 50) — não há `limit`.
+- Índice USUARIO só se `user.manage_students` | `user.manage_all` | `system.admin`. REQUEST sem `request.view_curso`/`request.deliberate` filtra pelo `userId`.
+- Controller envolve o Query em `CompletableFuture.get(5, SECONDS)` — timeout 5s no **servidor** (D04 também aborta no cliente).
 
 **Lacunas:** nenhuma.
 
@@ -91,41 +84,34 @@ sequenceDiagram
 
 ## F8.1-D02 — Fan-out FGAC: escopo por capability (perfil Aluno)
 
-**Escopo:** mesma query `GET /search`, mas com token de **Aluno** — mostra como o SearchUseCase filtra cada índice pelas capabilities do token  
+**Escopo:** mesma query `GET /search`, mas com token de **Aluno** — `SearchQuery` omite IAM e restringe REQUEST ao próprio userId  
 **Atores:** WebApp (Aluno autenticado)  
-**Pré-condições:** JWT com `{student.view_own, request.view_own, event.view}` — sem `user.manage_all`
+**Pré-condições:** JWT com `{request.view_own, event.view}` — sem `user.manage_*`
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant WebApp
-    participant SearchController
-    participant SearchUseCase
-    participant Postgres
+    participant SC as SearchController
+    participant Query as SearchQuery
+    participant ReqPort as SolicitacaoBffReadPort
+    participant EvPort as PresencaBffReadPort
 
     WebApp->>WebApp: monta contexto da tela
-    WebApp->>SearchController: GET /search?q=João&limit=5 (Bearer)
-    SearchController->>SearchUseCase: search("João", student.view_own + request.view_own + event.view)
-    SearchUseCase->>SearchUseCase: sem user.manage_all → omite índice users
-    par fan-out 3 índices (users omitido)
-        SearchUseCase->>Postgres: SELECT alunos WHERE grr=:userGrr AND nome ILIKE %João% LIMIT 5
-        Postgres-->>SearchUseCase: [aluno próprio ou vazio]
-    and
-        SearchUseCase->>Postgres: SELECT requests WHERE student_id=:id AND protocolo ILIKE %João% LIMIT 5
-        Postgres-->>SearchUseCase: [solicitacoes do próprio aluno]
-    and
-        SearchUseCase->>Postgres: SELECT eventos ILIKE %João% LIMIT 5 (event.view)
-        Postgres-->>SearchUseCase: [eventos: N resultados]
-    end
-    SearchUseCase-->>SearchController: SearchResultDto (usuarios: [])
-    SearchController-->>WebApp: 200 {…}
+    WebApp->>SC: GET /search?q=João&size=5 (cookie access_token)
+    SC->>Query: execute("João", types, page, size)
+    Query->>Query: sem user.manage_* → omite IamBffReadPort
+    Query->>ReqPort: search(q, solicitanteId=userId)
+    Query->>EvPort: searchByTitulo(q)
+    ReqPort-->>Query: requests do próprio aluno
+    EvPort-->>Query: eventos
+    Query-->>SC: SearchResponse (sem type=USUARIO)
+    SC-->>WebApp: 200 {query, results[], totalResults}
 ```
 
 **Notas:**
-- Passo 3 (self-call): SearchUseCase verifica `capabilities.contains("user.manage_all")` antes de montar o plano de queries — não precisa tocar o banco para saber que o índice `users` deve ser omitido.
-- `student.view_own` restringe a WHERE com `grr = :userGrr` — o aluno nunca vê registros de outros alunos, mesmo que o nome coincida.
-- `request.view_own` restringe a WHERE com `student_id = :userId` — o aluno só encontra suas próprias solicitações.
-- O resultado `usuarios: []` não é erro — é comportamento esperado por design FGAC (RN-02, RN-11).
+- `SearchQuery` não consulta IAM sem capability. REQUEST usa `solicitanteId=user.userId` quando não há `request.view_curso`/`request.deliberate`.
+- Tipos: USUARIO, EVENTO, REQUEST, CURSO — não há índice `alunos` separado (aluno entra em USUARIO se o perfil puder buscar usuários).
 
 **Lacunas:** nenhuma.
 
@@ -142,25 +128,21 @@ sequenceDiagram
     autonumber
     participant Usuário
     participant WebApp
-    participant SearchController
-    participant SearchUseCase
-    participant Postgres
+    participant SC as SearchController
+    participant Query as SearchQuery
 
     Usuário->>WebApp: digita "xyzxyz123" no input (≥2 chars)
     WebApp->>WebApp: debounce 200ms; exibe skeleton Loading
-    WebApp->>SearchController: GET /search?q=xyzxyz123&limit=5 (Bearer)
-    SearchController->>SearchUseCase: search("xyzxyz123", capabilities)
-    SearchUseCase->>Postgres: fan-out paralelo 4 índices (pg_trgm)
-    Postgres-->>SearchUseCase: [] em todos os índices (sem correspondência)
-    SearchUseCase-->>SearchController: SearchResultDto (todos arrays vazios)
-    SearchController-->>WebApp: 200 {alunos:[], solicitacoes:[], eventos:[], usuarios:[]}
+    WebApp->>SC: GET /search?q=xyzxyz123&size=5 (cookie access_token)
+    SC->>Query: execute(...)
+    Query-->>SC: SearchResponse (results=[])
+    SC-->>WebApp: 200 {query, results:[], totalResults:0}
     WebApp-->>Usuário: DS/EmptyState "Nenhum resultado para 'xyzxyz123'"
 ```
 
 **Notas:**
-- O fan-out (passo 5) segue o mesmo padrão de D01 (4 queries paralelas com capability filter); a diferença é exclusivamente no retorno do banco.
-- O status HTTP continua **200** (não 404) — ausência de resultados é uma resposta válida do endpoint de busca.
-- RN-09 distingue dois estados Empty: (a) query < 2 chars — sem chamada de API (NAO_APLICAVEL); (b) query ≥ 2 chars com 200 vazio — este diagrama.
+- Fan-out nos ports igual a D01; diferença só no retorno vazio. HTTP **200** (não 404).
+- Query < 2 chars: EmptyState **sem** HTTP (NAO_APLICAVEL).
 
 **Lacunas:** nenhuma.
 
@@ -180,14 +162,14 @@ sequenceDiagram
     participant SearchController
 
     Usuário->>WebApp: digita "joão" no input (≥2 chars; debounce 200ms)
-    WebApp->>SearchController: GET /search?q=joão&limit=5 (Bearer; timeout 5s)
+    WebApp->>SearchController: GET /search?q=joão&size=5 (cookie; timeout 5s)
     WebApp->>WebApp: 5s elapsed sem resposta → AbortController.abort()
     WebApp-->>Usuário: DS/EmptyState + mensagem de erro de rede
 ```
 
 **Notas:**
 - O timeout de 5s é responsabilidade do **cliente** (RN-10): `AbortController` com `signal.timeout(5000)` cancelando o `fetch`. O servidor pode continuar processando após o abort, mas a resposta é descartada.
-- `SearchController` não aparece na resposta (passo 3) porque a conexão TCP é abortada pelo cliente antes de qualquer retorno — não há response body a processar.
+- O timeout de 5s no cliente (`AbortController`) e o `CompletableFuture.get(5, SECONDS)` no `SearchController` são defesas independentes. Se o servidor vencer, a resposta pode ser `{timedOut:true}`.
 - A mensagem de erro exibida pelo WebApp deve orientar o usuário a tentar novamente (não é erro 4xx/5xx do servidor).
 
 **Lacunas:** nenhuma.

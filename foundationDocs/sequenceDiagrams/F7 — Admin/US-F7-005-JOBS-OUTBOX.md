@@ -29,7 +29,7 @@
 
 | Ref | Destino | Motivo |
 |-----|---------|--------|
-| Fase TX do outbox (INSERT outbox_event) | [`transversal/10.1-outbox-notificacao.md` 10.1a](../transversal/10.1-outbox-notificacao.md) | Esta HU cobre a **observabilidade** (visualizar e reentregar); a fase TX de inserção do evento está em cada HU-OUTBOX e no transversal |
+| Fase TX do outbox (`OutboxEventPublisher.enqueue`) | [`transversal/10.1-outbox-notificacao.md` 10.1a](../transversal/10.1-outbox-notificacao.md) | Esta HU cobre a **observabilidade** (visualizar e reentregar); a fase TX de enqueue está em cada HU-OUTBOX e no transversal |
 | Dispatch loop (5 s) | [`transversal/10.1-outbox-notificacao.md` 10.1b](../transversal/10.1-outbox-notificacao.md) | O `OutboxDispatcher` (@Scheduled) está modelado em 10.1b; F7.6-D02 apenas recoloca o evento em PENDING para o dispatcher processar |
 | F7.6-ERRO-01 (403 padrão) | [`F7/US-F7-001-IAM-USUARIOS.md` F7.1-ERRO-01](US-F7-001-IAM-USUARIOS.md) | Mesmo padrão `@PreAuthorize` + RFC 7807 403 |
 

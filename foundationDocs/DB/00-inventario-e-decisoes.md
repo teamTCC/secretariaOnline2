@@ -2,15 +2,94 @@
 
 **Projeto:** SecretariaOnline2 (TCC — UFPR SEPT)  
 **Etapa:** 0 — Inventário, reconciliação e decisões  
-**Data:** 2026-06-22  
+**Data (histórico I1–I11):** 2026-06-22  
+**As-built Flyway:** 2026-08-29 — `foundationDocs/analysis/as-built-backend.md` §5  
 **Modelo utilizado:** Claude Opus 4.6 (thinking high)  
 **Fontes consultadas:** §0.1 do `PROMPT_gerar_documentacao_banco_dados.md` (10 fontes em ordem de precedência)
+
+> **Override físico:** as decisões I1–I11 abaixo permanecem como histórico da trilha acadêmica 2026-06 (`schema_completo.sql`). O **schema físico em execução** é Flyway V001–V019. Onde I11 / §1.1 divergem do Flyway, **o as-built vence**.
+
+---
+
+## 0. As-built Flyway 2026-08
+
+Fonte: `backend/app/src/main/resources/db/migration/` (V001–V019). Próxima migration = **V020**. Nunca editar V001–V019. Hibernate `ddl-auto: validate`; Flyway ligado em `dev`.
+
+### 0.1 Contagem
+
+| Trilha | Tabelas | Notas |
+|--------|:-------:|-------|
+| Modelo acadêmico 2026-06 (§1 abaixo) | **31** | Inclui `request_line_item` **não migrada** |
+| Flyway V002–V019 | **~45** | Sem `request_line_item`; com `request_type_version` + V012–V015 |
+
+### 0.2 `request_line_item` — NÃO existe no Flyway
+
+A tabela **não foi criada** em V004 (nem depois). Decisões por disciplina (aproveitamento, inclusão, exclusão) ficam em **`request.dados` JSONB**, não em linhas relacionais. Não há `RequestLineItemJpaRepository`.
+
+No inventário §1.1, a linha 13 (`request_line_item`) é **somente trilha 2026-06**.
+
+### 0.3 `request_type_version` — domínio as-built (V019)
+
+| # | Tabela | Módulo | PK | FKs principais |
+|---|--------|--------|-----|----------------|
+| A1 | `request_type_version` | Solicitações | `id` UUIDv7 | `id_request_type` → `request_type.id`; UNIQUE (`id_request_type`, `version`) |
+
+Colunas: `version` INT, `form_schema` JSONB, `workflow_json` JSONB, `published_at`, `created_at`, `updated_at`.
+
+`request.id_request_type_version` UUID NULL → `request_type_version.id` (índice `idx_request_type_version_fk`). Publish grava snapshot; GET detalhe usa o `form_schema` da versão da instância.
+
+### 0.4 Tabelas extras vs §1.1 (V012, V014, V015, V019)
+
+Não inventar outras — só o que o Flyway cria.
+
+**V012** — service / FAQ / suporte / FCM:
+
+| Tabela | FKs principais |
+|--------|----------------|
+| `service_record` | `id_secretario` → `usuario` (nullable após V015), `id_aluno` → `usuario` |
+| `faq_item` | — |
+| `support_ticket` | `id_usuario` → `usuario`, `id_atendente` → `usuario` |
+| `device_fcm_token` | `id_usuario` → `usuario`; UNIQUE (`id_usuario`, `fcm_token`) |
+
+**V014** — colação, kanban, import/export, templates, log de notificação:
+
+| Tabela | FKs principais |
+|--------|----------------|
+| `graduation_record` | `id_aluno` → `usuario`, `id_curso` → `curso`, `delivered_by` → `usuario`; V015: `id_periodo` → `periodo_letivo` |
+| `secretary_task` | `id_assignee` → `usuario` |
+| `import_job` | `id_ator` → `usuario` |
+| `communication_template` | — (`codigo` UNIQUE) |
+| `communication_template_revision` | `id_template` → `communication_template`, `id_autor` → `usuario` |
+| `notification_log` | `id_usuario` (sem FK obrigatória) |
+| `export_job` | `id_ator` → `usuario` |
+
+**V015** — histórico e contato:
+
+| Tabela | FKs principais |
+|--------|----------------|
+| `historico_escolar` | `id_aluno` → `usuario`, `id_disciplina` → `disciplina`; UNIQUE (`id_aluno`, `id_disciplina`) |
+| `contact_message` | — (público) |
+
+**V019:** `request_type_version` (§0.3).
+
+**Também no Flyway e não no §1.2 como tabela:** `password_history` (V002) — tabela própria, não JSONB em `usuario`.
+
+### 0.5 Overlay de colunas em solicitações (V004 + V018 + V019)
+
+Diferenças vs §1.1 / I11 (detalhe em `as-built-backend.md` §5.3):
+
+- `request_type`: `code VARCHAR(60)`, `prazo_dias` default **10**, **sem** `interna` / `required_auth` (authorities no `workflow_json`); `created_at` / `updated_at`.
+- `request`: `request_type_code`, `parecer`, `deleted_at`, `prazo_em` nullable, UNIQUE (`numero_anual`, `ano`, `id_curso`), `id_request_type_version`.
+- `request_event`: `created_at` + `updated_at` (V018); `estado_anterior` **NOT NULL**; sem coluna `at` / `metadata`.
+- `request_attachment`: `content_type` (não `mime_type`); **sem** `uploaded_by` / **sem** `status` (I11-a não materializada); `created_at` + `updated_at` (V018).
 
 ---
 
 ## 1. Tabelas
 
-### 1.1 Tabelas de domínio (29)
+### 1.1 Tabelas de domínio (29) — trilha 2026-06
+
+Inventário original. **Override físico:** §0. `request_line_item` (linha 13) não está no Flyway; `request_type_version` (13b) está (V019).
 
 | # | Tabela | Módulo | PK | FKs principais | PK composta |
 |---|--------|--------|-----|----------------|:-----------:|
@@ -24,10 +103,11 @@
 | 8 | `periodo_letivo` | Acadêmico | `id` UUIDv7 | — | — |
 | 9 | `calendario_academico` | Acadêmico | `id` UUIDv7 | `id_periodo` → `periodo_letivo`, `id_request_type` → `request_type` | — |
 | 10 | `request_type` | Solicitações | `id` UUIDv7 | — | — |
-| 11 | `request` | Solicitações | `id` UUIDv7 | `id_solicitante` → `usuario`, `id_request_type` → `request_type`, `id_curso` → `curso` | — |
+| 11 | `request` | Solicitações | `id` UUIDv7 | `id_solicitante` → `usuario`, `id_request_type` → `request_type`, `id_curso` → `curso`; **as-built:** `id_request_type_version` → `request_type_version` | — |
 | 12 | `request_event` | Solicitações | `id` UUIDv7 | `id_request` → `request`, `id_ator` → `usuario` | — |
-| 13 | `request_line_item` | Solicitações | `id` UUIDv7 | `id_request` → `request`, `id_disciplina` → `disciplina` | — |
-| 14 | `request_attachment` | Solicitações | `id` UUIDv7 | `id_request` → `request`, `uploaded_by` → `usuario` | — |
+| 13 | `request_line_item` | Solicitações | — | **NÃO existe no Flyway** (linhas em `request.dados` JSONB). Presente só no modelo 2026-06 / `schema_completo.sql` | — |
+| 13b | `request_type_version` | Solicitações | `id` UUIDv7 | `id_request_type` → `request_type` | — |
+| 14 | `request_attachment` | Solicitações | `id` UUIDv7 | `id_request` → `request`; **2026-06:** `uploaded_by` → `usuario` (**Flyway V004: sem essa coluna**) | — |
 | 15 | `formative_activity` | Formativas | `id` UUIDv7 | `id_curso` → `curso` | — |
 | 16 | `formative_entry` | Formativas | `id` UUIDv7 | `id_aluno` → `usuario`, `id_activity` → `formative_activity`, `reviewed_by` → `usuario` | — |
 | 17 | `internship` | Estágio | `id` UUIDv7 | `id_aluno` → `usuario`, `id_orientador` → `usuario`, `id_coe` → `usuario` | — |
@@ -61,19 +141,23 @@
 | `DELIBERATION` | Não é entidade física — deliberação é representada por `request_event` + `estado` em `request`. |
 | `FORM_SCHEMA` | Não é tabela — é coluna JSONB em `request_type.form_schema`. |
 | `WORKFLOW_DEFINITION` | Não é tabela — é coluna JSONB em `request_type.workflow_json`. |
+| `request_line_item` | **As-built:** não migrada. Modelo 2026-06 a previa; Flyway V004 omite. Payload em `request.dados`. |
 
 ### 1.4 Resumo quantitativo
 
 | Categoria | Quantidade |
 |-----------|:----------:|
-| Tabelas de domínio | 29 |
-| Tabelas técnicas (no SQL) | 2 |
+| Tabelas de domínio (trilha 2026-06) | 29 (inclui `request_line_item` não migrada) |
+| Tabelas técnicas (no SQL 2026-06) | 2 |
 | **Total no `schema_completo.sql`** | **31** |
-| Tabelas com PK composta | 4 (`role_authority`, `usuario_role`, `tcc_member`, `tcc_examiner`) |
+| **Total Flyway as-built (V002–V019)** | **~45** (sem `request_line_item`; + `request_type_version` + V012–V015 + `password_history`) |
+| Tabelas com PK composta | 4 (`role_authority`, `usuario_role`, `tcc_member`, `tcc_examiner`) — Flyway: `usuario_role` tem PK UUID + UNIQUE (`id_usuario`, `id_role`) |
 
 ---
 
 ## 2. Resolução de inconsistências
+
+> **Nota as-built (2026-08):** I1–I11 abaixo são o registro histórico da trilha 2026-06. O schema físico **não** segue I11 para `request_line_item`, `request_attachment.status` / `mime_type` / `uploaded_by`, nem `request_type.interna` / `required_auth`. Ver §0.
 
 ### I1 — ER §5.2 vs DDL §5.3: `ATTENDANCE_CHECKIN` vs `attendance_session`
 
@@ -177,18 +261,20 @@
 | `request_type` colunas | `nome`, `categoria`, `estado_inicial`, `sla_dias`, `authorities_required` | `code`, `descricao`, `prazo_dias`, `interna`, `form_schema`, `workflow_json`, `required_auth`, `ativo` | **§5.3** — `estado_inicial` vive dentro de `workflow_json.initial` (workflow-engine) |
 | `request` FK `id_curso` | Ausente no v2 | Presente (NOT NULL) | **§5.3** — manter `id_curso` |
 | `request_event` nomes | `de_estado`, `para_estado`, `comentario` | `estado_anterior`, `estado_novo`, `parecer`, `tipo`, `at` | **§5.3** — nomes mais expressivos |
-| `request_line_item` | Ausente no v2 | Presente (para APROVEITAMENTO, multi-disciplina) | **Manter** no schema TCC (fora do escopo UI v2, mas no modelo completo) |
-| `request_attachment` | `status` PENDING/CONFIRMED, `nome_arquivo` | `categoria`, `nome_original`, `uploaded_by`, `mime_type`, `tamanho_bytes`, `sha256`, `storage_key`, `uploaded_at` — **sem** `status` | **Unificar:** §5.3 + **adicionar** `status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED'` (valores: PENDING, CONFIRMED) do v2 |
-| Migrations v2 | `V003`/`V004` com 4 tabelas | 5 tabelas (`+request_line_item`) | Doc TCC descreve modelo completo; Flyway real pode ser incremental |
+| `request_line_item` | Ausente no v2 | Presente (para APROVEITAMENTO, multi-disciplina) | **2026-06: manter no schema TCC.** **As-built Flyway: NÃO migrada** — linhas em `request.dados` JSONB |
+| `request_attachment` | `status` PENDING/CONFIRMED, `nome_arquivo` | `categoria`, `nome_original`, `uploaded_by`, `mime_type`, `tamanho_bytes`, `sha256`, `storage_key`, `uploaded_at` — **sem** `status` | **2026-06:** unificar §5.3 + `status`. **Flyway V004:** `content_type` (não `mime_type`); **sem** `uploaded_by` / **sem** `status` |
+| Migrations v2 | `V003`/`V004` com 4 tabelas | 5 tabelas (`+request_line_item`) | **As-built:** V004 tem **4** tabelas (`request_type`, `request`, `request_event`, `request_attachment`); V019 adiciona `request_type_version` |
 
-**Status:** ✅ DECISÃO FINAL
+**Status:** ✅ DECISÃO FINAL (trilha 2026-06). **Override físico:** Flyway V004+V019 (§0).
 
 ### Decisão adicional I11-a: Coluna `status` em `request_attachment`
 
-A coluna `status` (`PENDING`/`CONFIRMED`) do MVP v2 §4 é **incorporada** ao schema TCC porque:
+A coluna `status` (`PENDING`/`CONFIRMED`) do MVP v2 §4 foi **incorporada ao schema TCC 2026-06** (`schema_completo.sql`) porque:
 1. O padrão de upload por URL pré-assinada exige rastrear se o arquivo foi efetivamente enviado ao storage
 2. Sem `status`, attachments "fantasma" (URL gerada mas upload nunca feito) ficam indistinguíveis
 3. DEFAULT = `'CONFIRMED'` mantém retrocompatibilidade com uploads diretos futuros
+
+**As-built Flyway V004:** a coluna **`status` não existe**. I11-a permanece como decisão de modelo acadêmico, não como DDL runtime.
 
 ---
 
@@ -214,7 +300,8 @@ Ordem definitiva para o `schema_completo.sql` (resolve dependências circulares 
 12  Acadêmico (FK tardia)                calendario_academico                    periodo_letivo, request_type
 13  Solicitações                         request                                 usuario, request_type, curso
 14  Solicitações                         request_event                           request, usuario
-15  Solicitações                         request_line_item                       request, disciplina
+15  Solicitações                         request_line_item                       request, disciplina  **[NÃO no Flyway — omitir]**
+15b Solicitações                         request_type_version                    request_type (V019)
 16  Solicitações                         request_attachment                      request, usuario
 17  Formativas                           formative_activity                      curso
 18  Formativas                           formative_entry                         usuario, formative_activity
@@ -295,11 +382,12 @@ Estas colunas são usadas nos diagramas mas **não estão explicitamente no DDL 
 | `disciplina` | §5.3 | jpaInterfaces, diagrama classes Acadêmico |
 | `periodo_letivo` | §5.3 | jpaInterfaces, diagrama classes Acadêmico |
 | `calendario_academico` | §5.3 | jpaInterfaces |
-| `request_type` | §5.3 | workflow-engine-specialist.md, MVP v2 §4 (reconciliado I11) |
-| `request` | §5.3 | workflow-engine-specialist.md, MVP v2 §4 (reconciliado I11) |
-| `request_event` | §5.3 | workflow-engine-specialist.md, MVP v2 §4 (reconciliado I11) |
-| `request_line_item` | §5.3 | jpaInterfaces (ausente no v2, presente no TCC) |
-| `request_attachment` | §5.3 + MVP v2 §4 (unificado) | jpaInterfaces, workflow-engine-specialist.md §"Attachment Upload" |
+| `request_type` | §5.3 | workflow-engine-specialist.md, MVP v2 §4 (reconciliado I11); **as-built:** V004 sem `interna`/`required_auth` |
+| `request` | §5.3 | workflow-engine-specialist.md, MVP v2 §4 (reconciliado I11); **as-built:** V004+V019 (`request_type_code`, `parecer`, `deleted_at`, `id_request_type_version`) |
+| `request_event` | §5.3 | workflow-engine-specialist.md, MVP v2 §4; **as-built:** `created_at`+`updated_at`, `estado_anterior` NOT NULL |
+| `request_line_item` | §5.3 | jpaInterfaces 2026-06; **Flyway: NÃO existe** |
+| `request_type_version` | V019 Flyway | `as-built-backend.md` §5; `RequestTypeVersionJpaRepository` |
+| `request_attachment` | §5.3 + MVP v2 §4 (unificado 2026-06) | **Flyway V004:** `content_type`, sem `status`/`uploaded_by` |
 | `formative_activity` | §5.3 | jpaInterfaces, diagrama classes |
 | `formative_entry` | §5.3 | jpaInterfaces, diagrama classes |
 | `internship` | §5.3 | jpaInterfaces |
@@ -320,7 +408,7 @@ Estas colunas são usadas nos diagramas mas **não estão explicitamente no DDL 
 
 ## 6. Coluna completa de `request_attachment` (unificação I11)
 
-Resultado da reconciliação §5.3 + MVP v2 §4:
+Resultado da reconciliação §5.3 + MVP v2 §4 (**trilha 2026-06**). **Flyway V004 não tem** `mime_type`, `uploaded_by` nem `status`; usa `content_type` + `created_at`/`updated_at`.
 
 | Coluna | Tipo | NOT NULL | Default | Fonte |
 |--------|------|:--------:|---------|-------|
@@ -378,5 +466,5 @@ ON DELETE CASCADE de `usuario` (composição — diagrama classes IAM).
 
 ---
 
-**Versão:** 1.0  
-**Aprovação:** pendente revisão do usuário antes de prosseguir para Etapa 1.
+**Versão:** 1.1 (as-built Flyway 2026-08-29 no §0; I1–I11 históricas preservadas)  
+**Aprovação:** trilha 2026-06 concluída; overlay físico = Flyway V001–V019.

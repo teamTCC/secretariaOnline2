@@ -3,6 +3,8 @@
 Fonte canónica dos textos: [`diagrama_casos_de_uso_secretariaonline2.puml`](diagrama_casos_de_uso_secretariaonline2.puml).  
 Cada página do ficheiro PlantUML gera um PNG: `diagrama_casos_de_uso_secretariaonline2_p1.png`, `_p2.png`, `_p3.png`.
 
+> **Nota:** a legenda inclui **UC-AUT-07** (exchange OTT). Os ficheiros PlantUML e os PNGs **podem estar desatualizados** em relação a esta tabela — não regenerar PNG sem revisão do `.puml`.
+
 ---
 
 ## P1 — visão por módulo (`diagrama_casos_de_uso_secretariaonline2_p1`)
@@ -14,6 +16,7 @@ Tabela ordenada por **ator** (A1 → A9, depois S6). Dentro de cada ator, as sig
 | **A1** Visitante | UC-AUT-01 | Autenticar-se |
 | **A1** Visitante | UC-AUT-02 | Recuperar senha |
 | **A1** Visitante | UC-AUT-03 | Redefinir senha |
+| **A1** Visitante | UC-AUT-07 | Trocar OTT (deep-link) por sessão |
 | **A1** Visitante | UC-CRT-02 | Verificar protocolo (público) |
 | **A1** Visitante | UC-CRT-03 | Verificar certificado (público) |
 | **A1** Visitante | UC-PUB-01 | Página institucional / erro |
@@ -123,7 +126,7 @@ Nesta página os **atores** são os sistemas **S1–S5**. Ordenação: **S1 → 
 
 | Ator (sistema) | Nome no diagrama | Ref. agrupamento | Siglas UC / âmbito | Papel da ligação (rótulo) |
 |----------------|------------------|------------------|---------------------|---------------------------|
-| **S1** | IAM | z1 | UC-AUT-01 … UC-AUT-06 | tokens / sessão |
+| **S1** | IAM | z1 | UC-AUT-01 … UC-AUT-07 | tokens / sessão / OTT |
 | **S2** | Notificações Hub | z2 | UC-SOL-01 … UC-SOL-07 | e-mail / push / in-app |
 | **S3** | Motor workflow | z2 | UC-SOL-01 … UC-SOL-07 | workflow_json / transições |
 | **S4** | Emissor certificados | z3 | UC-CRT-01, UC-SOL-05, UC-FOR-02, UC-PRE-04 | hash / assinatura / PDF |
@@ -133,7 +136,7 @@ Nesta página os **atores** são os sistemas **S1–S5**. Ordenação: **S1 → 
 
 | ID | Texto no oval | Significado |
 |----|----------------|-------------|
-| z1 | Grupo UC-AUT-01 a UC-AUT-06 | Identidade e acesso (IAM externo) |
+| z1 | Grupo UC-AUT-01 a UC-AUT-06 | Identidade e acesso (IAM externo). **Legenda:** também UC-AUT-07; oval PlantUML pode não listar AUT-07. |
 | z2 | Grupo UC-SOL-01 a UC-SOL-07 | Solicitações / workflow |
 | z3 | UC-CRT-01, UC-SOL-05, UC-FOR-02, UC-PRE-04 | Emissão ou fecho com PDF/assinatura |
 | z4 | Anexos / PDFs (SOL, FOR, EST, TCC) | Armazenamento de blobs |
@@ -149,11 +152,12 @@ Esta página **não** desenha atores humanos; a tabela segue ordem **alfabética
 | Sigla UC (base ou alvo) | Tipo (UML) | Contraparte no diagrama | Rótulo / descrição |
 |-------------------------|------------|---------------------------|---------------------|
 | UC-AUT-01 | Caso de uso base | — | Autenticar-se |
+| UC-AUT-07 | **extend** / relacionado → UC-AUT-01 / UC-SOL-04 | `POST /auth/ott` | Trocar OTT (deep-link) por sessão |
 | UC-AUT-04 | **extend** → UC-AUT-01 | primeiro acesso | `(extend) mustChangePassword` |
 | UC-SOL-01 | Caso de uso base | — | Abrir solicitação |
 | — | **extend** → UC-SOL-01 | Ext.: salvar rascunho (condicional) | `(extend) rascunho opcional` |
 | UC-SOL-04 | Caso de uso base | — | Deliberar solicitação |
-| — | **extend** → UC-SOL-04 | Ext.: deep-link JWT 1-uso (?token=) | `(extend) deep-link JWT 1-uso` |
+| — | **extend** → UC-SOL-04 | Ext.: deep-link JWT 1-uso (`?ott=` + `POST /auth/ott`) | `(extend) deep-link JWT 1-uso` (PNG pode ainda mostrar `?token=`) |
 | — | **include** → UC-SOL-04 | Inc.: validar capability + workflow / motor S3 | `(include) capability + workflow S3` |
 
 **Nota (diagrama):** o include lógico de autorização/workflow também aparece noutros UC (ex.: UC-PRE-03, UC-FOR-03, UC-EGR-02); ver secção 4.1 em [`casos_de_uso.md`](casos_de_uso.md).

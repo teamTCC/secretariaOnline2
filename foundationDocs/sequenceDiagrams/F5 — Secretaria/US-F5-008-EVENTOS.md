@@ -77,7 +77,7 @@ sequenceDiagram
     end
 
     Secretaria->>WebApp: acessa /secretaria/eventos (filtros: curso, estado)
-    WebApp->>JwtFilter: GET /events?cursoId=...&estado=AGENDADO&page=0 (Bearer)
+    WebApp->>JwtFilter: GET /events?cursoId=...&estado=AGENDADO&page=0 (cookie access_token)
     JwtFilter->>JwtFilter: valida JWT + event.manage ✓
     JwtFilter->>EventController: repassa (secretariaId)
     EventController->>ListEventsUC: execute(query, secretariaId)
@@ -125,7 +125,7 @@ sequenceDiagram
     CloseEventUC->>Postgres: BEGIN TX
     CloseEventUC->>Postgres: UPDATE event SET estado=CONCLUIDO, closedAt=now()
     CloseEventUC->>Postgres: INSERT formative_entry lote (alunos com presença válida)
-    CloseEventUC->>Postgres: INSERT outbox_event (type=events.closed, payload={…})
+    CloseEventUC->>Outbox: OutboxEventPublisher.enqueue(events.closed)
     CloseEventUC->>Postgres: COMMIT
     CloseEventUC-->>EventController: EventDto (CONCLUIDO, presencasContabilizadas=N)
     EventController-->>WebApp: 200 {…}
@@ -133,7 +133,7 @@ sequenceDiagram
 ```
 
 **Notas:**
-- Passos 6–10: transação atômica — UPDATE event + INSERT formative_entry (lote para todos os alunos com `attendance_session.completedAt IS NOT NULL` e `chCreditadas` atingidas) + INSERT outbox_event na mesma TX (RN-F5-008-10). Se o COMMIT falhar, nenhum `formative_entry` é persistido e nenhum certificado é emitido.
+- Passos 6–10: transação atômica — UPDATE event + INSERT formative_entry (lote para todos os alunos com `attendance_session.completedAt IS NOT NULL` e `chCreditadas` atingidas) + OutboxEventPublisher.enqueue na mesma TX (RN-F5-008-10). Se o COMMIT falhar, nenhum `formative_entry` é persistido e nenhum certificado é emitido.
 - Passo 8: `formative_entry` criado apenas para alunos que atingiram o limiar de presença configurado no evento. Alunos sem presença válida não recebem entrada e, consequentemente, não recebem certificado.
 - Passo 9: o `OutboxDispatcher` (a cada 5 s) lê `events.closed` e aciona `CertificateIssuerUseCase` para cada `formative_entry` do evento — emissão assíncrona completa (PDF + SHA-256 + ED25519 + outbox) documentada em → [`transversal/10.4-certificado-emissao.md`](../transversal/10.4-certificado-emissao.md) (RN-F5-008-11).
 - RN-F5-008-12 (scheduler): `@Scheduled` aciona `CloseEventUseCase.execute(eventId)` automaticamente às 23:59 para eventos ainda `EM_ANDAMENTO` — mesmo fluxo a partir do passo 5, sem ação da secretaria.

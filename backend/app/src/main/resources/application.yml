@@ -1,0 +1,143 @@
+spring:
+  application:
+    name: secretaria-online-2
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/secretaria_dev}
+    username: ${SPRING_DATASOURCE_USERNAME:secretaria}
+    password: ${SPRING_DATASOURCE_PASSWORD:localdev}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: SecretariaHikariCP
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        default_schema: public
+        jdbc:
+          time_zone: UTC
+        types:
+          print:
+            banner: false
+
+  mail:
+    from: ${MAIL_FROM:noreply@ufpr.br}
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+    time-zone: UTC
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      connect-timeout: 2000ms
+
+  cache:
+    type: ${CACHE_TYPE:simple}  # override with 'redis' when Redis is available (e.g. docker-compose env)
+    redis:
+      time-to-live: 60000  # 60 seconds
+      cache-null-values: false
+    cache-names: bff-dashboard
+
+security:
+  jwt:
+    private-key: ${SECURITY_JWT_PRIVATE_KEY}
+    public-key: ${SECURITY_JWT_PUBLIC_KEY}
+    access-token-ttl-seconds: ${SECURITY_JWT_ACCESS_TTL:900}
+    issuer: secretaria-online-2
+
+app:
+  base-url: ${APP_BASE_URL:http://localhost:3000}
+  cors:
+    allowed-origins:
+      - ${CORS_ALLOWED_ORIGIN_1:http://localhost:3000}
+      - ${CORS_ALLOWED_ORIGIN_2:http://localhost:5173}
+      - ${CORS_ALLOWED_ORIGIN_3:}
+    # Wildcard patterns — use for Vercel preview deployments
+    # e.g. CORS_ALLOWED_ORIGIN_PATTERN_1=https://*.vercel.app
+    allowed-origin-patterns:
+      - ${CORS_ALLOWED_ORIGIN_PATTERN_1:}
+      - ${CORS_ALLOWED_ORIGIN_PATTERN_2:}
+  security:
+    cookie:
+      # Set to false in dev/HTTP environments; always true when SameSite=None
+      secure: ${COOKIE_SECURE:true}
+      # Lax: same-site + top-level navigation (default, same-origin SPA)
+      # None: cross-origin SPA (Vercel → API on different domain) — requires Secure=true
+      same-site: ${COOKIE_SAME_SITE:Lax}
+  certificate:
+    private-key: ${CERT_PRIVATE_KEY:}
+    public-key: ${CERT_PUBLIC_KEY:}
+  contato:
+    nome: ${APP_CONTATO_NOME:Secretaria SEPT — UFPR}
+    endereco: ${APP_CONTATO_ENDERECO:Rua Dr. Alcides Vieira Arcoverde, 1225 — Jardim das Américas, Curitiba/PR}
+    telefone: ${APP_CONTATO_TELEFONE:(41) 3360-4900}
+    email: ${APP_CONTATO_EMAIL:secretaria.sept@ufpr.br}
+    horario: ${APP_CONTATO_HORARIO:Segunda a sexta, 8h–17h}
+  firebase:
+    service-account-json: ${APP_FIREBASE_SERVICE_ACCOUNT_JSON:}
+    project-id: ${APP_FIREBASE_PROJECT_ID:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus, loggers
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles.active}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+
+logging:
+  level:
+    root: INFO
+    br.ufpr.sept.so2: DEBUG
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

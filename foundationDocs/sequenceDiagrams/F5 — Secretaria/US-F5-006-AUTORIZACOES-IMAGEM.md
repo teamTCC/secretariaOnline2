@@ -115,7 +115,7 @@ sequenceDiagram
     Postgres-->>RequestController: N rows válidas (count = N — sem divergência)
     RequestController->>Postgres: BEGIN TX
     RequestController->>Postgres: UPDATE requests SET estado=DEFERIDA; INSERT request_event × N
-    RequestController->>Postgres: INSERT outbox_event(autorizacoes.deliberated, alunoId) × N
+    RequestController->>Outbox: OutboxEventPublisher.enqueue(autorizacoes.deliberated) xN
     RequestController->>Postgres: INSERT audit_log(image_auth.bulk_deliberate, operadorId, ids[])
     RequestController->>Postgres: COMMIT
     RequestController-->>WebApp: 200 {updated: N, ids}
@@ -124,8 +124,8 @@ sequenceDiagram
 
 **Notas:**
 - Passo 4: `SELECT ... FOR UPDATE` trava as N linhas antes de abrir a TX — previne condição de corrida com outro operador que possa ter alterado o estado entre a listagem e a deliberação. Se o `count` retornado for menor que N → desvia para F5.12-ERRO-01 (sem TX aberta).
-- Passos 6–10: TX única para todos os N itens (RN-F5-006-06); `UPDATE + INSERT request_event + INSERT outbox_event + INSERT audit_log` em COMMIT único. Se qualquer operação falhar → rollback automático → nenhuma solicitação é alterada.
-- Passo 8: `INSERT outbox_event` × N — um evento por aluno com payload `{alunoId, decisao, justificativa?}`; template de e-mail `AUTORIZACAO_DELIBERATED` inclui justificativa se `INDEFERIDA` (RN-F5-006-07, CA-F5-006-05). DRY → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1b para dispatch.
+- Passos 6–10: TX única para todos os N itens (RN-F5-006-06); `UPDATE + INSERT request_event + OutboxEventPublisher.enqueue + INSERT audit_log` em COMMIT único. Se qualquer operação falhar → rollback automático → nenhuma solicitação é alterada.
+- Passo 8: `OutboxEventPublisher.enqueue` × N — um evento por aluno com payload `{alunoId, decisao, justificativa?}`; template de e-mail `AUTORIZACAO_DELIBERATED` inclui justificativa se `INDEFERIDA` (RN-F5-006-07, CA-F5-006-05). DRY → [`transversal/10.1-outbox-notificacao.md`](../transversal/10.1-outbox-notificacao.md) 10.1b para dispatch.
 - Rejeitar com justificativa (CA-F5-006-05): mesmo fluxo com `decisao=INDEFERIDA` + `justificativa: "Foto ilegível"` no body; sem variação de participantes ou mensagens — DRY.
 
 **Lacunas:** nenhuma.

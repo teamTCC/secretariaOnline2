@@ -90,7 +90,7 @@ sequenceDiagram
 
 **Notas:**
 - Passo 7: a verificação `novaSenha ≠ senha_hash_temp` ocorre em memória no UseCase (Argon2id.verify) logo após receber a linha do Postgres — sem nova roundtrip. Se a verificação falhar, dispara F1.2-D03.
-- Passo 9: `INSERT audit_log` + `COMMIT` são atômicos com o `UPDATE` do passo 8 (mesma transação). Se o sistema tiver outbox de boas-vindas configurado, um `INSERT outbox_event(iam.first_access_completed)` entra neste mesmo `COMMIT`; dispatch via `transversal/10.1-outbox-notificacao.md`.
+- Passo 9: `INSERT audit_log` + `COMMIT` são atômicos com o `UPDATE` do passo 8 (mesma transação). Se houver outbox de boas-vindas, `OutboxEventPublisher.enqueue(iam.first_access_completed)` entra no mesmo `COMMIT`; dispatch via `transversal/10.1-outbox-notificacao.md`.
 - Passo 11: `mustChangePassword` é limpo do estado local (React Context / Zustand); a sidebar passa a renderizar todos os links normalmente. Nenhum novo JWT é emitido — o guard é verificado via estado derivado da store, não de claim JWT.
 
 **Lacunas:** nenhuma.

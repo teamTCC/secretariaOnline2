@@ -1,15 +1,83 @@
-Pelo schema proposto em `a_new_app_design/analise_arquitetural_secretariaonline2.md`, o número é:
+# JPA interfaces ↔ tabelas PostgreSQL
 
-- **29 tabelas de aplicação** (contando os `CREATE TABLE` do documento).
+**As-built 2026-08-29** (`foundationDocs/analysis/as-built-backend.md` §5): Flyway V001–V019 = **~45 tabelas** de aplicação. **Não existe** `RequestLineItemJpaRepository` nem tabela `request_line_item` (linhas em `request.dados` JSONB). Escritas no outbox usam o port `OutboxEventPublisher` (`backend/shared/.../OutboxEventPublisher.kt`); `OutboxEventJpaRepository` fica no módulo notificações, atrás do publisher — use cases **não** injetam o JPA.
 
-Além disso, na prática, geralmente aparecem tabelas técnicas:
+Listas abaixo: **primeiro o que existe no código** (`*JpaRepository` grep 2026-08); depois o rascunho 2026-06 (histórico).
 
-- **+1 do Flyway** (`flyway_schema_history`) quando você roda migrations.
-- possivelmente outras de suporte, dependendo da implementação final (ex.: idempotência/segurança/sessões), mas isso não está fechado como `CREATE TABLE` no draft principal.
+---
 
-Então, resposta curta: **para o modelo completo desenhado hoje, pense em ~29 tabelas de domínio + tabelas técnicas de operação (mínimo 30 com Flyway).**
+## As-built — repositórios no código
 
+### IAM / sessão
+- `UsuarioJpaRepository` → `usuario`
+- `RoleJpaRepository` → `role`
+- `AuthorityJpaRepository` → `authority`
+- `RefreshTokenJpaRepository` → `refresh_token`
+- `JtiBlacklistJpaRepository` → `jti_blacklist` *(PK `String` / JTI; application: `EmailOneTimeTokenStore`)*
+- `PasswordHistoryJpaRepository` → `password_history` *(tabela V002, não JSONB em `usuario`)*
+- Sem `RoleAuthorityJpaRepository` / `UsuarioRoleJpaRepository` dedicados (`UsuarioRoleEntity` mapeada no IAM)
 
+### IAM — V012 / V014 / V015
+- `ServiceRecordJpaRepository` → `service_record`
+- `FaqItemJpaRepository` → `faq_item`
+- `SupportTicketJpaRepository` → `support_ticket`
+- `FcmTokenJpaRepository` → `device_fcm_token`
+- `GraduationRecordJpaRepository` → `graduation_record`
+- `SecretaryTaskJpaRepository` → `secretary_task`
+- `ImportJobJpaRepository` → `import_job`
+- `ExportJobJpaRepository` → `export_job`
+- `ContactMessageJpaRepository` → `contact_message`
+- `NotificationPrefJpaRepository` → `notification_preference` *(IAM)*
+
+### Acadêmico
+- `CursoJpaRepository` → `curso`
+- `DisciplinaJpaRepository` → `disciplina`
+- `PeriodoLetivoJpaRepository` → `periodo_letivo`
+- `CalendarioAcademicoJpaRepository` → `calendario_academico`
+- `HistoricoEscolarJpaRepository` → `historico_escolar` *(V015)*
+
+### Solicitações
+- `RequestTypeJpaRepository` → `request_type`
+- `RequestJpaRepository` → `request` *(FK `id_request_type_version`)*
+- `RequestEventJpaRepository` → `request_event`
+- `RequestAttachmentJpaRepository` → `request_attachment`
+- `RequestTypeVersionJpaRepository` → `request_type_version` *(V019)*
+- ~~`RequestLineItemJpaRepository`~~ — **não implementado**
+
+### Formativas / Estágio / TCC
+- `FormativeActivityJpaRepository` → `formative_activity`
+- `FormativeEntryJpaRepository` → `formative_entry`
+- `InternshipJpaRepository` → `internship`
+- `InternshipDocumentJpaRepository` → `internship_document`
+- `TccJpaRepository` → `tcc`
+- `TccMemberJpaRepository` → `tcc_member`
+- `TccExaminerJpaRepository` → `tcc_examiner`
+
+### Comunicação / notificações / auditoria
+- `CommunicationJpaRepository` → `communication`
+- `CommunicationDeliveryJpaRepository` → `communication_delivery`
+- `NotificationPreferenceJpaRepository` → `notification_preference` *(módulo comunicação)*
+- `CommunicationTemplateJpaRepository` → `communication_template`
+- `CommunicationTemplateRevisionJpaRepository` → `communication_template_revision`
+- `NotificationLogJpaRepository` → `notification_log`
+- **Writers:** `OutboxEventPublisher.enqueue(...)` → `outbox_event`
+- `OutboxEventJpaRepository` → `outbox_event` *(infra notificações; dispatcher / publisher impl)*
+- `EventAttendanceJpaRepository` → `event_attendance`
+- `AttendanceSessionJpaRepository` → `attendance_session`
+- `CertificateJpaRepository` → `certificate`
+- `AuditLogJpaRepository` → `audit_log`
+
+Sem `AttendanceValidationWindowJpaRepository` — janelas em `event_attendance.validation_windows` JSONB.
+
+---
+
+## Histórico 2026-06 (rascunho acadêmico — não usar como schema runtime)
+
+Pelo schema proposto em `analise_arquitetural_secretariaonline2.md`, o número era:
+
+- **29 tabelas de aplicação** (contando os `CREATE TABLE` do documento) + técnicas → **31** no `schema_completo.sql` (inclui `request_line_item` **não migrada**).
+
+Runtime Flyway: **~45** tabelas. `flyway_schema_history` é criada pelo Flyway.
 
 ### IAM
 - `UsuarioJpaRepository` → `usuario`
@@ -28,8 +96,9 @@ Então, resposta curta: **para o modelo completo desenhado hoje, pense em ~29 ta
 - `RequestTypeJpaRepository` → `request_type`
 - `RequestJpaRepository` → `request`
 - `RequestEventJpaRepository` → `request_event`
-- `RequestLineItemJpaRepository` → `request_line_item`
+- ~~`RequestLineItemJpaRepository` → `request_line_item`~~ — **não existe no Flyway nem no código**
 - `RequestAttachmentJpaRepository` → `request_attachment`
+- `RequestTypeVersionJpaRepository` → `request_type_version` *(as-built V019)*
 
 ### Formativas
 - `FormativeActivityJpaRepository` → `formative_activity`
@@ -48,12 +117,13 @@ Então, resposta curta: **para o modelo completo desenhado hoje, pense em ~29 ta
 - `CommunicationJpaRepository` → `communication`
 - `CommunicationDeliveryJpaRepository` → `communication_delivery`
 - `NotificationPreferenceJpaRepository` → `notification_preference`
-- `OutboxEventJpaRepository` *(ou `OutboxRepository`, como no doc)* → `outbox_event`
+- **Writers:** `OutboxEventPublisher` → `outbox_event` *(não injetar `OutboxEventJpaRepository` no use case)*
+- `OutboxEventJpaRepository` → `outbox_event` *(infra)*
 
 ### Presença / Certificados (v4.1 — `attendance_session`, modos configuráveis)
 - `EventAttendanceJpaRepository` → `event_attendance`
 - `AttendanceSessionJpaRepository` → `attendance_session`
-- `AttendanceValidationWindowJpaRepository` → *(opcional)* `attendance_validation_window` — se a normalização 1:N substituir `validation_windows` JSONB
+- `AttendanceValidationWindowJpaRepository` → *(opcional)* `attendance_validation_window` — **não criado**; JSONB em `validation_windows`
 - `CertificateJpaRepository` → `certificate`
 
 ### Auditoria
@@ -77,7 +147,8 @@ No Spring Data JPA, “interface concreta” normalmente significa: **você cria
 - `RequestTypeJpaRepository` ↔ `request_type`
 - `RequestJpaRepository` ↔ `request`
 - `RequestEventJpaRepository` ↔ `request_event`
-- `RequestLineItemJpaRepository` ↔ `request_line_item`
+- ~~`RequestLineItemJpaRepository` ↔ `request_line_item`~~ — **não existe (Flyway / código)**
+- `RequestTypeVersionJpaRepository` ↔ `request_type_version`
 - `RequestAttachmentJpaRepository` ↔ `request_attachment`
 - `FormativeActivityJpaRepository` ↔ `formative_activity`
 - `FormativeEntryJpaRepository` ↔ `formative_entry`

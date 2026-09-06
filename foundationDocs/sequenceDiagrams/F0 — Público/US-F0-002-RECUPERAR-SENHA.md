@@ -73,7 +73,7 @@ sequenceDiagram
     DB-->>UC: UsuarioEntity (ativo)
     UC->>UC: gera JWT 1-uso (JTI UUIDv7, audience=password-reset, exp=24h, sub=userId)
     UC->>DB: BEGIN TX
-    UC->>DB: INSERT outbox_event (iam.password_reset_requested, payload resetUrl)
+    UC->>Outbox: OutboxEventPublisher.enqueue(iam.password_reset_requested)
     UC->>DB: INSERT audit_log (iam.password_reset_requested, email, IP)
     UC->>DB: COMMIT TX
     UC-->>AC: void (202 sem corpo diferenciado)

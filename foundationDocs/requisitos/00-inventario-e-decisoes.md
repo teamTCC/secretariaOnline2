@@ -17,6 +17,7 @@
 | 51 HUs individuais | `foundationDocs/HUs/<Fase>/US-*.md` | ✅ Verificado (51 arquivos via Glob) | Fonte primária de RF |
 | HUs.txt consolidado | `foundationDocs/HUs/HUs.txt` | ✅ Restaurado do git (estava deletado localmente) | Varredura consolidada |
 | Análise arquitetural | `foundationDocs/analysis/analise_arquitetural_secretariaonline2.md` | ✅ 1696 linhas | Contexto, ADRs §14, qualidade §17 |
+| As-built backend | `foundationDocs/analysis/as-built-backend.md` | ✅ 2026-08-29 | Contrato HTTP/persistência **como está no código**; vence a análise 2026-06 onde divergirem |
 | Fluxos por perfil | `foundationDocs/analysis/fluxos_por_perfil.md` | ✅ | Fluxos narrativos F0–F8 + transversais §10 |
 | Telas | `foundationDocs/analysis/telas.md` | ✅ | 48 rotas novas |
 | Diagramas de caso de uso | `foundationDocs/useCaseDiagrams/casos_de_uso.md` | ✅ 510 linhas | UCs por módulo |
@@ -146,6 +147,12 @@
 **Decisão:** Adotar estrutura `por-fase/` desde a Etapa 2, sem criar `01-requisitos-funcionais.md` unificado. O índice (`00-indice-requisitos.md`) serve como ponto de entrada centralizado.  
 **Impacto:** Cada etapa gera 1 arquivo menor e navegável.
 
+### DEC-005 — RF-F1-003-d criado para cobrir lacuna funcional em RNF-LGL-01
+
+**Contexto:** O item (c) do RNF-LGL-01 ("permitir que o usuário exporte seus dados pessoais via tela de perfil") foi identificado na revisão de classificação de 2026-08-09 como uma capacidade funcional observável (tela, API, fluxo de dados) incorretamente documentada como atributo de qualidade de conformidade legal.  
+**Decisão:** O item (c) foi removido do RNF-LGL-01 e substituído por referência a **RF-F1-003-d** (novo RF), que especifica a funcionalidade completa: tela `/perfil` seção Privacidade, `POST /me/data-export`, geração assíncrona de arquivo JSON/CSV, TTL 24h, limite de 1 exportação/dia. Aplica-se a alunos e egressos (US-F1-003, direito LGPD Art. 18, III).  
+**Impacto:** Total de RFs aumenta de 71 para **72**; subdivisão DEC-001 de US-F1-003 passa de 3 para 4 itens (a, b, c, d).
+
 ---
 
 ## 5. Perguntas abertas ao usuário / orientador
@@ -175,7 +182,9 @@
 | 2026-06-23 | 1.0 | Etapa 10 — 2 RFs F8; UCs corrigidos UC-ADM-10 (busca) e UC-ADM-11 (suporte); rota `/buscar?q=`; **51/51 HUs cobertas** | 10 |
 | 2026-06-23 | 1.1 | Etapa 11 — 8 RF-TR consolidados; mapa de consumo DRY; Q-004 resolvida (presença v4.1) | 11 |
 | 2026-06-23 | 1.2 | Etapa 12 — Revisão final; CONF-004 resolvido (RNF-SEC-04 → 5/min); checklist §7 completo; campanha encerrada | 12 |
+| 2026-08-09 | 1.3 | Revisão de classificação RNF×RF — 6 RNFs corrigidos (SEC-03/04, LGL-01/02, DIS-01/04); 4 RF-CAs corrigidos (F0-001, F0-003, TR-001/002/006); RF-F1-003-d criado (DEC-005); total RF: 71 → 72 | 13 |
+| 2026-08-29 | 1.4 | Alinhamento as-built: inventário inclui `as-built-backend.md`; cookies/OTT/HATEOAS strings/V019 | — |
 
 ---
 
-*Última atualização: 2026-06-23 — Campanha de requisitos concluída (Etapas 0–12)*
+*Última atualização: 2026-08-29 — as-built-backend.md no inventário*

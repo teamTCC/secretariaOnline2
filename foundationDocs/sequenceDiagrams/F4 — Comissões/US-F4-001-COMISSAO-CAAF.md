@@ -63,7 +63,7 @@ sequenceDiagram
 
     Professor->>WebApp: Navega para /comissoes/caaf
     WebApp->>RQ: useQuery(['caaf','dashboard'])
-    RQ->>CTRL: GET /commissions/caaf/dashboard (Bearer, formative.review ✓)
+    RQ->>CTRL: GET /commissions/caaf/dashboard (cookie access_token, formative.review ✓)
     CTRL->>UC: execute(userId, cursoIds)
     UC->>DB: SELECT formative_entries WHERE (assignee IS NULL OR assignee=userId)
     DB-->>UC: items[]
@@ -112,7 +112,7 @@ sequenceDiagram
     DB-->>UC: FormativeEntry (disponível)
     UC->>DB: BEGIN TX
     UC->>DB: UPDATE formative_entry SET assignee_id=self, estado='EM_REVISAO'
-    UC->>DB: INSERT outbox_event(type='formativas.assigned', payload={…})
+    UC->>Outbox: OutboxEventPublisher.enqueue(formativas.assigned)
     UC->>DB: COMMIT
     UC-->>CTRL: FormativeEntry updated + _links
     CTRL-->>WebApp: 200 {item, _links}
@@ -161,7 +161,8 @@ sequenceDiagram
     Professor->>WebApp: Seleciona colega + clica "Confirmar"
     WebApp->>CTRL: POST /commissions/caaf/assign {itemId, assigneeId: colega}
     CTRL->>AUC: execute(AssignCommand{itemId, assigneeId=colega})
-    AUC->>DB: BEGIN TX; UPDATE formative_entry SET assignee_id=colega; INSERT outbox
+    AUC->>DB: BEGIN TX; UPDATE formative_entry SET assignee_id=colega
+    AUC->>Outbox: OutboxEventPublisher.enqueue(formativas.assigned)
     AUC-->>CTRL: FormativeEntry updated
     CTRL-->>WebApp: 200 {item, _links}
     WebApp-->>Professor: Overlay fecha, badge da linha atualiza com nome do colega
@@ -205,7 +206,7 @@ sequenceDiagram
     UC->>DB: BEGIN TX
     UC->>DB: UPDATE formative_entries SET estado='APROVADA', decided_by=userId
     UC->>DB: INSERT formative_entry_event_log FOR EACH id (individual)
-    UC->>DB: INSERT outbox_event(type='formativas.batch_approved', payload={…})
+    UC->>Outbox: OutboxEventPublisher.enqueue(formativas.batch_approved)
     UC->>DB: COMMIT
     UC-->>CTRL: BatchDecideResult {approved: N, certsPending: N}
     CTRL-->>WebApp: 200 {approved: N, certsPending: N, _links}

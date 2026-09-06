@@ -23,6 +23,10 @@ You are **not** responsible for backend design, database schema, or DevOps. Your
 
 ```
 frontend-web/
+  docs/
+    E0-entrega-publico.md
+    GUIA_IMPLEMENTACAO_WORKFLOW_ENGINE.md
+    plano-entregas-frontend.md
   src/
     app/
       router.tsx              # React Router 6 routes + lazy imports

@@ -66,34 +66,29 @@ sequenceDiagram
     autonumber
     participant Coordenador
     participant WebApp
-    participant ReportController
-    participant GetCoordinatorReportUC
-    participant Postgres
+    participant RC as ReportsController
+    participant Query as ReportsQuery
+    participant ReqPort as SolicitacaoBffReadPort
+    participant IamPort as IamBffReadPort
 
     Coordenador->>WebApp: acessa /coordenacao/relatorios?periodo=2025-2&curso=TADS
     WebApp->>WebApp: TanStack Query cache MISS (staleTime=5min expirado)
-    WebApp->>ReportController: GET /reports/coordinator?periodo=2025-2&curso=TADS (Bearer, report.view_coordinator ✓)
-    ReportController->>GetCoordinatorReportUC: buildReport(filters, userId, cursosIds)
-    GetCoordinatorReportUC->>Postgres: SELECT KPIs: tempoMedioDeliberacao, taxaIndeferimento, volumeFormativas, taxaPresenca
-    Postgres-->>GetCoordinatorReportUC: kpis[] + thresholdIndeferimento
-    GetCoordinatorReportUC->>Postgres: SELECT séries históricas: evasaoPorPeriodo, seriesFormativas
-    Postgres-->>GetCoordinatorReportUC: datasets gráficos[]
-    GetCoordinatorReportUC->>Postgres: SELECT pendencias, solicitacoesTopSla, proximosEventos, cargaPorDeliberador
-    Postgres-->>GetCoordinatorReportUC: dados operacionais[]
-    GetCoordinatorReportUC-->>ReportController: CoordinatorReportDto
-    ReportController-->>WebApp: 200 {…}
-    WebApp-->>Coordenador: KpiRow + ChartsGrid 2×2 + Pendências + QuickTiles (_links)
+    WebApp->>RC: GET /reports/coordinator?periodo=2025-2&curso=TADS (cookie)
+    RC->>Query: coordinator(periodo, curso)
+    Query->>ReqPort: avgDeliberation, countByEstado, findSlaAbertas
+    Query->>IamPort: countColacoesByAno, findNome
+    ReqPort-->>Query: kpis + pendencias SLA
+    IamPort-->>Query: séries colação / nomes
+    Query-->>RC: CoordinatorReportResponse
+    RC-->>WebApp: 200 {kpis, series, pendencias, _links strings}
+    WebApp-->>Coordenador: KpiRow + ChartsGrid + Pendências + QuickTiles
 ```
 
 **Notas:**
-- Passo 2: enquanto o GET está em voo, WebApp exibe `DS/Skeleton/block` em cada área de gráfico e placeholders animados nos KpiCards (CA-F6-002-01) — estado `isLoading=true` do TanStack Query; não é uma chamada de rede separada.
-- Passos 5–10: três rounds de queries por separação semântica. Na implementação, o UC pode executar em paralelo (`async`/coroutines) ou como single CTE; o diagrama representa a granularidade de agregação, não obrigatoriamente queries sequenciais.
-- Passo 12: `thresholdIndeferimento` chega junto com `kpis`; o frontend compara `taxaIndeferimento > thresholdIndeferimento` para exibir o `DS/AlertBanner` (CA-F6-002-03 — lógica frontend pura).
-- Passo 12: `_links` condicional por FGAC; `useActions(resource)` controla quais `DS/QuickTile` são renderizados (CA-F6-002-06, RN-F6-002-11).
-- Passo 12: `pendencias[].href` contém o destino de navegação para cada pendência; o clique dispara `navigate(href)` sem nova API call (CA-F6-002-04).
-- CA-F6-002-07 (filtros na URL): quando o usuário altera qualquer `DS/Select` de filtro, o `useSearchParams` atualiza a URL e TanStack Query invalida a chave, disparando um novo GET com os query params atualizados — mesmo fluxo deste diagrama.
-- CA-F6-002-08 (drill-down): `cargaPorDeliberador[]` já está no response (passo 10→12); a tabela de drill-down renderiza esses dados localmente ao clicar no gráfico, sem nova requisição.
-- Não há OUTBOX, CERT ou WORKFLOW neste fluxo — HU é read-only.
+- Ports adicionais (omitidos no diagrama): `TccDashboardPort`, `EstagioSummaryPort`, `FormativaBffReadPort`, `PresencaBffReadPort`, `AcademicoReadPort`, `IamDashboardPort`.
+- Sem `RelatoriosController`, sem `GetCoordinatorReportUC`, sem SELECT no Postgres a partir do BFF.
+- `_links` = `Map<String,String>` (`self`, `curso`). Pendências usam `href` string no DTO de relatório (não HAL).
+- Auth: cookie `access_token` (Bearer fallback).
 
 **Lacunas:** nenhuma.
 

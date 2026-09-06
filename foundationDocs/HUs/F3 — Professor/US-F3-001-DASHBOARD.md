@@ -84,7 +84,7 @@ Então o bloco "Fila de solicitações" exibe DS/AlertBanner warning
 
 ```http
 GET /bff/dashboard/professor
-Authorization: Bearer {accessToken}
+Cookie: access_token={jwt}
 ```
 
 ```json
